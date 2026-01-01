@@ -2,15 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppStore, type Province } from '@/lib/store'
 import { provinceApi } from '@/lib/api'
 
-// Province seal mapping
+// Province seal mapping (use absolute paths from public folder)
 const provinceSealMap: Record<string, string> = {
-  'aurora': new URL('../../../../public/logos/provinces/aurora.png', import.meta.url).toString(),
-  'bataan': new URL('../../../../public/logos/provinces/bataan.png', import.meta.url).toString(),
-  'bulacan': new URL('../../../../public/logos/provinces/bulacan.png', import.meta.url).toString(),
-  'nueva-ecija': new URL('../../../../public/logos/provinces/nueva-ecija.png', import.meta.url).toString(),
-  'pampanga': new URL('../../../../public/logos/provinces/pampanga.png', import.meta.url).toString(),
-  'tarlac': new URL('../../../../public/logos/provinces/tarlac.png', import.meta.url).toString(),
-  'zambales': new URL('../../../../public/logos/provinces/zambales.png', import.meta.url).toString(),
+  'aurora': '/logos/provinces/aurora.png',
+  'bataan': '/logos/provinces/bataan.png',
+  'bulacan': '/logos/provinces/bulacan.png',
+  'nueva-ecija': '/logos/provinces/nueva-ecija.png',
+  'pampanga': '/logos/provinces/pampanga.png',
+  'tarlac': '/logos/provinces/tarlac.png',
+  'zambales': '/logos/provinces/zambales.png',
 }
 
 function getProvinceSeal(slug?: string): string | undefined {

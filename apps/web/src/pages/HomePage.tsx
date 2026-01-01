@@ -6,15 +6,15 @@ import { Link } from 'react-router-dom'
 import AnnouncementCard from '@/components/AnnouncementCard'
 import MarketplaceCard from '@/components/MarketplaceCard'
 
-// Province seals for Region 3
+// Province seals for Region 3 (use absolute paths from public folder)
 const provinceSeals = [
-  { name: 'Aurora', src: new URL('../../../../public/logos/provinces/aurora.png', import.meta.url).toString() },
-  { name: 'Bataan', src: new URL('../../../../public/logos/provinces/bataan.png', import.meta.url).toString() },
-  { name: 'Bulacan', src: new URL('../../../../public/logos/provinces/bulacan.png', import.meta.url).toString() },
-  { name: 'Nueva Ecija', src: new URL('../../../../public/logos/provinces/nueva-ecija.png', import.meta.url).toString() },
-  { name: 'Pampanga', src: new URL('../../../../public/logos/provinces/pampanga.png', import.meta.url).toString() },
-  { name: 'Tarlac', src: new URL('../../../../public/logos/provinces/tarlac.png', import.meta.url).toString() },
-  { name: 'Zambales', src: new URL('../../../../public/logos/provinces/zambales.png', import.meta.url).toString() },
+  { name: 'Aurora', src: '/logos/provinces/aurora.png' },
+  { name: 'Bataan', src: '/logos/provinces/bataan.png' },
+  { name: 'Bulacan', src: '/logos/provinces/bulacan.png' },
+  { name: 'Nueva Ecija', src: '/logos/provinces/nueva-ecija.png' },
+  { name: 'Pampanga', src: '/logos/provinces/pampanga.png' },
+  { name: 'Tarlac', src: '/logos/provinces/tarlac.png' },
+  { name: 'Zambales', src: '/logos/provinces/zambales.png' },
 ]
 
 export default function HomePage() {
@@ -60,7 +60,7 @@ export default function HomePage() {
       {/* Hero with scenic background and provincial seals */}
       <section className="relative h-[70vh] min-h-[560px] w-full overflow-hidden">
         <img
-          src={new URL('../../../../public/reference/Nature.jpg', import.meta.url).toString()}
+          src="/reference/Nature.jpg"
           alt="Central Luzon scenic"
           className="absolute inset-0 h-full w-full object-cover scale-110"
         />
