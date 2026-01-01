@@ -53,13 +53,13 @@ services:
       
       # Frontend URLs
       - key: WEB_URL
-        value: https://munlink-web.onrender.com
+        value: https://munlink-web-y9lj.onrender.com
       - key: ADMIN_URL
-        value: https://munlink-admin.onrender.com
+        value: https://munlink-admin-s7o1.onrender.com
       - key: BASE_URL
-        value: https://munlink-api.onrender.com
+        value: https://munlink-api-9c02.onrender.com
       - key: QR_BASE_URL
-        value: https://munlink-web.onrender.com/verify
+        value: https://munlink-web-y9lj.onrender.com/verify
       
       # File Uploads
       - key: UPLOAD_FOLDER
@@ -108,7 +108,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://munlink-api.onrender.com
+        value: https://munlink-api-9c02.onrender.com
       - key: VITE_APP_NAME
         value: MunLink Region 3
 
@@ -134,10 +134,10 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://munlink-api.onrender.com
+        value: https://munlink-api-9c02.onrender.com
       - key: VITE_APP_NAME
         value: MunLink Region 3 Admin
       - key: VITE_PUBLIC_SITE_URL
-        value: https://munlink-web.onrender.com
+        value: https://munlink-web-y9lj.onrender.com
 
 # No Render database needed - using Supabase
