@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Users, Building, Heart, Shield, Globe, ArrowRight, Mail, Phone, Bug, Info, ChevronDown } from 'lucide-react';
+import { Users, Building, Heart, Shield, Globe, ArrowRight, Mail, Phone, Bug, Info, ChevronDown } from 'lucide-react';
 
 // Province data with their municipalities and capitals
 const provinceData: Record<string, { capital: string; municipalities: string[] }> = {
