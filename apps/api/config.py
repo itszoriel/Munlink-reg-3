@@ -77,9 +77,11 @@ class Config:
     WEB_URL = os.getenv('WEB_URL', 'http://localhost:3000')
     ADMIN_URL = os.getenv('ADMIN_URL', 'http://localhost:3001')
     
-    # Location Data
-    LOCATION_DATA_FILE = BASE_DIR / 'data' / 'locations' / 'philippines_full_locations.json'
-    REGION3_DATA_FILE = BASE_DIR / 'data' / 'locations' / 'region3_locations.json'
+    # Location Data - use API-local data folder (works on Render)
+    # API_DIR is where apps/api is located
+    API_DIR = Path(__file__).parent.resolve()
+    LOCATION_DATA_FILE = API_DIR / 'data' / 'locations' / 'philippines_full_locations.json'
+    REGION3_DATA_FILE = API_DIR / 'data' / 'locations' / 'region3_locations.json'
     
     # Asset Paths
     MUNICIPAL_LOGOS_DIR = BASE_DIR / 'public' / 'logos' / 'municipalities'

@@ -70,6 +70,6 @@ pnpm-lock.yaml
 *.xls
 
 # Reference/temporary files
-public/reference/
+# NOTE: public/reference/ is NOT ignored - it contains hero background images needed for production
 docs/
 

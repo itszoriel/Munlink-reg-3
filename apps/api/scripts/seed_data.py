@@ -410,9 +410,14 @@ def seed_provinces():
     """Seed Region 3 provinces."""
     print("Seeding Region 3 provinces...")
     
-    # Get project root
-    project_root = Path(__file__).parent.parent.parent.parent.resolve()
-    region3_file = project_root / 'data' / 'locations' / 'region3_locations.json'
+    # Get API root (apps/api) - works both locally and on Render
+    api_root = Path(__file__).parent.parent.resolve()
+    region3_file = api_root / 'data' / 'locations' / 'region3_locations.json'
+    
+    # Fallback to project root for local development
+    if not region3_file.exists():
+        project_root = api_root.parent.parent
+        region3_file = project_root / 'data' / 'locations' / 'region3_locations.json'
     
     if not region3_file.exists():
         print(f"  ERROR: Region 3 data file not found: {region3_file}")
@@ -452,9 +457,14 @@ def seed_municipalities():
     """Seed municipalities and barangays from Region 3 data."""
     print("Seeding municipalities and barangays...")
     
-    # Get project root
-    project_root = Path(__file__).parent.parent.parent.parent.resolve()
-    region3_file = project_root / 'data' / 'locations' / 'region3_locations.json'
+    # Get API root (apps/api) - works both locally and on Render
+    api_root = Path(__file__).parent.parent.resolve()
+    region3_file = api_root / 'data' / 'locations' / 'region3_locations.json'
+    
+    # Fallback to project root for local development
+    if not region3_file.exists():
+        project_root = api_root.parent.parent
+        region3_file = project_root / 'data' / 'locations' / 'region3_locations.json'
     
     if not region3_file.exists():
         print(f"  ERROR: Region 3 data file not found: {region3_file}")
