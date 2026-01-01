@@ -23,13 +23,13 @@ def init_database():
         from apps.api.models.province import Province
         from apps.api.models.municipality import Municipality, Barangay
         from apps.api.models.document import DocumentType, DocumentRequest
-        from apps.api.models.issue import IssueCategory, Issue
+        from apps.api.models.issue import IssueCategory, Issue, IssueUpdate
         from apps.api.models.benefit import BenefitProgram, BenefitApplication
-        from apps.api.models.marketplace import Item, Transaction, Message
+        from apps.api.models.marketplace import Item, Transaction, TransactionAuditLog, Message
         from apps.api.models.announcement import Announcement
         from apps.api.models.token_blacklist import TokenBlacklist
         from apps.api.models.audit import AuditLog
-        from apps.api.models.transfer import TransferRecord
+        from apps.api.models.transfer import TransferRequest
         
         print("Checking database tables...")
         
