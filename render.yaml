@@ -53,13 +53,13 @@ services:
       
       # Frontend URLs
       - key: WEB_URL
-        value: https://munlink-region3.onrender.com
+        value: https://munlink-web.onrender.com
       - key: ADMIN_URL
         value: https://munlink-admin.onrender.com
       - key: BASE_URL
         value: https://munlink-api.onrender.com
       - key: QR_BASE_URL
-        value: https://munlink-region3.onrender.com/verify
+        value: https://munlink-web.onrender.com/verify
       
       # File Uploads
       - key: UPLOAD_FOLDER
@@ -96,9 +96,9 @@ services:
     name: munlink-web
     region: singapore
     runtime: static
-    rootDir: apps/web
-    buildCommand: npm install --no-audit --no-fund && npm run build
-    staticPublishPath: dist
+    rootDir: .
+    buildCommand: npm install --no-audit --no-fund && cd packages/ui && npm install --no-audit --no-fund && npm run build && cd ../../apps/web && npm install --no-audit --no-fund && npm run build
+    staticPublishPath: apps/web/dist
     headers:
       - path: /*
         name: Cache-Control
@@ -123,9 +123,9 @@ services:
     name: munlink-admin
     region: singapore
     runtime: static
-    rootDir: apps/admin
-    buildCommand: npm install --no-audit --no-fund && npm run build
-    staticPublishPath: dist
+    rootDir: .
+    buildCommand: npm install --no-audit --no-fund && cd packages/ui && npm install --no-audit --no-fund && npm run build && cd ../../apps/admin && npm install --no-audit --no-fund && npm run build
+    staticPublishPath: apps/admin/dist
     headers:
       - path: /*
         name: Cache-Control
@@ -142,5 +142,7 @@ services:
         value: https://munlink-api.onrender.com
       - key: VITE_APP_NAME
         value: MunLink Region 3 Admin
+      - key: VITE_PUBLIC_SITE_URL
+        value: https://munlink-web.onrender.com
 
 # No Render database needed - using Supabase
