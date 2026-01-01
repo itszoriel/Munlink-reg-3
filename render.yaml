@@ -81,13 +81,10 @@ services:
       - key: FROM_EMAIL
         sync: false
     
-    # Persistent disk for file uploads
-    disk:
-      name: uploads
-      mountPath: ./uploads
-      sizeGB: 10
+    # Note: For production, consider adding a persistent disk (requires paid plan)
+    # Or use Supabase Storage for file uploads
     
-    plan: starter
+    plan: free
 
   # ============================================
   # Public Website (React/Vite)
