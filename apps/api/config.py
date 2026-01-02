@@ -5,9 +5,76 @@ Application configuration management
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 # Get project root (2 levels up from this file)
 BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+
+
+def get_database_url():
+    """
+    Get and process the database URL for proper connection handling.
+    - Ensures SSL is enabled for PostgreSQL connections (required by Supabase)
+    - Handles URL scheme conversion (postgres:// -> postgresql://)
+    """
+    url = os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR}/munlink_region3.db')
+    
+    # Handle Heroku/Render style postgres:// URLs (SQLAlchemy requires postgresql://)
+    if url.startswith('postgres://'):
+        url = url.replace('postgres://', 'postgresql://', 1)
+    
+    # For PostgreSQL connections, ensure SSL is configured
+    if url.startswith('postgresql://'):
+        parsed = urlparse(url)
+        query_params = parse_qs(parsed.query)
+        
+        # Add sslmode=require if not already set (required for Supabase)
+        if 'sslmode' not in query_params:
+            query_params['sslmode'] = ['require']
+        
+        # Rebuild the URL with updated query params
+        new_query = urlencode(query_params, doseq=True)
+        url = urlunparse((
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment
+        ))
+    
+    return url
+
+
+def get_engine_options():
+    """
+    Get SQLAlchemy engine options based on the database type.
+    PostgreSQL requires specific connection settings for Supabase pooler.
+    """
+    db_url = get_database_url()
+    
+    # Base options for all databases
+    options = {
+        'pool_pre_ping': True,  # Verify connections before use (handles stale connections)
+    }
+    
+    # PostgreSQL-specific options for Supabase connection
+    if db_url.startswith('postgresql://'):
+        options.update({
+            'pool_recycle': 300,    # Recycle connections every 5 minutes
+            'pool_timeout': 30,     # Wait up to 30 seconds for a connection
+            'pool_size': 5,         # Keep 5 connections in the pool
+            'max_overflow': 10,     # Allow up to 10 additional connections
+            'connect_args': {
+                'connect_timeout': 30,      # 30 second connection timeout
+                'keepalives': 1,            # Enable TCP keepalives
+                'keepalives_idle': 30,      # Seconds before sending keepalive
+                'keepalives_interval': 10,  # Seconds between keepalives
+                'keepalives_count': 5,      # Number of keepalives before giving up
+            }
+        })
+    
+    return options
 
 
 class Config:
@@ -19,13 +86,12 @@ class Config:
     FLASK_ENV = os.getenv('FLASK_ENV', 'development')
     
     # Database
-    DATABASE_URL = os.getenv(
-        'DATABASE_URL',
-        f'sqlite:///{BASE_DIR}/munlink_region3.db'
-    )
-    SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    SQLALCHEMY_DATABASE_URI = get_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = DEBUG
+    
+    # SQLAlchemy Engine Options - dynamically configured based on database type
+    SQLALCHEMY_ENGINE_OPTIONS = get_engine_options()
     
     # Supabase Configuration (optional - for Supabase features like auth, storage, real-time)
     SUPABASE_URL = os.getenv('SUPABASE_URL', '')
@@ -124,6 +190,7 @@ class TestingConfig(Config):
     """Testing configuration"""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True}  # SQLite doesn't need PostgreSQL options
     WTF_CSRF_ENABLED = False
 
 
