@@ -87,7 +87,7 @@ export default function Layout() {
           <div className="flex items-center justify-between gap-2">
             <Link to="/" className="text-base lg:text-lg font-serif font-semibold text-gray-900 whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2">
               <img
-                src="/logos/MunLink%20Logo.jpg"
+                src="/logos/MunLink%20Logo.png"
                 alt="MunLink Logo"
                 className="h-7 w-7 rounded-full object-cover bg-white/60 border border-white/60 shadow-sm"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
