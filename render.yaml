@@ -17,6 +17,9 @@ services:
     startCommand: "python scripts/init_db.py && flask db upgrade && gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --max-requests 1000 --max-requests-jitter 50"
     healthCheckPath: /health
     envVars:
+      # Pin Python version (Render currently defaults to Python 3.13, which breaks psycopg2-binary)
+      - key: PYTHON_VERSION
+        value: 3.12.7
       # Flask Configuration
       - key: FLASK_ENV
         value: production
