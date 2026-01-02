@@ -110,7 +110,7 @@ export default function DocumentsPage() {
 
   return (
     <div className="container-responsive py-12">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-6">
         <img
           src={seal.src}
           alt={seal.alt}
@@ -122,7 +122,6 @@ export default function DocumentsPage() {
           <p className="text-sm text-gray-600">Request documents for your selected municipality.</p>
         </div>
       </div>
-      <h1 className="text-fluid-3xl font-serif font-semibold mb-6">Documents</h1>
       { (searchParams.get('tab') || '').toLowerCase() === 'requests' && (
         <div className="bg-white rounded-xl border p-4 mb-6">
           <div className="flex items-center justify-between mb-3">

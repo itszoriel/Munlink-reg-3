@@ -191,15 +191,17 @@ export default function Dashboard() {
             <div className="mb-4 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>
           )}
           {/* Welcome Banner */}
-          <div className="mb-8 bg-ocean-gradient text-white rounded-3xl p-8 relative overflow-visible">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+          <div className="mb-8 bg-ocean-gradient text-white rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-lg shadow-sky-500/20">
+            <div className="absolute top-0 right-0 w-72 h-72 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
             <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="min-w-0">
-                <h1 className="text-3xl font-bold mb-2 inline-flex items-center gap-2">Welcome back, {user?.first_name}! <Hand className="w-6 h-6" aria-hidden="true" /></h1>
-                <p className="text-ocean-100 text-lg">{user?.admin_municipality_name || 'Admin'} Dashboard • {dateStr}</p>
+                <h1 className="text-2xl md:text-3xl font-bold mb-2 inline-flex items-center gap-3">
+                  Welcome back, {user?.first_name}! 
+                  <Hand className="w-6 h-6 animate-pulse" aria-hidden="true" />
+                </h1>
+                <p className="text-sky-100 text-base md:text-lg">{user?.admin_municipality_name || 'Admin'} Dashboard • {dateStr}</p>
               </div>
-              <div className="flex flex-col xs:flex-row gap-3 w-full sm:w-auto"></div>
             </div>
           </div>
 
@@ -252,20 +254,20 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             {/* Recent Activity */}
             <Card title={<span className="text-xl font-bold">Recent Activity</span>}>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {activity.map((a, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors">
-                    <div className={`w-10 h-10 bg-${a.color}-100 rounded-lg flex items-center justify-center text-lg flex-shrink-0`}>
+                  <div key={i} className="flex items-start gap-3 p-3 bg-slate-50/80 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-100 hover:border-slate-200">
+                    <div className={`w-10 h-10 bg-${a.color}-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0 shadow-sm`}>
                       <IconFromCode code={a.icon} className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-neutral-900 font-medium mb-1">{a.text}</p>
-                      <p className="text-xs text-neutral-600">{a.who || 'System'} • {timeAgo(a.ts)}</p>
+                      <p className="text-sm text-slate-900 font-medium mb-0.5">{a.text}</p>
+                      <p className="text-xs text-slate-500">{a.who || 'System'} • {timeAgo(a.ts)}</p>
                     </div>
                   </div>
                 ))}
                 {activity.length === 0 && (
-                  <div className="text-sm text-neutral-600">No recent activity.</div>
+                  <div className="text-sm text-slate-500 text-center py-8">No recent activity.</div>
                 )}
               </div>
             </Card>
@@ -278,19 +280,19 @@ export default function Dashboard() {
                 <option>Last 90 days</option>
               </Select>
             )}>
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {overview.map((item, i) => (
                   <div key={i}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-neutral-700">{item.label}</span>
-                      <span className="text-sm font-bold text-neutral-900">{item.value}</span>
+                      <span className="text-sm font-medium text-slate-600">{item.label}</span>
+                      <span className="text-sm font-bold text-slate-900">{item.value}</span>
                     </div>
-                    <div className="h-3 bg-neutral-100 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
                       {(() => {
                         const pct = Math.min(100, Math.max(0, (item.max ? (item.value / item.max) * 100 : 0)))
                         return (
                           <div
-                            className={`h-full bg-gradient-to-r ${gradientClass(item.color)} rounded-full transition-[width] duration-700 ease-out`}
+                            className={`h-full bg-gradient-to-r ${gradientClass(item.color)} rounded-full transition-all duration-700 ease-out shadow-sm`}
                             style={{ width: `${pct}%` }}
                           />
                         )

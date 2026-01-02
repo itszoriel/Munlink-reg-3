@@ -82,8 +82,8 @@ export default function Layout() {
 
   return (
     <div className={"min-h-screen flex flex-col"}>
-      <nav className={"fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-7xl "+(scrolled?"":"") }>
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl px-4 lg:px-6 py-2.5 shadow-2xl border border-white/50">
+      <nav className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-7xl transition-all duration-300 ${scrolled ? 'top-2' : ''}`}>
+        <div className={`bg-white/85 backdrop-blur-xl rounded-2xl px-4 lg:px-6 py-2.5 border border-white/60 transition-shadow duration-300 ${scrolled ? 'shadow-xl' : 'shadow-lg'}`}>
           <div className="flex items-center justify-between gap-2">
             <Link to="/" className="text-base lg:text-lg font-serif font-semibold text-gray-900 whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2">
               <img

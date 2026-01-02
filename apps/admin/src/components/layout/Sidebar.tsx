@@ -44,16 +44,11 @@ export default function Sidebar({ collapsed, onToggle, className = '' }: Sidebar
   })
   if (collapsed) {
     return (
-      <aside className={`fixed left-0 top-0 h-screen w-[80px] bg-white/90 backdrop-blur-xl border-r border-neutral-200 z-50 transition-all duration-300 ${className}`}>
+      <aside className={`fixed left-0 top-0 h-screen w-[80px] bg-white/90 backdrop-blur-xl border-r border-neutral-200 z-50 transition-all duration-300 flex flex-col ${className}`}>
         <div className="flex flex-col items-center px-4 py-5 border-b border-neutral-200">
-          <img src={seal.src} className="w-10 h-10 mb-2 object-contain" alt={seal.alt} />
-          <button onClick={onToggle} className="w-8 h-8 bg-neutral-100 hover:bg-neutral-200 rounded-lg flex items-center justify-center transition-colors">
-            <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
-          </button>
+          <img src={seal.src} className="w-10 h-10 object-contain" alt={seal.alt} />
         </div>
-        <nav className="px-4 py-6 space-y-3">
+        <nav className="px-4 py-6 space-y-3 flex-1">
           {navItems.map((item) => (
             <div key={item.path} className="relative group">
               <NavLink
@@ -74,28 +69,28 @@ export default function Sidebar({ collapsed, onToggle, className = '' }: Sidebar
             </div>
           ))}
         </nav>
-        {/* Removed bottom profile block for compact UI; profile remains in TopHeader */}
+        {/* Toggle button at bottom */}
+        <div className="px-4 py-4 border-t border-neutral-200">
+          <button onClick={onToggle} className="w-12 h-10 bg-neutral-100 hover:bg-neutral-200 rounded-lg flex items-center justify-center transition-colors mx-auto">
+            <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
       </aside>
     )
   }
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen w-[260px] bg-white/90 backdrop-blur-xl border-r border-neutral-200 z-50 transition-all duration-300 ${className}`}>
-      <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200">
-        <div className="flex items-center gap-3">
-          <img src={seal.src} className="w-10 h-10 object-contain" alt={seal.alt} />
-          <div>
-            <p className="font-bold text-sm text-neutral-900">{user?.admin_municipality_name || 'MunLink'}</p>
-            <p className="text-xs text-neutral-600">Admin Portal</p>
-          </div>
+    <aside className={`fixed left-0 top-0 h-screen w-[260px] bg-white/90 backdrop-blur-xl border-r border-neutral-200 z-50 transition-all duration-300 flex flex-col ${className}`}>
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-neutral-200">
+        <img src={seal.src} className="w-10 h-10 object-contain" alt={seal.alt} />
+        <div>
+          <p className="font-bold text-sm text-neutral-900">{user?.admin_municipality_name || 'MunLink'}</p>
+          <p className="text-xs text-neutral-600">Admin Portal</p>
         </div>
-        <button onClick={onToggle} className="w-8 h-8 bg-neutral-100 hover:bg-neutral-200 rounded-lg flex items-center justify-center transition-colors">
-          <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
       </div>
-      <nav className="px-4 py-6 space-y-2">
+      <nav className="px-4 py-6 space-y-2 flex-1">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -112,7 +107,15 @@ export default function Sidebar({ collapsed, onToggle, className = '' }: Sidebar
           </NavLink>
         ))}
       </nav>
-      {/* Removed bottom profile block for cleaner layout */}
+      {/* Toggle button at bottom */}
+      <div className="px-4 py-4 border-t border-neutral-200">
+        <button onClick={onToggle} className="w-full h-10 bg-neutral-100 hover:bg-neutral-200 rounded-lg flex items-center justify-center gap-2 transition-colors text-neutral-600 text-sm font-medium">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+          <span>Collapse</span>
+        </button>
+      </div>
     </aside>
   )
 }
