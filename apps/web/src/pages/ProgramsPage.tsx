@@ -89,7 +89,13 @@ export default function ProgramsPage() {
           </div>
           <div className="flex items-center gap-2 md:ml-auto">
             <button className={`btn ${tab==='programs'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('programs')}>Programs</button>
-            <button className={`btn ${tab==='applications'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('applications')}>My Applications</button>
+            <GatedAction
+              required="fullyVerified"
+              onAllowed={() => setTab('applications')}
+              featureDescription="View your benefit program applications"
+            >
+              <button className={`btn ${tab==='applications'?'btn-primary':'btn-secondary'}`}>My Applications</button>
+            </GatedAction>
           </div>
         </div>
       </Card>
@@ -179,7 +185,7 @@ export default function ProgramsPage() {
                       setOpen(true)
                       setStep(1)
                     }}
-                    tooltip="Login required to use this feature"
+                    featureDescription={`Apply for ${p.name}`}
                   >
                     <button className="btn btn-primary w-full" disabled={isMismatch} title={isMismatch ? 'Applications are limited to your municipality' : undefined}>Apply Now</button>
                   </GatedAction>

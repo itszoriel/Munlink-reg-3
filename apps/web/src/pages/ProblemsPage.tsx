@@ -117,7 +117,13 @@ export default function ProblemsPage() {
             <div className="md:ml-auto flex items-center gap-2">
               <div className="flex items-center gap-2">
                 <button className={`btn ${tab==='all'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('all')}>All Problems</button>
-                <button className={`btn ${tab==='mine'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('mine')}>My Reports</button>
+                <GatedAction
+                  required="fullyVerified"
+                  onAllowed={() => setTab('mine')}
+                  featureDescription="View your submitted problem reports"
+                >
+                  <button className={`btn ${tab==='mine'?'btn-primary':'btn-secondary'}`}>My Reports</button>
+                </GatedAction>
               </div>
               <GatedAction
                 required="fullyVerified"
@@ -125,7 +131,7 @@ export default function ProblemsPage() {
                   if (isMismatch) { alert('Reporting is limited to your registered municipality'); return }
                   setOpen(true)
                 }}
-                tooltip="Login required to use this feature"
+                featureDescription="Report a problem in your municipality"
               >
                 <button className="btn btn-primary" disabled={isMismatch} title={isMismatch ? 'Reporting is limited to your municipality' : undefined}>Report a Problem</button>
               </GatedAction>

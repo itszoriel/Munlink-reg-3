@@ -94,6 +94,7 @@ export default function MarketplacePage() {
               }
               setOpen(true)
             }}
+            featureDescription="Post an item on the marketplace"
           >
             <button className="btn btn-primary w-full xs:w-auto" disabled={isViewingMismatch} title={isViewingMismatch ? 'Posting is limited to your municipality' : undefined}>+ Post Item</button>
           </GatedAction>
@@ -197,6 +198,7 @@ export default function MarketplacePage() {
                           setCreatingTxId(null)
                         }
                   }}
+                  featureDescription={item.transaction_type === 'sell' ? `Request to buy "${item.title}"` : item.transaction_type === 'lend' ? `Request to borrow "${item.title}"` : `Request donation "${item.title}"`}
                 >
                   {(() => {
                     const isCross = !!userMunicipalityId && !!item.municipality_id && userMunicipalityId !== item.municipality_id
