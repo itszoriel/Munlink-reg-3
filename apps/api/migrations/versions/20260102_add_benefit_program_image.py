@@ -1,7 +1,7 @@
 """add image_path to benefit_programs
 
 Revision ID: 20260102_bp_img
-Revises: 7e00b3f22e71
+Revises: 20250101_add_provinces
 Create Date: 2026-01-02
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '20260102_bp_img'
-down_revision = '7e00b3f22e71'
+down_revision = '20250101_add_provinces'
 branch_labels = None
 depends_on = None
 
