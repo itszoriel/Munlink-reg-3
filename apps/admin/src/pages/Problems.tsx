@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { issueApi, handleApiError, mediaUrl } from '../lib/api'
 
-type Issue = {
+type Problem = {
   id: number
   title: string
   description: string
@@ -13,10 +13,10 @@ type Issue = {
   attachments?: string[]
 }
 
-export default function Issues() {
+export default function Problems() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [items, setItems] = useState<Issue[]>([])
+  const [items, setItems] = useState<Problem[]>([])
   const [status, setStatus] = useState<'all' | 'pending' | 'in_progress' | 'resolved' | 'closed'>('all')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
@@ -27,7 +27,7 @@ export default function Issues() {
         setError(null)
         setLoading(true)
         const res = await issueApi.getIssues({ status: status === 'all' ? undefined : status, page: 1, per_page: 50 })
-        const list = ((res as any)?.issues || (res as any)?.data?.issues || []) as Issue[]
+        const list = ((res as any)?.issues || (res as any)?.data?.issues || []) as Problem[]
         if (mounted) setItems(list)
       } catch (e: any) {
         setError(handleApiError(e))
@@ -54,13 +54,13 @@ export default function Issues() {
   return (
     <div className="min-h-screen">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-neutral-900 mb-2">Issues</h1>
-        <p className="text-neutral-600">Manage resident-submitted issues</p>
+        <h1 className="text-3xl font-bold text-neutral-900 mb-2">Problems in Municipality</h1>
+        <p className="text-neutral-600">Manage resident-submitted problems</p>
       </div>
 
       <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-neutral-900">Reported Issues</h2>
+          <h2 className="text-xl font-bold text-neutral-900">Reported Problems</h2>
           <div className="inline-flex gap-2 overflow-x-auto">
             {['all','pending','in_progress','resolved','closed'].map((s) => (
               <button key={s} onClick={()=> setStatus(s as any)} className={`px-3 py-1.5 rounded-full text-sm font-medium ${status===s? 'bg-ocean-600 text-white' : 'bg-white border border-neutral-200 text-neutral-700'}`}>{s.replace('_',' ')}</button>
@@ -112,11 +112,11 @@ export default function Issues() {
                   )}
                   {it.status === 'resolved' && (
                     <button
-                      onClick={()=> { if (window.confirm('Close this issue? This will finalize the issue and prevent further status changes.')) updateStatus(it.id, 'closed') }}
+                      onClick={()=> { if (window.confirm('Close this problem? This will finalize it and prevent further status changes.')) updateStatus(it.id, 'closed') }}
                       disabled={actionLoading===it.id}
                       className="px-3 py-1.5 rounded-lg bg-neutral-200 hover:bg-neutral-300 text-neutral-800 text-sm disabled:opacity-60"
                     >
-                      {actionLoading===it.id? 'Updating…':'Close Issue'}
+                      {actionLoading===it.id? 'Updating…':'Close Problem'}
                     </button>
                   )}
                 </div>
@@ -128,5 +128,4 @@ export default function Issues() {
     </div>
   )
 }
-
 

@@ -20,11 +20,13 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile }: TopHeaderP
     const path = location.pathname
     if (path === '/dashboard') return 'Dashboard'
     if (path === '/residents') return 'Residents'
-    if (path === '/benefits') return 'Benefits'
+    if (path === '/programs') return 'Programs'
     if (path === '/requests') return 'Requests'
+    if (path === '/problems') return 'Problems'
     if (path === '/marketplace') return 'Marketplace'
     if (path === '/admins') return 'Admins'
     if (path === '/reports') return 'Reports'
+    if (path === '/announcements') return 'Announcements'
     return 'Dashboard'
   }
   
@@ -59,8 +61,8 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile }: TopHeaderP
   const goToProfile = () => {
     navigate('/profile')
   }
-  // On tablet (md–lg), always align to pinned rail (80px). On xl+, respect collapse state.
-  const leftOffset = sidebarCollapsed ? 'md:left-[80px] xl:left-[80px]' : 'md:left-[80px] xl:left-[260px]'
+  // Align header to sidebar width (collapsed=80px, expanded=260px) on md+.
+  const leftOffset = sidebarCollapsed ? 'md:left-[80px]' : 'md:left-[260px]'
   const portalTitle = `${user?.admin_municipality_name || 'Municipality'} Admin Portal`
   return (
     <header className={`fixed top-0 right-0 left-0 ${leftOffset} h-16 bg-white md:bg-white/90 md:backdrop-blur-xl border-b border-neutral-200 z-40 transition-all duration-300`}>

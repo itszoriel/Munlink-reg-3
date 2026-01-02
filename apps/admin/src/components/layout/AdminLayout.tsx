@@ -21,17 +21,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-ocean-50/30 to-forest-50/20">
-      {/* Tablet pinned rail (icon-only) */}
-      <Sidebar
-        collapsed={true}
-        onToggle={() => setIsSidebarCollapsed((v) => !v)}
-        className="hidden md:block xl:hidden"
-      />
-      {/* Desktop full/collapsed sidebar */}
+      {/* Sidebar (md+): allow true collapse/expand everywhere, not only on xl */}
       <Sidebar
         collapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed((v) => !v)}
-        className="hidden xl:block"
+        className="hidden md:block"
       />
 
       {/* Mobile Drawer */}
@@ -51,7 +45,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main content */}
       <main
-        className={`admin-main-content pt-16 pb-24 md:pb-28 overflow-x-hidden max-w-full transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-[80px] xl:ml-[80px]' : 'md:ml-[80px] xl:ml-[260px]'}`}
+        className={`admin-main-content pt-16 pb-24 md:pb-28 overflow-x-hidden max-w-full transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-[80px]' : 'md:ml-[260px]'}`}
       >
         <div className="p-6 md:p-8 container-responsive">
           {children}

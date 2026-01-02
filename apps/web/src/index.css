@@ -3,15 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #059669;
+  /* MunLink Unified Design System Colors */
+  --color-primary: #0ea5e9; /* Ocean - Primary actions */
   --color-primary-foreground: #ffffff;
-  --color-surface: #ffffff;
-  --color-surface-foreground: #111827;
+  --color-accent: #10b981; /* Emerald - Success/positive */
+  --color-surface: #f8fafc; /* Slate-50 */
+  --color-surface-foreground: #0f172a; /* Slate-900 */
   --color-card: #ffffff;
   --color-card-foreground: #111827;
-  --color-border: #e5e7eb;
-  --color-muted: #6b7280;
+  --color-border: #e2e8f0; /* Slate-200 */
+  --color-muted: #64748b; /* Slate-500 */
   --ring: var(--color-primary);
+  
+  /* Semantic Colors */
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+  --color-success: #10b981;
 }
 
 @layer base {

@@ -14,8 +14,8 @@ import AnnouncementsPage from './pages/AnnouncementsPage'
 import About from '@/pages/About'
 import DocumentsPage from './pages/DocumentsPage'
 import DocumentRequestPage from './pages/DocumentRequestPage'
-import IssuesPage from './pages/IssuesPage'
-import BenefitsPage from './pages/BenefitsPage'
+import ProblemsPage from './pages/ProblemsPage'
+import ProgramsPage from './pages/ProgramsPage'
 import VerifyDocumentPage from './pages/VerifyDocumentPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import VerifyEmailPage from './pages/VerifyEmailPage'
@@ -71,8 +71,11 @@ function App() {
           <Route path="documents" element={<ProtectedRoute allow={["resident","admin","public"]}><DocumentsPage /></ProtectedRoute>} />
           <Route path="documents/requests/:id" element={<LegacyDocRedirect />} />
           <Route path="dashboard/requests/:id" element={<ProtectedRoute allow={["resident"]}><DocumentRequestPage /></ProtectedRoute>} />
-          <Route path="issues" element={<ProtectedRoute allow={["resident","admin","public"]}><IssuesPage /></ProtectedRoute>} />
-          <Route path="benefits" element={<ProtectedRoute allow={["resident","admin","public"]}><BenefitsPage /></ProtectedRoute>} />
+          <Route path="problems" element={<ProtectedRoute allow={["resident","admin","public"]}><ProblemsPage /></ProtectedRoute>} />
+          <Route path="programs" element={<ProtectedRoute allow={["resident","admin","public"]}><ProgramsPage /></ProtectedRoute>} />
+          {/* Legacy redirects for old routes */}
+          <Route path="issues" element={<Navigate to="/problems" replace />} />
+          <Route path="benefits" element={<Navigate to="/programs" replace />} />
           <Route path="verify/:requestNumber" element={<VerifyDocumentPage />} />
         </Route>
       </Routes>

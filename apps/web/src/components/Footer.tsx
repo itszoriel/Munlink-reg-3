@@ -8,8 +8,8 @@ export default function Footer() {
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <div className="text-xl font-serif font-semibold text-gray-900">MunLink Zambales</div>
-              <p className="mt-2 text-gray-600">Connecting residents, services, and local markets across Zambales.</p>
+              <div className="text-xl font-serif font-semibold text-gray-900">MunLink Region 3</div>
+              <p className="mt-2 text-gray-600">Connecting residents, services, and local markets across Central Luzon.</p>
             </div>
             <div>
               <div className="font-semibold text-gray-900 mb-3">Explore</div>
@@ -23,14 +23,14 @@ export default function Footer() {
               <div className="font-semibold text-gray-900 mb-3">Services</div>
               <ul className="space-y-2 text-gray-600">
                 <li><Link to="/documents" className="hover:text-ocean-700">Documents</Link></li>
-                <li><Link to="/issues" className="hover:text-ocean-700">Issues</Link></li>
-                <li><Link to="/benefits" className="hover:text-ocean-700">Benefits</Link></li>
+                <li><Link to="/problems" className="hover:text-ocean-700">Problems</Link></li>
+                <li><Link to="/programs" className="hover:text-ocean-700">Programs</Link></li>
               </ul>
             </div>
           </div>
           <div className="mt-10 pt-6 border-t border-white/40 text-sm text-gray-600 flex items-center justify-between">
-            <p>© {year} MunLink Zambales. All rights reserved.</p>
-            <p>Made for residents of Zambales.</p>
+            <p>© {year} MunLink Region 3. All rights reserved.</p>
+            <p>Serving 7 provinces across Central Luzon.</p>
           </div>
         </div>
       </div>

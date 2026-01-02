@@ -4,7 +4,7 @@ import { ArrowRight, ArrowLeft } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import GatedAction from '@/components/GatedAction'
 import { useAppStore } from '@/lib/store'
-import { benefitsApi } from '@/lib/api'
+import { benefitsApi, mediaUrl } from '@/lib/api'
 import Modal from '@/components/ui/Modal'
 import Stepper from '@/components/ui/Stepper'
 
@@ -20,7 +20,7 @@ type Program = {
   required_documents?: string[]
 }
 
-export default function BenefitsPage() {
+export default function ProgramsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const user = useAppStore((s) => s.user)
   const [programs, setPrograms] = useState<Program[]>([])
@@ -71,7 +71,7 @@ export default function BenefitsPage() {
   return (
     <div className="container-responsive py-12">
       <div className="mb-3">
-        <h1 className="text-fluid-3xl font-serif font-semibold">Benefits</h1>
+        <h1 className="text-fluid-3xl font-serif font-semibold">Programs with Benefits</h1>
         <p className="text-gray-600">Explore available programs. You can view details without logging in; applying requires an account.</p>
       </div>
 
@@ -115,8 +115,14 @@ export default function BenefitsPage() {
               const desc = (p as any).description || p.summary || ''
               const eligibility = (p.eligibility || (p as any).eligibility_criteria || []) as string[]
               const requirements = (p.requirements || (p as any).required_documents || []) as string[]
+              const img = (p as any).image_path ? mediaUrl((p as any).image_path) : ((p as any).image_url ? mediaUrl((p as any).image_url) : undefined)
               return (
               <Card key={p.id} className="flex flex-col">
+                {img ? (
+                  <div className="mb-3 -mx-4 -mt-4 overflow-hidden rounded-t-lg border-b border-[var(--color-border)]">
+                    <img src={img} alt={`${p.name} image`} className="h-36 w-full object-cover" />
+                  </div>
+                ) : null}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="text-lg font-semibold truncate">{p.name}</h3>
@@ -275,5 +281,4 @@ export default function BenefitsPage() {
     </div>
   )
 }
-
 

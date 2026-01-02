@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useAdminStore } from '../../lib/store'
 import { LayoutDashboard, Users, Gift, FileText, AlertTriangle, ShoppingBag, Megaphone, BarChart3 } from 'lucide-react'
+import { getBestRegion3Seal } from '@munlink/ui'
 
 interface SidebarProps {
   collapsed: boolean
@@ -11,9 +12,9 @@ interface SidebarProps {
 const navItems = [
   { icon: 'dashboard', label: 'Dashboard', path: '/dashboard', badge: null },
   { icon: 'residents', label: 'Residents', path: '/residents', badge: null },
-  { icon: 'benefits', label: 'Benefits', path: '/benefits', badge: null },
+  { icon: 'programs', label: 'Programs', path: '/programs', badge: null },
   { icon: 'requests', label: 'Requests', path: '/requests', badge: null },
-  { icon: 'issues', label: 'Issues', path: '/issues', badge: null },
+  { icon: 'problems', label: 'Problems', path: '/problems', badge: null },
   { icon: 'marketplace', label: 'Marketplace', path: '/marketplace', badge: null },
   { icon: 'announcements', label: 'Announcements', path: '/announcements', badge: null },
   { icon: 'reports', label: 'Reports', path: '/reports', badge: null },
@@ -23,9 +24,9 @@ function IconFor(code: string, className = 'w-5 h-5') {
   switch (code) {
     case 'dashboard': return <LayoutDashboard className={className} aria-hidden="true" />
     case 'residents': return <Users className={className} aria-hidden="true" />
-    case 'benefits': return <Gift className={className} aria-hidden="true" />
+    case 'programs': return <Gift className={className} aria-hidden="true" />
     case 'requests': return <FileText className={className} aria-hidden="true" />
-    case 'issues': return <AlertTriangle className={className} aria-hidden="true" />
+    case 'problems': return <AlertTriangle className={className} aria-hidden="true" />
     case 'transactions': return <ShoppingBag className={className} aria-hidden="true" />
     case 'marketplace': return <ShoppingBag className={className} aria-hidden="true" />
     case 'announcements': return <Megaphone className={className} aria-hidden="true" />
@@ -37,51 +38,15 @@ function IconFor(code: string, className = 'w-5 h-5') {
 export default function Sidebar({ collapsed, onToggle, className = '' }: SidebarProps) {
   const user = useAdminStore((s) => s.user)
   
-  // Get municipality logo path
-  const getMunicipalityLogo = () => {
-    // Map municipality keys (slug or name) to their specific logo files in /public/logos
-    const municipalityLogos: Record<string, string> = {
-      // Province fallback
-      'zambales': '/logos/zambales/64px-Seal_of_Province_of_Zambales.svg.png',
-
-      // Exact slugs
-      'botolan': '/logos/municipalities/Botolan/Ph_seal_zambales_botolan.png',
-      'cabangan': '/logos/municipalities/Cabangan/Cabangan_Zambales_seal.png',
-      'candelaria': '/logos/municipalities/Candelaria/Candelaria_Zambales_Seal.png',
-      'castillejos': '/logos/municipalities/Castillejos/Castillejos_Zambales_seal.png',
-      'iba': '/logos/municipalities/Iba/Iba_Zambales_seal.png',
-      'masinloc': '/logos/municipalities/Masinloc/Masinloc_Zambales_seal.png',
-      'palauig': '/logos/municipalities/Palauig/Palauig_Zambales_seal.png',
-      'san-antonio': '/logos/municipalities/SanAntonio/SanAntonio,102Zambalesjf.png',
-      'san-felipe': '/logos/municipalities/San Felipe/Seal San Felipe.png',
-      'san-marcelino': '/logos/municipalities/San Marcelino/smz-logo-256px.png',
-      'san-narciso': '/logos/municipalities/San Narciso/san-narciso-seal 256px.png',
-      'santa-cruz': '/logos/municipalities/Santa-Cruz/Santa_Cruz_Zambales.png',
-      'subic': '/logos/municipalities/Subic/subic seal 256px.png',
-
-      // Name aliases (lowercased)
-      'san antonio': '/logos/municipalities/SanAntonio/SanAntonio,102Zambalesjf.png',
-      'san felipe': '/logos/municipalities/San Felipe/Seal San Felipe.png',
-      'san marcelino': '/logos/municipalities/San Marcelino/smz-logo-256px.png',
-      'san narciso': '/logos/municipalities/San Narciso/san-narciso-seal 256px.png',
-      'santa cruz': '/logos/municipalities/Santa-Cruz/Santa_Cruz_Zambales.png',
-    }
-
-    const slug = (user?.admin_municipality_slug || '').toLowerCase()
-    const name = (user?.admin_municipality_name || '').toLowerCase()
-    const normalizedNameSlug = name.replace(/\s+/g, '-').trim()
-
-    const candidates = [slug, name, normalizedNameSlug]
-    for (const key of candidates) {
-      if (key && municipalityLogos[key]) return municipalityLogos[key]
-    }
-    return municipalityLogos['zambales']
-  }
+  const seal = getBestRegion3Seal({
+    municipality: (user as any)?.admin_municipality_slug || (user as any)?.admin_municipality_name || (user as any)?.municipality_slug || (user as any)?.municipality_name,
+    // province is not reliably present on admin user payload; fallback is handled inside helper
+  })
   if (collapsed) {
     return (
       <aside className={`fixed left-0 top-0 h-screen w-[80px] bg-white/90 backdrop-blur-xl border-r border-neutral-200 z-50 transition-all duration-300 ${className}`}>
         <div className="flex flex-col items-center px-4 py-5 border-b border-neutral-200">
-          <img src={getMunicipalityLogo()} className="w-10 h-10 mb-2" alt="Municipality Logo" />
+          <img src={seal.src} className="w-10 h-10 mb-2 object-contain" alt={seal.alt} />
           <button onClick={onToggle} className="w-8 h-8 bg-neutral-100 hover:bg-neutral-200 rounded-lg flex items-center justify-center transition-colors">
             <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
@@ -118,7 +83,7 @@ export default function Sidebar({ collapsed, onToggle, className = '' }: Sidebar
     <aside className={`fixed left-0 top-0 h-screen w-[260px] bg-white/90 backdrop-blur-xl border-r border-neutral-200 z-50 transition-all duration-300 ${className}`}>
       <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-200">
         <div className="flex items-center gap-3">
-          <img src={getMunicipalityLogo()} className="w-10 h-10" alt="Municipality Logo" />
+          <img src={seal.src} className="w-10 h-10 object-contain" alt={seal.alt} />
           <div>
             <p className="font-bold text-sm text-neutral-900">{user?.admin_municipality_name || 'MunLink'}</p>
             <p className="text-xs text-neutral-600">Admin Portal</p>

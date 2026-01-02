@@ -48,7 +48,13 @@ export default function ProvinceSelect() {
     const saved = localStorage.getItem('munlink:selectedProvince')
     if (saved) {
       try {
-        setProvince(JSON.parse(saved))
+        const parsed = JSON.parse(saved)
+        // Guard against older/invalid stored values (e.g. {slug:"zambales"} or plain strings)
+        if (parsed && typeof parsed === 'object' && typeof parsed.id === 'number' && typeof parsed.name === 'string') {
+          setProvince(parsed)
+        } else {
+          localStorage.removeItem('munlink:selectedProvince')
+        }
       } catch {}
     }
   }, [setProvince])

@@ -93,11 +93,11 @@ export default function DashboardPage() {
               <span className="text-sm font-medium">Post Item</span>
               <ArrowRight size={16} className="ml-auto opacity-0 group-hover:opacity-100 transition" />
             </Link>
-            <Link to="/issues" className="group rounded-xl border bg-white/80 backdrop-blur shadow-sm px-4 py-3 flex items-center gap-2 hover:shadow transition">
+            <Link to="/problems" className="group rounded-xl border bg-white/80 backdrop-blur shadow-sm px-4 py-3 flex items-center gap-2 hover:shadow transition">
               <div className="h-8 w-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
                 <AlertTriangle size={16} />
               </div>
-              <span className="text-sm font-medium">Report Issue</span>
+              <span className="text-sm font-medium">Report Problem</span>
               <ArrowRight size={16} className="ml-auto opacity-0 group-hover:opacity-100 transition" />
             </Link>
           </div>
@@ -189,10 +189,10 @@ export default function DashboardPage() {
           />
 
           <ListCard
-            title="My Benefit Applications"
+            title="My Program Applications"
             icon={<FileText size={18} />}
             emptyLabel="No applications yet."
-            footer={<Link to="/benefits?tab=applications" className="text-sm text-blue-700 hover:underline inline-flex items-center gap-1">Open benefits<ArrowRight size={14} /></Link>}
+            footer={<Link to="/programs?tab=applications" className="text-sm text-blue-700 hover:underline inline-flex items-center gap-1">Open programs<ArrowRight size={14} /></Link>}
             entries={apps.map((a) => ({ id: a.id, primary: a.program?.name || a.application_number, status: a.status, extra: a }))}
             renderAction={(e) => (
               <button

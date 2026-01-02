@@ -206,6 +206,20 @@ def save_benefit_document(file, application_id, municipality_slug):
     )
 
 
+def save_benefit_program_image(file, program_id, municipality_slug, user_type='admins'):
+    """Save benefit program image (used by admin create/edit)."""
+    subcategory = f"program_{program_id}"
+    return save_uploaded_file(
+        file,
+        category='benefit_programs',
+        municipality_slug=municipality_slug,
+        subcategory=subcategory,
+        allowed_extensions=ALLOWED_IMAGE_EXTENSIONS,
+        max_size_mb=5,
+        user_type=user_type
+    )
+
+
 def save_document_request_file(file, request_id, municipality_slug):
     """Save document request supporting file."""
     subcategory = f"request_{request_id}"

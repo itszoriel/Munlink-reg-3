@@ -1,8 +1,8 @@
 {
-  "name": "munlink-zambales",
+  "name": "munilink-reg-3",
   "version": "1.0.0",
   "private": true,
-  "description": "Municipal Digital Governance Platform for Zambales Province",
+  "description": "Municipality-first digital governance platform for Region 3 (Central Luzon).",
   "workspaces": [
     "apps/*",
     "packages/*"

@@ -7,14 +7,14 @@ import { useAdminStore } from './lib/store'
 import AdminLayout from './components/layout/AdminLayout'
 import Dashboard from './pages/Dashboard'
 import Residents from './pages/Residents'
-import Benefits from './pages/Benefits'
+import Programs from './pages/Programs'
 import Requests from './pages/Requests'
 import Marketplace from './pages/Marketplace'
 import Admins from './pages/Admins'
 import Reports from './pages/Reports'
 import Profile from './pages/Profile'
 import Announcements from './pages/Announcements'
-import Issues from './pages/Issues'
+import Problems from './pages/Problems'
 import TransactionsPage from './pages/Transactions'
 import VerifyTicket from './pages/VerifyTicket'
 
@@ -64,11 +64,11 @@ export default function App() {
           }
         />
         <Route
-          path="/benefits"
+          path="/programs"
           element={
             <ProtectedRoute>
               <AdminLayout>
-                <Benefits />
+                <Programs />
               </AdminLayout>
             </ProtectedRoute>
           }
@@ -114,11 +114,11 @@ export default function App() {
           }
         />
         <Route
-          path="/issues"
+          path="/problems"
           element={
             <ProtectedRoute>
               <AdminLayout>
-                <Issues />
+                <Problems />
               </AdminLayout>
             </ProtectedRoute>
           }

@@ -1,5 +1,5 @@
 /**
- * MunLink Zambales - Admin API Client
+ * Munilink Region 3 - Admin API Client
  * Centralized API client with authentication and error handling
  */
 import axios from 'axios'
@@ -29,13 +29,8 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const { accessToken } = useAdminStore.getState()
-    console.log('DEBUG: API Request - Access Token:', accessToken ? accessToken.substring(0, 50) + '...' : 'None')
-    console.log('DEBUG: API Request - Full Token Length:', accessToken ? accessToken.length : 0)
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`
-      console.log('DEBUG: API Request - Authorization header set')
-    } else {
-      console.log('DEBUG: API Request - No access token available')
     }
     return config
   },
@@ -341,10 +336,18 @@ export const benefitsApi = {
 export const benefitsAdminApi = {
   listPrograms: (): Promise<ApiResponse<{ programs: any[]; count: number }>> =>
     apiClient.get('/api/admin/benefits/programs').then((res) => res.data),
-  createProgram: (data: any): Promise<ApiResponse> =>
-    apiClient.post('/api/admin/benefits/programs', data).then((res) => res.data),
-  updateProgram: (id: number, data: any): Promise<ApiResponse> =>
-    apiClient.put(`/api/admin/benefits/programs/${id}`, data).then((res) => res.data),
+  createProgram: (data: any): Promise<ApiResponse> => {
+    const isForm = (typeof FormData !== 'undefined') && (data instanceof FormData)
+    return apiClient.post('/api/admin/benefits/programs', data, isForm ? {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    } : undefined).then((res) => res.data)
+  },
+  updateProgram: (id: number, data: any): Promise<ApiResponse> => {
+    const isForm = (typeof FormData !== 'undefined') && (data instanceof FormData)
+    return apiClient.put(`/api/admin/benefits/programs/${id}`, data, isForm ? {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    } : undefined).then((res) => res.data)
+  },
   completeProgram: (id: number): Promise<ApiResponse> =>
     apiClient.put(`/api/admin/benefits/programs/${id}/complete`, {}).then((res) => res.data),
   deleteProgram: (id: number): Promise<ApiResponse> =>

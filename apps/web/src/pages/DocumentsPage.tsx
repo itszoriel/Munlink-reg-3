@@ -7,6 +7,7 @@ import { documentsApi } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import Stepper from '@/components/ui/Stepper'
 import FileUploader from '@/components/ui/FileUploader'
+import { getBestRegion3Seal } from '@munlink/ui'
 // pickup location is tied to resident profile; no remote fetch needed
 
 type DocType = {
@@ -21,6 +22,7 @@ type DocType = {
 
 export default function DocumentsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
+  const selectedProvince = useAppStore((s) => s.selectedProvince)
   const user = useAppStore((s) => s.user)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -43,6 +45,10 @@ export default function DocumentsPage() {
   const [pickupLocation, setPickupLocation] = useState<'municipal'|'barangay'>('municipal')
   const [myRequests, setMyRequests] = useState<any[]>([])
   const [loadingMy, setLoadingMy] = useState(false)
+  const seal = getBestRegion3Seal({
+    municipality: (selectedMunicipality as any)?.slug || selectedMunicipality?.name || (user as any)?.municipality_slug || (user as any)?.municipality_name,
+    province: (selectedProvince as any)?.slug || selectedProvince?.name || (user as any)?.province_slug || (user as any)?.province_name,
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -104,6 +110,18 @@ export default function DocumentsPage() {
 
   return (
     <div className="container-responsive py-12">
+      <div className="flex items-center gap-3 mb-4">
+        <img
+          src={seal.src}
+          alt={seal.alt}
+          className="h-12 w-12 rounded-2xl object-contain bg-white border border-[var(--color-border)] shadow-sm"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+        />
+        <div className="min-w-0">
+          <h1 className="text-fluid-3xl font-serif font-semibold text-gray-900">Documents</h1>
+          <p className="text-sm text-gray-600">Request documents for your selected municipality.</p>
+        </div>
+      </div>
       <h1 className="text-fluid-3xl font-serif font-semibold mb-6">Documents</h1>
       { (searchParams.get('tab') || '').toLowerCase() === 'requests' && (
         <div className="bg-white rounded-xl border p-4 mb-6">

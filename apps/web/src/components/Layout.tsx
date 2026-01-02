@@ -58,13 +58,41 @@ export default function Layout() {
     }
   }, [location, navigate])
 
+  // Close any open <details> dropdowns (Services/Province/Municipality/Account) on navigation
+  useEffect(() => {
+    try {
+      document.querySelectorAll('details[open]').forEach((d) => d.removeAttribute('open'))
+    } catch {}
+  }, [location.pathname])
+
+  // Close dropdowns when clicking outside them
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      // If click is inside any <details>, keep it open (native behavior handles toggling)
+      if (target.closest('details')) return
+      try {
+        document.querySelectorAll('details[open]').forEach((d) => d.removeAttribute('open'))
+      } catch {}
+    }
+    document.addEventListener('click', onDocClick, true)
+    return () => document.removeEventListener('click', onDocClick, true)
+  }, [])
+
   return (
     <div className={"min-h-screen flex flex-col"}>
       <nav className={"fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-7xl "+(scrolled?"":"") }>
         <div className="bg-white/80 backdrop-blur-xl rounded-2xl px-4 lg:px-6 py-2.5 shadow-2xl border border-white/50">
           <div className="flex items-center justify-between gap-2">
-            <Link to="/" className="text-base lg:text-lg font-serif font-semibold text-gray-900 whitespace-nowrap flex-shrink-0">
-              MunLink
+            <Link to="/" className="text-base lg:text-lg font-serif font-semibold text-gray-900 whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2">
+              <img
+                src="/logos/MunLink%20Logo.jpg"
+                alt="MunLink Logo"
+                className="h-7 w-7 rounded-full object-cover bg-white/60 border border-white/60 shadow-sm"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+              <span>MunLink</span>
             </Link>
 
             <div className="hidden lg:flex items-center gap-1 xl:gap-3 text-gray-900 text-sm">
@@ -138,8 +166,8 @@ export default function Layout() {
             <Link to="/marketplace" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Marketplace</Link>
             <div className="mt-1 mb-1 px-3 text-xs font-semibold tracking-wide text-neutral-500 uppercase">Services</div>
             <Link to="/documents" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Documents</Link>
-            <Link to="/issues" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Issues</Link>
-            <Link to="/benefits" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Benefits</Link>
+            <Link to="/problems" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Problems</Link>
+            <Link to="/programs" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Programs</Link>
             <Link to="/about" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">About</Link>
             <div className="px-3 py-2 space-y-2">
               <ProvinceSelect />

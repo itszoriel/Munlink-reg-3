@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { documentsApi, mediaUrl } from '@/lib/api'
+import { getBestRegion3Seal } from '@munlink/ui'
 
 export default function VerifyDocumentPage() {
   const { requestNumber } = useParams()
@@ -27,7 +28,23 @@ export default function VerifyDocumentPage() {
 
   return (
     <div className="container-responsive py-12">
-      <h1 className="text-3xl font-serif font-semibold mb-6">Verify Document</h1>
+      {(() => {
+        const seal = getBestRegion3Seal({
+          municipality: data?.muni_name,
+          province: undefined,
+        })
+        return (
+          <div className="flex items-center gap-3 mb-6">
+            <img
+              src={seal.src}
+              alt={seal.alt}
+              className="h-12 w-12 rounded-2xl object-contain bg-white border border-[var(--color-border)] shadow-sm"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+            <h1 className="text-3xl font-serif font-semibold">Verify Document</h1>
+          </div>
+        )
+      })()}
       {loading ? (
         <div className="space-y-2">
           <div className="h-6 w-40 skeleton" />

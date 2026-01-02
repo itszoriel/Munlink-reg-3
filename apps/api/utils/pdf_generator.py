@@ -87,12 +87,16 @@ def _load_barangay_officials() -> Dict[str, Dict[str, str]]:
     except Exception:
         return {}
 
-def _resolve_logo_paths(municipality_name: str) -> Tuple[Path | None, Path | None]:
-    """Return (municipal_logo, province_logo) if available."""
+def _resolve_logo_paths(municipality_name: str, province_slug: str | None = None) -> Tuple[Path | None, Path | None]:
+    """Return (municipal_logo, province_logo) if available.
+
+    Province logo is resolved from Region 3 province seals under:
+      public/logos/provinces/{province_slug}.png
+    """
     # Compute repository root from Flask app root (apps/api)
     repo_root = Path(current_app.root_path).parents[1]
     mun_dir = repo_root / "public" / "logos" / "municipalities"
-    prov_dir = repo_root / "public" / "logos" / "zambales"
+    prov_dir = repo_root / "public" / "logos" / "provinces"
 
     slug = _slugify(municipality_name)
     # Try flat structure first (files directly in municipalities/)
@@ -137,9 +141,25 @@ def _resolve_logo_paths(municipality_name: str) -> Tuple[Path | None, Path | Non
         except Exception:
             pass
 
-    # Province logo fallback
-    prov_candidates = list(prov_dir.glob("*.png")) + list(prov_dir.glob("*.jpg"))
-    prov_logo = prov_candidates[0] if prov_candidates else None
+    # Province logo (Region 3)
+    prov_logo: Path | None = None
+    try:
+        if province_slug:
+            for ext in (".png", ".jpg", ".jpeg"):
+                cand = prov_dir / f"{province_slug}{ext}"
+                if cand.exists():
+                    prov_logo = cand
+                    break
+    except Exception:
+        prov_logo = None
+
+    # Final fallback: Zambales seal (kept as safe default if province not known)
+    if not prov_logo:
+        for ext in (".png", ".jpg", ".jpeg"):
+            cand = prov_dir / f"zambales{ext}"
+            if cand.exists():
+                prov_logo = cand
+                break
 
     return mun_logo, prov_logo
 
@@ -162,11 +182,20 @@ def _draw_border(c: canvas.Canvas, margin_mm: float = 12.0):
     c.rect(m, m, width - 2 * m, height - 2 * m, stroke=1, fill=0)
 
 
-def _draw_header(c: canvas.Canvas, municipality_name: str, mun_logo: Path | None, prov_logo: Path | None, *, level: str = 'municipal', barangay_name: str = ''):
+def _draw_header(
+    c: canvas.Canvas,
+    municipality_name: str,
+    province_name: str,
+    mun_logo: Path | None,
+    prov_logo: Path | None,
+    *,
+    level: str = 'municipal',
+    barangay_name: str = '',
+):
     width, height = A4
     top_y = height - 30 * mm
 
-    # Left side: Zambales logo (province) and Municipal logo side by side
+    # Left side: Province logo and Municipal logo side by side
     logo_size = 18 * mm
     logo_spacing = 22 * mm  # Horizontal spacing between logos
     left_margin = 20 * mm
@@ -191,7 +220,7 @@ def _draw_header(c: canvas.Canvas, municipality_name: str, mun_logo: Path | None
     _set_font(c, "Times-Bold", 12)
     c.drawRightString(width - 20 * mm, top_y, "Republic of the Philippines")
     _set_font(c, "Times-Roman", 11)
-    c.drawRightString(width - 20 * mm, top_y - 6 * mm, "Province of Zambales")
+    c.drawRightString(width - 20 * mm, top_y - 6 * mm, f"Province of {province_name}")
     _set_font(c, "Times-Bold", 12)
     c.drawRightString(width - 20 * mm, top_y - 12 * mm, f"Municipality of {municipality_name}")
     if level == 'barangay':
@@ -280,7 +309,11 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
     Generate a PDF for a document request and return (absolute_path, relative_path_from_upload_folder).
     """
     # Resolve basics
-    municipality_name = getattr(getattr(request, 'municipality', None), 'name', '') or str(request.municipality_id)
+    municipality_obj = getattr(request, 'municipality', None)
+    municipality_name = getattr(municipality_obj, 'name', '') or str(getattr(request, 'municipality_id', '') or '')
+    province_obj = getattr(municipality_obj, 'province', None) if municipality_obj else None
+    province_name = getattr(province_obj, 'name', '') or 'Central Luzon'
+    province_slug = getattr(province_obj, 'slug', None)
     municipality_slug = _slugify(municipality_name)
 
     upload_base = Path(current_app.config.get('UPLOAD_FOLDER'))
@@ -290,7 +323,7 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
     pdf_path = out_dir / f"{request.id}.pdf"
 
     # Resolve logos
-    mun_logo, prov_logo = _resolve_logo_paths(municipality_name)
+    mun_logo, prov_logo = _resolve_logo_paths(municipality_name, province_slug=province_slug)
     # Debug logging to verify logo resolution
     try:
         if getattr(current_app, 'logger', None):
@@ -427,7 +460,7 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
     # Border and watermark
     _draw_border(c)
     barangay_name = getattr(getattr(request, 'barangay', None), 'name', '')
-    _draw_header(c, municipality_name, mun_logo, prov_logo, level=level, barangay_name=barangay_name)
+    _draw_header(c, municipality_name, province_name, mun_logo, prov_logo, level=level, barangay_name=barangay_name)
     _draw_watermark(c, mun_logo)
 
     # Title
@@ -469,14 +502,14 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
     paragraph = (
         f"This is to certify that {resident_full_name}{(', ' + combined_phrase) if combined_phrase else ''}, "
         f"a bona fide resident of {('Barangay ' + barangay_name + ', ') if level=='barangay' and barangay_name else ''}"
-        f"Municipality of {municipality_name}, Province of Zambales, has requested a "
+        f"Municipality of {municipality_name}, Province of {province_name}, has requested a "
         f"{getattr(document_type, 'name', code)} for the purpose of {ctx['purpose']}."
     )
     # Append remarks paragraph if provided
     extra = notes_text
     issued = (
         f"Issued this {ctx['date']} at the "
-        f"{'Office of the Punong Barangay, Barangay ' + barangay_name if level=='barangay' else 'Office of the Municipal Mayor, Municipality of ' + municipality_name}, Province of Zambales."
+        f"{'Office of the Punong Barangay, Barangay ' + barangay_name if level=='barangay' else 'Office of the Municipal Mayor, Municipality of ' + municipality_name}, Province of {province_name}."
     )
 
     text_obj = c.beginText(25 * mm, height - 82 * mm)
@@ -557,7 +590,7 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
 
     # Footer note
     _set_font(c, "Times-Italic", 10)
-    footer_text = footer or "This is a digitally issued document. No physical signature required. Generated via Munlink Zambales System."
+    footer_text = footer or "This is a digitally issued document. No physical signature required. Generated via Munilink Region 3 System."
     c.drawString(25 * mm, 20 * mm, footer_text)
 
     # Optional QR code (simple URL based on request number)

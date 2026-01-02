@@ -1,5 +1,5 @@
 """
-MunLink Zambales - Admin Routes
+Munilink Region 3 - Admin Routes
 Admin-specific operations with municipality scoping
 """
 from flask import Blueprint, request, jsonify, current_app
@@ -1529,15 +1529,43 @@ def admin_create_benefit_program():
         if isinstance(municipality_id, tuple):
             return municipality_id
 
-        data = request.get_json() or {}
+        import json as _json
+        from apps.api.models.municipality import Municipality
+        from apps.api.utils.file_handler import save_benefit_program_image
+
+        def _maybe_json(v):
+            if v is None:
+                return None
+            if isinstance(v, (dict, list)):
+                return v
+            s = str(v).strip()
+            if not s:
+                return None
+            try:
+                return _json.loads(s)
+            except Exception:
+                return v
+
+        # Support multipart/form-data (required for image upload) and JSON (legacy)
+        if request.files:
+            data = dict(request.form or {})
+            file = request.files.get('file')
+        else:
+            data = request.get_json() or {}
+            file = None
+
         name = data.get('name') or data.get('title')
         code = data.get('code')
         description = data.get('description') or ''
         program_type = data.get('program_type') or 'general'
-        program_municipality_id = data.get('municipality_id') or municipality_id
+        program_municipality_id = int(data.get('municipality_id') or municipality_id)
 
         if not name or not code:
             return jsonify({'error': 'name and code are required'}), 400
+
+        # Image is required for a professional, consistent Programs page
+        if not file:
+            return jsonify({'error': 'Program image is required'}), 400
 
         program = BenefitProgram(
             name=name,
@@ -1545,8 +1573,8 @@ def admin_create_benefit_program():
             description=description,
             program_type=program_type,
             municipality_id=program_municipality_id,
-            eligibility_criteria=data.get('eligibility_criteria'),
-            required_documents=data.get('required_documents'),
+            eligibility_criteria=_maybe_json(data.get('eligibility_criteria')),
+            required_documents=_maybe_json(data.get('required_documents')),
             application_start=data.get('application_start'),
             application_end=data.get('application_end'),
             benefit_amount=data.get('benefit_amount'),
@@ -1558,6 +1586,13 @@ def admin_create_benefit_program():
         )
 
         db.session.add(program)
+        db.session.commit()
+
+        # Save program image (uploads/benefit_programs/admins/{municipality_slug}/program_{id}/...)
+        municipality = Municipality.query.get(program_municipality_id)
+        municipality_slug = (municipality.slug if municipality else 'unknown')
+        rel_path = save_benefit_program_image(file, program.id, municipality_slug, user_type='admins')
+        program.image_path = rel_path
         db.session.commit()
 
         return jsonify({'message': 'Program created', 'program': program.to_dict()}), 201
@@ -1581,14 +1616,59 @@ def admin_update_benefit_program(program_id: int):
         if program.municipality_id and program.municipality_id != municipality_id:
             return jsonify({'error': 'Program not in your municipality'}), 403
 
-        data = request.get_json() or {}
+        import json as _json
+        from apps.api.models.municipality import Municipality
+        from apps.api.utils.file_handler import save_benefit_program_image
+
+        def _maybe_json(v):
+            if v is None:
+                return None
+            if isinstance(v, (dict, list)):
+                return v
+            s = str(v).strip()
+            if not s:
+                return None
+            try:
+                return _json.loads(s)
+            except Exception:
+                return v
+
+        def _parse_bool(v):
+            if isinstance(v, bool):
+                return v
+            return str(v).strip().lower() in ('1', 'true', 'yes', 'y', 'on')
+
+        # Support multipart/form-data (optional image) and JSON (legacy)
+        if request.files:
+            data = dict(request.form or {})
+            file = request.files.get('file')
+        else:
+            data = request.get_json() or {}
+            file = None
+
         for field in [
-            'name','code','description','program_type','eligibility_criteria','required_documents',
-            'application_start','application_end','benefit_amount','benefit_description','max_beneficiaries',
-            'is_active','is_accepting_applications','duration_days'
+            'name', 'code', 'description', 'program_type',
+            'application_start', 'application_end', 'benefit_amount', 'benefit_description',
+            'max_beneficiaries', 'duration_days'
         ]:
             if field in data:
                 setattr(program, field, data[field])
+
+        if 'eligibility_criteria' in data:
+            program.eligibility_criteria = _maybe_json(data.get('eligibility_criteria'))
+        if 'required_documents' in data:
+            program.required_documents = _maybe_json(data.get('required_documents'))
+        if 'is_active' in data:
+            program.is_active = _parse_bool(data.get('is_active'))
+        if 'is_accepting_applications' in data:
+            program.is_accepting_applications = _parse_bool(data.get('is_accepting_applications'))
+
+        # Optional image replacement
+        if file:
+            municipality = Municipality.query.get(program.municipality_id or municipality_id)
+            municipality_slug = (municipality.slug if municipality else 'unknown')
+            rel_path = save_benefit_program_image(file, program.id, municipality_slug, user_type='admins')
+            program.image_path = rel_path
 
         db.session.commit()
         return jsonify({'message': 'Program updated', 'program': program.to_dict()}), 200

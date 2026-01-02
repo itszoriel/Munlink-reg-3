@@ -1,13 +1,17 @@
-import { StatusBadge } from '@munlink/ui'
+import { StatusBadge, getBestRegion3Seal } from '@munlink/ui'
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { documentsApi, mediaUrl } from '@/lib/api'
+import { useAppStore } from '@/lib/store'
 
 export default function DocumentRequestPage() {
   const { id } = useParams()
   const [loading, setLoading] = useState(true)
   const [req, setReq] = useState<any>(null)
+  const selectedProvince = useAppStore((s) => s.selectedProvince)
+  const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
+  const user = useAppStore((s) => s.user)
 
   useEffect(() => {
     let cancelled = false
@@ -55,6 +59,27 @@ export default function DocumentRequestPage() {
           <span>Back to Dashboard</span>
         </Link>
       </div>
+
+      {(() => {
+        const seal = getBestRegion3Seal({
+          municipality: (req as any)?.municipality_name || (selectedMunicipality as any)?.slug || selectedMunicipality?.name || (user as any)?.municipality_slug || (user as any)?.municipality_name,
+          province: (selectedProvince as any)?.slug || selectedProvince?.name || (user as any)?.province_slug || (user as any)?.province_name,
+        })
+        return (
+          <div className="flex items-center gap-3 mb-6">
+            <img
+              src={seal.src}
+              alt={seal.alt}
+              className="h-11 w-11 rounded-2xl object-contain bg-white border border-[var(--color-border)] shadow-sm"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-serif font-semibold text-gray-900">Document Request</h1>
+              <p className="text-sm text-gray-600">Track status and download when ready.</p>
+            </div>
+          </div>
+        )
+      })()}
       {loading ? (
         <div className="skeleton-card p-6">
           <div className="h-6 w-1/3 skeleton mb-3" />

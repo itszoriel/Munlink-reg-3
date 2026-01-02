@@ -6,7 +6,7 @@ import { issuesApi, mediaUrl, showToast } from '@/lib/api'
 import Modal from '@/components/ui/Modal'
 import FileUploader from '@/components/ui/FileUploader'
 
-type Issue = {
+type Problem = {
   id: string | number
   title: string
   description: string
@@ -16,7 +16,7 @@ type Issue = {
   created_at?: string
 }
 
-const statusLabel: Record<Issue['status'], string> = {
+const statusLabel: Record<Problem['status'], string> = {
   submitted: 'Submitted',
   under_review: 'Under Review',
   in_progress: 'In Progress',
@@ -25,10 +25,10 @@ const statusLabel: Record<Issue['status'], string> = {
   rejected: 'Rejected',
 }
 
-export default function IssuesPage() {
+export default function ProblemsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const user = useAppStore((s) => s.user)
-  const [issues, setIssues] = useState<Issue[]>([])
+  const [problems, setProblems] = useState<Problem[]>([])
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
@@ -54,7 +54,7 @@ export default function IssuesPage() {
         }
         if (tab === 'mine') {
           const res = await issuesApi.getMine()
-          if (!cancelled) { setIssues(res.data?.issues || []); setPages(1); setPage(1) }
+          if (!cancelled) { setProblems(res.data?.issues || []); setPages(1); setPage(1) }
         } else {
           const params: any = { page }
           if (selectedMunicipality?.id) params.municipality_id = selectedMunicipality.id
@@ -62,7 +62,7 @@ export default function IssuesPage() {
           if (categoryFilter !== 'all') params.category = categoryFilter
           const res = await issuesApi.getAll(params)
           if (!cancelled) {
-            setIssues(res.data?.issues || [])
+            setProblems(res.data?.issues || [])
             setPages(res.data?.pagination?.pages || 1)
           }
         }
@@ -75,14 +75,14 @@ export default function IssuesPage() {
   }, [selectedMunicipality?.id, statusFilter, categoryFilter, tab, page])
 
   const filtered = useMemo(() => {
-    if (statusFilter === 'all') return issues
-    return issues.filter(i => i.status === statusFilter)
-  }, [issues, statusFilter])
+    if (statusFilter === 'all') return problems
+    return problems.filter(p => p.status === statusFilter)
+  }, [problems, statusFilter])
 
   return (
     <div className="container-responsive py-12">
       <div className="mb-3">
-        <h1 className="text-fluid-3xl font-serif font-semibold">Community Issues</h1>
+        <h1 className="text-fluid-3xl font-serif font-semibold">Problems in Municipality</h1>
       </div>
 
       {isMismatch && (
@@ -93,7 +93,7 @@ export default function IssuesPage() {
 
       <Card className="mb-6">
         <div className="flex flex-col gap-3">
-          <p>Browse reported community issues. Viewing is open to everyone. To file a new report, create an account and get verified.</p>
+          <p>Browse reported problems in the municipality. Viewing is open to everyone. To file a new report, create an account and get verified.</p>
           <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Status</label>
@@ -116,7 +116,7 @@ export default function IssuesPage() {
             </div>
             <div className="md:ml-auto flex items-center gap-2">
               <div className="flex items-center gap-2">
-                <button className={`btn ${tab==='all'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('all')}>All Issues</button>
+                <button className={`btn ${tab==='all'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('all')}>All Problems</button>
                 <button className={`btn ${tab==='mine'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('mine')}>My Reports</button>
               </div>
               <GatedAction
@@ -127,7 +127,7 @@ export default function IssuesPage() {
                 }}
                 tooltip="Login required to use this feature"
               >
-                <button className="btn btn-primary" disabled={isMismatch} title={isMismatch ? 'Reporting is limited to your municipality' : undefined}>Report an Issue</button>
+                <button className="btn btn-primary" disabled={isMismatch} title={isMismatch ? 'Reporting is limited to your municipality' : undefined}>Report a Problem</button>
               </GatedAction>
             </div>
           </div>
@@ -143,26 +143,26 @@ export default function IssuesPage() {
       ) : (
         <>
           {filtered.length === 0 ? (
-            <EmptyState title="No issues found" description="Adjust filters or check back later." />
+            <EmptyState title="No problems found" description="Adjust filters or check back later." />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map((i: any) => (
-                <Card key={i.id}>
+              {filtered.map((p: any) => (
+                <Card key={p.id}>
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-lg font-semibold">{i.title}</h3>
+                    <h3 className="text-lg font-semibold">{p.title}</h3>
                     <div className="flex items-center gap-2">
-                      <StatusBadge status={statusLabel[(i.status as Issue['status'])]} />
-                      <button className="btn-ghost text-blue-700" onClick={() => setOpenId(openId===i.id?null:i.id)} aria-expanded={openId===i.id}>{openId===i.id? 'Hide':'View details'}</button>
+                      <StatusBadge status={statusLabel[(p.status as Problem['status'])]} />
+                      <button className="btn-ghost text-blue-700" onClick={() => setOpenId(openId===p.id?null:p.id)} aria-expanded={openId===p.id}>{openId===p.id? 'Hide':'View details'}</button>
                     </div>
                   </div>
-                  <p className={`text-sm text-gray-700 mt-1 mb-2 ${openId===i.id ? '' : 'line-clamp-2'}`}>{i.description}</p>
-                  {openId===i.id && (
+                  <p className={`text-sm text-gray-700 mt-1 mb-2 ${openId===p.id ? '' : 'line-clamp-2'}`}>{p.description}</p>
+                  {openId===p.id && (
                     <div className="mt-2 space-y-2">
-                      <div className="text-xs text-gray-500">{i.municipality || 'Zambales'}{i.category ? ` • ${i.category?.name || i.category}` : ''}</div>
-                      {!!(i.attachments && i.attachments.length) && (
+                      <div className="text-xs text-gray-500">{p.municipality || 'Region 3'}{p.category ? ` • ${p.category?.name || p.category}` : ''}</div>
+                      {!!(p.attachments && p.attachments.length) && (
                         <div className="mt-2 flex gap-2 overflow-x-auto">
-                          {i.attachments.slice(0,5).map((p: string, idx: number) => (
-                            <img key={idx} src={mediaUrl(p)} alt="attachment" className="h-16 w-16 object-cover rounded border" />
+                          {p.attachments.slice(0,5).map((path: string, idx: number) => (
+                            <img key={idx} src={mediaUrl(path)} alt="attachment" className="h-16 w-16 object-cover rounded border" />
                           ))}
                         </div>
                       )}
@@ -181,7 +181,7 @@ export default function IssuesPage() {
           )}
         </>
       )}
-      <Modal isOpen={open} onClose={() => { setOpen(false); setForm({ category_id: '', title: '', description: '' }); setCreatedId(null) }} title="Report an Issue">
+      <Modal isOpen={open} onClose={() => { setOpen(false); setForm({ category_id: '', title: '', description: '' }); setCreatedId(null) }} title="Report a Problem">
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium mb-1">Category</label>
@@ -218,7 +218,7 @@ export default function IssuesPage() {
                 const res = await issuesApi.create(payload)
                 const id = res?.data?.issue?.id
                 setCreatedId(id || null)
-                showToast('Issue reported successfully', 'success')
+                showToast('Problem reported successfully', 'success')
               } finally {
                 setCreating(false)
               }
@@ -246,5 +246,4 @@ export default function IssuesPage() {
     </div>
   )
 }
-
 

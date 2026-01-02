@@ -123,15 +123,15 @@ npm run dev
 ### For Residents (18+)
 - ✅ Cross-municipal marketplace (donate, lend, sell)
 - ✅ Municipal document requests (22 document types)
-- ✅ Issue reporting (infrastructure, safety, environmental)
-- ✅ Benefits application (municipal assistance programs)
+- ✅ Problem reporting (infrastructure, safety, environmental)
+- ✅ Programs with Benefits application (municipal assistance programs)
 - ✅ QR code document verification
 
 ### For Municipal Admins
 - ✅ User ID verification
 - ✅ Document processing and generation
-- ✅ Issue management and tracking
-- ✅ Benefits program management
+- ✅ Problem management and tracking
+- ✅ Programs with Benefits management
 - ✅ Municipal announcements
 - ✅ Analytics and reporting
 
@@ -169,11 +169,11 @@ Deploy on Render.com using the included `render.yaml` configuration file.
 
 ## 🤝 Contributing
 
-This is a government project for Zambales Province. Contact the project maintainers for contribution guidelines.
+This is a government project for Region 3 - Central Luzon. Contact the project maintainers for contribution guidelines.
 
 ## 📄 License
 
-Proprietary - Zambales Provincial Government
+Proprietary - Region 3 Provincial Governments
 
 ## 📞 Support
 

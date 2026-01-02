@@ -86,7 +86,7 @@ export default function AdminLoginPage() {
             {/* Stats */}
             <div className="flex gap-8">
               <div className={`transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                <div className="text-3xl font-bold text-white">13</div>
+                <div className="text-3xl font-bold text-white">130+</div>
                 <div className="text-sm text-slate-500 uppercase tracking-wider mt-1">Municipalities</div>
               </div>
               <div className={`transition-all duration-700 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
@@ -242,7 +242,7 @@ export default function AdminLoginPage() {
           {/* Decorative elements */}
           <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between text-xs text-slate-400">
             <span>© 2026 MunLink</span>
-            <span>Zambales, Philippines</span>
+            <span>Region 3 — Central Luzon</span>
           </div>
         </div>
       </div>

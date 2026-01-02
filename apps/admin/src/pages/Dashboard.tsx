@@ -11,13 +11,13 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [dash, setDash] = useState<{ pending_verifications?: number; active_issues?: number; marketplace_items?: number; announcements?: number } | null>(null)
+  const [dash, setDash] = useState<{ pending_verifications?: number; active_problems?: number; marketplace_items?: number; announcements?: number } | null>(null)
   const [activity, setActivity] = useState<Array<{ icon: string; text: string; who?: string; ts: number; color: 'ocean'|'forest'|'sunset'|'purple'|'red' }>>([])
   const [overview, setOverview] = useState<Array<{ label: string; value: number; max: number; color: 'ocean'|'forest'|'sunset'|'red' }>>([
     { label: 'Verifications', value: 0, max: 50, color: 'ocean' },
     { label: 'Documents', value: 0, max: 100, color: 'forest' },
     { label: 'Marketplace', value: 0, max: 50, color: 'sunset' },
-    { label: 'Issues', value: 0, max: 50, color: 'red' },
+    { label: 'Problems', value: 0, max: 50, color: 'red' },
   ])
   const [recentAnnouncements, setRecentAnnouncements] = useState<any[]>([])
 
@@ -44,7 +44,7 @@ export default function Dashboard() {
         const d = (data?.dashboard || data) as any
         if (mounted) setDash({
           pending_verifications: d?.pending_verifications ?? 0,
-          active_issues: d?.active_issues ?? 0,
+          active_problems: d?.active_issues ?? d?.active_problems ?? 0,
           marketplace_items: d?.marketplace_items ?? 0,
           announcements: d?.announcements ?? 0,
         })
@@ -65,7 +65,7 @@ export default function Dashboard() {
       const d = (data?.dashboard || data) as any
       setDash({
         pending_verifications: d?.pending_verifications ?? 0,
-        active_issues: d?.active_issues ?? 0,
+        active_problems: d?.active_issues ?? d?.active_problems ?? 0,
         marketplace_items: d?.marketplace_items ?? 0,
         announcements: d?.announcements ?? 0,
       })
@@ -93,7 +93,7 @@ export default function Dashboard() {
       const marketStats = marketStatsRes.status === 'fulfilled' ? ((marketStatsRes.value as any)?.data || marketStatsRes.value) : undefined
       const totalMarket = marketStats?.total_items ?? marketStats?.approved_items ?? items.length
       const pendingCount = Array.isArray(pendingUsers) ? pendingUsers.length : 0
-      const activeIssuesCount = Array.isArray(issues)
+      const activeProblemsCount = Array.isArray(issues)
         ? issues.filter((it: any) => {
             const s = String(it.status || it.state || '').toLowerCase()
             return s.includes('active') || s.includes('in_progress') || s.includes('under') || s === ''
@@ -101,7 +101,7 @@ export default function Dashboard() {
         : 0
       setDash((prev) => ({
         pending_verifications: pendingCount || prev?.pending_verifications || 0,
-        active_issues: activeIssuesCount || prev?.active_issues || 0,
+        active_problems: activeProblemsCount || prev?.active_problems || 0,
         marketplace_items: typeof totalMarket === 'number' ? totalMarket : (prev?.marketplace_items ?? 0),
         announcements: announcements.length || prev?.announcements || 0,
       }))
@@ -114,7 +114,7 @@ export default function Dashboard() {
       }
       for (const i of issues) {
         const ts = new Date(i.created_at || i.updated_at || Date.now()).getTime()
-        feed.push({ icon: '⚠️', text: `Issue: ${i.title ?? i.category ?? 'New issue'}`, who: i.created_by_name, ts, color: 'red' })
+        feed.push({ icon: '⚠️', text: `Problem: ${i.title ?? i.category ?? 'New problem'}`, who: i.created_by_name, ts, color: 'red' })
       }
       for (const it of items) {
         const ts = new Date(it.created_at || it.updated_at || Date.now()).getTime()
@@ -134,12 +134,12 @@ export default function Dashboard() {
       const verifications7 = pendingUsers.filter((u: any) => in7(u.created_at)).length
       const documents7 = 0 // Placeholder: no admin documents endpoint; keep 0 for now
       const marketplace7 = items.filter((it: any) => in7(it.created_at)).length
-      const issues7 = issues.filter((i: any) => in7(i.created_at)).length
+      const problems7 = issues.filter((i: any) => in7(i.created_at)).length
       setOverview([
         { label: 'Verifications', value: verifications7, max: Math.max(10, verifications7), color: 'ocean' },
         { label: 'Documents', value: documents7, max: Math.max(10, documents7 || 10), color: 'forest' },
         { label: 'Marketplace', value: marketplace7, max: Math.max(10, marketplace7), color: 'sunset' },
-        { label: 'Issues', value: issues7, max: Math.max(10, issues7), color: 'red' },
+        { label: 'Problems', value: problems7, max: Math.max(10, problems7), color: 'red' },
       ])
     } catch {
       setActivity([])
@@ -206,7 +206,7 @@ export default function Dashboard() {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard title="Pending Verifications" value={loading ? '…' : (dash?.pending_verifications ?? 0)} />
-            <StatCard title="Active Issues" value={loading ? '…' : (dash?.active_issues ?? 0)} />
+            <StatCard title="Active Problems" value={loading ? '…' : (dash?.active_problems ?? 0)} />
             <StatCard title="Marketplace Items" value={loading ? '…' : (dash?.marketplace_items ?? 0)} />
             <StatCard title="Announcements" value={loading ? '…' : (dash?.announcements ?? 0)} />
           </div>

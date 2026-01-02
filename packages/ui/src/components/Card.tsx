@@ -6,11 +6,16 @@ export type CardProps = {
   actions?: React.ReactNode
   children?: React.ReactNode
   className?: string
+  /** Enable glassmorphism style with blurred background */
+  glass?: boolean
 }
 
-export const Card: React.FC<CardProps> = ({ title, subtitle, actions, children, className }) => {
+export const Card: React.FC<CardProps> = ({ title, subtitle, actions, children, className, glass }) => {
+  const baseStyles = glass
+    ? 'rounded-2xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl'
+    : 'rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm'
   return (
-    <div className={`rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-card-foreground)] shadow-sm ${className || ''}`.trim()}>
+    <div className={`${baseStyles} text-[var(--color-card-foreground)] ${className || ''}`.trim()}>
       {(title || actions || subtitle) && (
         <div className="p-4 border-b border-[var(--color-border)] flex items-start justify-between gap-3">
           <div>

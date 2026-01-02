@@ -16,6 +16,9 @@ class BenefitProgram(db.Model):
     name = db.Column(db.String(200), nullable=False)
     code = db.Column(db.String(50), unique=True, nullable=False)
     description = db.Column(db.Text, nullable=False)
+
+    # Optional program image (stored as relative path under UPLOAD_FOLDER)
+    image_path = db.Column(db.String(255), nullable=True)
     
     # Program Details
     program_type = db.Column(db.String(50), nullable=False)  # financial, educational, health, livelihood
@@ -66,6 +69,7 @@ class BenefitProgram(db.Model):
             'name': self.name,
             'code': self.code,
             'description': self.description,
+            'image_path': self.image_path,
             'program_type': self.program_type,
             'municipality_id': self.municipality_id,
             'eligibility_criteria': self.eligibility_criteria,

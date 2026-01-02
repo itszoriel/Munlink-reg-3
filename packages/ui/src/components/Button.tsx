@@ -2,7 +2,7 @@ import React from 'react'
 
 export type ButtonProps = {
   children: React.ReactNode
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'gradient'
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean
   isLoading?: boolean
@@ -27,6 +27,7 @@ const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
   secondary: 'bg-[var(--color-card)] text-[var(--color-card-foreground)] border border-[var(--color-border)] hover:bg-[var(--color-surface)]',
   ghost: 'bg-transparent text-[var(--color-surface-foreground)] hover:bg-[var(--color-card)]',
   danger: 'bg-red-600 text-white hover:bg-red-700',
+  gradient: 'bg-gradient-to-r from-ocean-500 to-ocean-700 text-white hover:scale-105 transition-transform shadow-lg',
 }
 
 export const Button: React.FC<ButtonProps> = ({

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { benefitsApi, benefitsAdminApi, handleApiError, showToast } from '../lib/api'
+import { benefitsApi, benefitsAdminApi, handleApiError, showToast, mediaUrl } from '../lib/api'
 import { useAdminStore } from '../lib/store'
-import { Modal, Button } from '@munlink/ui'
+import { Modal, Button, FileUpload } from '@munlink/ui'
 import { ClipboardList, Users, Hourglass, CheckCircle } from 'lucide-react'
 
-export default function Benefits() {
+export default function Programs() {
   const [activeTab, setActiveTab] = useState<'active' | 'applications' | 'archived'>('active')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,6 +38,7 @@ export default function Benefits() {
           id: p.id,
           title: p.title || p.name || 'Program',
           description: p.description || '—',
+          image_path: p.image_path || p.image || p.image_url || null,
           beneficiaries: p.current_beneficiaries || p.beneficiaries || 0,
           duration_days: p.duration_days ?? null,
           completed_at: p.completed_at || null,
@@ -53,7 +54,7 @@ export default function Benefits() {
           setBeneficiariesTotal(isNaN(total) ? null : total)
         }
       } catch (e: any) {
-        // Not fatal if benefits aren't available; show empty state and error banner
+        // Not fatal if programs aren't available; show empty state and error banner
         setError(handleApiError(e))
         if (mounted) setPrograms([])
       } finally {
@@ -104,7 +105,18 @@ export default function Benefits() {
   const submitCreate = async (data: any) => {
     try {
       setActionLoading(-1)
-      const payload = { ...data, municipality_id: adminMunicipalityId }
+      const payload = new FormData()
+      payload.append('name', data.name)
+      payload.append('code', data.code)
+      payload.append('description', data.description)
+      payload.append('program_type', data.program_type || 'general')
+      if (data.duration_days !== '' && data.duration_days !== null && data.duration_days !== undefined) {
+        payload.append('duration_days', String(data.duration_days))
+      }
+      // Ensure admin-scoped municipality; backend will default to admin municipality if missing
+      if (adminMunicipalityId) payload.append('municipality_id', String(adminMunicipalityId))
+      if (data.imageFile) payload.append('file', data.imageFile)
+
       const res = await benefitsAdminApi.createProgram(payload)
       const created = (res as any)?.program
       if (created) {
@@ -112,6 +124,7 @@ export default function Benefits() {
           id: created.id,
           title: created.name,
           description: created.description,
+          image_path: created.image_path || null,
           beneficiaries: created.current_beneficiaries || 0,
           duration_days: created.duration_days ?? null,
           completed_at: created.completed_at || null,
@@ -142,7 +155,7 @@ export default function Benefits() {
     <div className="min-h-screen">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">Benefits & Programs</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">Programs with Benefits</h1>
           <p className="text-neutral-600">Manage government assistance and community programs</p>
         </div>
         <button onClick={openCreate} className="px-4 py-2 sm:px-6 sm:py-3 bg-forest-gradient hover:scale-105 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center gap-2 w-full sm:w-auto" aria-haspopup="dialog" aria-controls="create-program-modal">
@@ -164,12 +177,16 @@ export default function Benefits() {
         ))}
         {!loading && activeTab === 'archived' && programs.filter((p:any)=>!p.is_active).map((program, i) => (
           <div key={i} className="group bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50">
-            <div className={`relative h-32 bg-gradient-to-br from-${program.color}-400 to-${program.color}-600 flex items-center justify-center`}>
-              <div className="absolute inset-0 bg-white/20" />
-              <span className="relative">
-                {/* @ts-ignore dynamic gradient color class */}
-                <IconFromCode code={program.icon as string} className="w-12 h-12 text-white" />
-              </span>
+            <div className="relative h-32 bg-gradient-to-br from-ocean-500 to-ocean-700 flex items-center justify-center overflow-hidden">
+              {program.image_path ? (
+                <img src={mediaUrl(program.image_path)} alt={`${program.title} image`} className="absolute inset-0 w-full h-full object-cover" />
+              ) : null}
+              <div className="absolute inset-0 bg-white/10" />
+              {!program.image_path ? (
+                <span className="relative">
+                  <IconFromCode code={program.icon as string} className="w-12 h-12 text-white" />
+                </span>
+              ) : null}
             </div>
             <div className="p-6">
               <div className="flex items-start justify-between mb-3">
@@ -220,12 +237,16 @@ export default function Benefits() {
         ))}
         {!loading && activeTab === 'active' && programs.filter((p:any)=>p.is_active).map((program, i) => (
           <div key={i} className="group bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 hover:shadow-2xl hover:scale-105 transition-all duration-300">
-            <div className={`relative h-32 bg-gradient-to-br from-${program.color}-400 to-${program.color}-600 flex items-center justify-center`}>
+            <div className="relative h-32 bg-gradient-to-br from-ocean-500 to-ocean-700 flex items-center justify-center overflow-hidden">
+              {program.image_path ? (
+                <img src={mediaUrl(program.image_path)} alt={`${program.title} image`} className="absolute inset-0 w-full h-full object-cover" />
+              ) : null}
               <div className="absolute inset-0 bg-white/10" />
-              <span className="relative">
-                {/* @ts-ignore dynamic gradient color class */}
-                <IconFromCode code={program.icon as string} className="w-12 h-12 text-white" />
-              </span>
+              {!program.image_path ? (
+                <span className="relative">
+                  <IconFromCode code={program.icon as string} className="w-12 h-12 text-white" />
+                </span>
+              ) : null}
             </div>
             <div className="p-6">
               <div className="flex items-start justify-between mb-3">
@@ -287,7 +308,48 @@ export default function Benefits() {
       {viewProgram && (
         <Modal open={true} onOpenChange={(o)=>{ if(!o) setViewProgram(null) }} title={viewProgram._edit ? 'Edit Program' : 'Program Details'}>
           {viewProgram._edit ? (
-            <ProgramForm initial={{ name: viewProgram.title || viewProgram.name, code: viewProgram.code || '', description: viewProgram.description || '', program_type: viewProgram.program_type || 'general', duration_days: viewProgram.duration_days ?? '' }} onCancel={()=> setViewProgram(null)} onSubmit={async (data)=>{ try { setActionLoading(viewProgram.id); await benefitsAdminApi.updateProgram(viewProgram.id, data); setPrograms((prev)=> prev.map(p=> p.id===viewProgram.id ? { ...p, title: data.name || p.title, description: (data.description ?? p.description), duration_days: (data.duration_days ?? p.duration_days) } : p)); setViewProgram(null) } catch(e:any){ setError(handleApiError(e)) } finally { setActionLoading(null) } }} submitting={actionLoading===viewProgram.id} />
+            <ProgramForm
+              initial={{
+                name: viewProgram.title || viewProgram.name,
+                code: viewProgram.code || '',
+                description: viewProgram.description || '',
+                program_type: viewProgram.program_type || 'general',
+                duration_days: viewProgram.duration_days ?? '',
+              }}
+              initialImagePath={viewProgram.image_path || viewProgram.image || viewProgram.image_url || null}
+              requireImage={false}
+              onCancel={()=> setViewProgram(null)}
+              onSubmit={async (data, imageFile)=>{
+                try {
+                  setActionLoading(viewProgram.id)
+                  const hasNewImage = !!imageFile
+                  if (hasNewImage) {
+                    const fd = new FormData()
+                    fd.append('name', data.name)
+                    fd.append('code', data.code)
+                    fd.append('description', data.description)
+                    fd.append('program_type', data.program_type || 'general')
+                    if (data.duration_days !== '' && data.duration_days !== null && data.duration_days !== undefined) {
+                      fd.append('duration_days', String(data.duration_days))
+                    }
+                    fd.append('file', imageFile)
+                    const res = await benefitsAdminApi.updateProgram(viewProgram.id, fd)
+                    const updated = (res as any)?.program
+                    setPrograms((prev)=> prev.map((p:any)=> p.id===viewProgram.id ? { ...p, title: updated?.name || data.name || p.title, description: (updated?.description ?? data.description ?? p.description), duration_days: (updated?.duration_days ?? data.duration_days ?? p.duration_days), image_path: updated?.image_path ?? p.image_path } : p))
+                  } else {
+                    const res = await benefitsAdminApi.updateProgram(viewProgram.id, data)
+                    const updated = (res as any)?.program
+                    setPrograms((prev)=> prev.map((p:any)=> p.id===viewProgram.id ? { ...p, title: updated?.name || data.name || p.title, description: (updated?.description ?? data.description ?? p.description), duration_days: (updated?.duration_days ?? data.duration_days ?? p.duration_days), image_path: updated?.image_path ?? p.image_path } : p))
+                  }
+                  setViewProgram(null)
+                } catch(e:any){
+                  setError(handleApiError(e))
+                } finally {
+                  setActionLoading(null)
+                }
+              }}
+              submitting={actionLoading===viewProgram.id}
+            />
           ) : (
             <div className="space-y-2">
               <p className="text-sm text-neutral-700"><span className="font-medium">Name:</span> {viewProgram.name || viewProgram.title}</p>
@@ -330,7 +392,19 @@ export default function Benefits() {
       {/* Create Modal */}
       {createOpen && (
         <Modal open={true} onOpenChange={(o)=>{ if(!o) setCreateOpen(false) }} title="Create Program" className="" >
-          <ProgramForm initial={{ name: '', code: '', description: '', program_type: 'general', duration_days: '' }} onCancel={closeCreate} onSubmit={submitCreate} submitting={actionLoading===-1} />
+          <ProgramForm
+            initial={{ name: '', code: '', description: '', program_type: 'general', duration_days: '' }}
+            requireImage={true}
+            onCancel={closeCreate}
+            onSubmit={async (data, imageFile) => {
+              if (!imageFile) {
+                setError('Program image is required. Please upload an image before saving.')
+                return
+              }
+              await submitCreate({ ...data, imageFile })
+            }}
+            submitting={actionLoading===-1}
+          />
         </Modal>
       )}
     </div>
@@ -339,15 +413,58 @@ export default function Benefits() {
 
 
 
-function ProgramForm({ initial, onCancel, onSubmit, submitting }: { initial: any; onCancel: ()=>void; onSubmit: (data:any)=>void; submitting: boolean }) {
+function ProgramForm({
+  initial,
+  initialImagePath,
+  requireImage,
+  onCancel,
+  onSubmit,
+  submitting
+}: {
+  initial: any
+  initialImagePath?: string | null
+  requireImage?: boolean
+  onCancel: ()=>void
+  onSubmit: (data:any, imageFile: File | null)=>void
+  submitting: boolean
+}) {
   const [form, setForm] = useState<any>(initial)
-  const disabled = !(form.name && form.code && form.description)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const disabled = !(form.name && form.code && form.description && (!requireImage || !!imageFile))
   return (
     <form
       aria-label="Program form"
-      onSubmit={(e)=>{ e.preventDefault(); if(!disabled) onSubmit(form) }}
+      onSubmit={(e)=>{ e.preventDefault(); if(!disabled) onSubmit(form, imageFile) }}
       className="space-y-3"
     >
+      <div className="space-y-2">
+        <div className="text-sm font-medium text-neutral-700">Program Image {requireImage ? <span className="text-red-500">*</span> : null}</div>
+        <div className="rounded-xl border border-neutral-200 bg-white p-3">
+          <div className="flex items-start gap-3">
+            <div className="h-16 w-24 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200 flex items-center justify-center">
+              {imageFile ? (
+                <img src={URL.createObjectURL(imageFile)} alt="New program" className="h-full w-full object-cover" />
+              ) : initialImagePath ? (
+                <img src={mediaUrl(initialImagePath)} alt="Program" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs text-neutral-500">No image</span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <FileUpload
+                label="Upload image"
+                accept="image/*"
+                required={!!requireImage}
+                onChange={(e) => {
+                  const f = (e.target as HTMLInputElement).files?.[0] || null
+                  setImageFile(f)
+                }}
+              />
+              <p className="mt-1 text-xs text-neutral-500">Recommended: 1200×600. JPG/PNG. Used across the Programs page for a consistent, professional look.</p>
+            </div>
+          </div>
+        </div>
+      </div>
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1" htmlFor="program-name">Name</label>
         <input id="program-name" value={form.name} onChange={(e)=> setForm((p:any)=> ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-md" required />

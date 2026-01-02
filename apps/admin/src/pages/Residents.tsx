@@ -152,10 +152,15 @@ export default function Residents() {
     if (found) openResident(found)
   }, [location.search, rows])
 
-  const filtered = useMemo(() => rows.filter((r) =>
-    (filter === 'all' || r.status === filter) &&
-    (r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.email.toLowerCase().includes(searchQuery.toLowerCase()) || String(r.id).toLowerCase().includes(searchQuery.toLowerCase()))
-  ), [rows, filter, searchQuery])
+  const filtered = useMemo(() => {
+    const result = rows.filter((r) =>
+      (filter === 'all' || r.status === filter) &&
+      (r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.email.toLowerCase().includes(searchQuery.toLowerCase()) || String(r.id).toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    // Default: Sort alphabetically by name (Last Name, First Name)
+    result.sort((a, b) => a.name.localeCompare(b.name))
+    return result
+  }, [rows, filter, searchQuery])
 
   // Reset to first page on filter/search changes
   useEffect(() => { setPage(1) }, [filter, searchQuery])

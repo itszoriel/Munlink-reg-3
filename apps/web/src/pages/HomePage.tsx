@@ -227,7 +227,7 @@ export default function HomePage() {
             <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3 md:gap-6">
               <div className="flex-1">
                 <h2 className="text-2xl md:text-3xl font-serif font-semibold text-gray-900">Welcome to MunLink Region 3</h2>
-                <p className="text-gray-700 mt-2">Serving 7 provinces and 130+ municipalities across Central Luzon. Browse public announcements and the marketplace. Create an account to post items, request documents, report issues, and more.</p>
+                <p className="text-gray-700 mt-2">Serving 7 provinces and 130+ municipalities across Central Luzon. Browse public announcements and the marketplace. Create an account to post items, request documents, report problems, and more.</p>
               </div>
               <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3">
                 <Link to="/register" className="btn btn-primary w-full xs:w-auto text-center">Create Account</Link>
