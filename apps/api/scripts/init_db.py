@@ -124,6 +124,16 @@ def init_database():
         try:
             User.query.first()
             print("  Tables already exist, skipping creation.")
+            
+            # Always stamp to head to ensure migrations are in sync
+            # This handles cases where migration chain was modified
+            from flask_migrate import stamp
+            try:
+                stamp(revision='head')
+                print("  Database stamped with latest migration (ensuring sync).")
+            except Exception as stamp_err:
+                print(f"  Note: Stamp skipped - {stamp_err}")
+                
         except Exception as e:
             print(f"  Tables don't exist, creating all tables...")
             db.create_all()

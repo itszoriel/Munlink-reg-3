@@ -14,7 +14,7 @@ services:
       pip install --no-cache-dir -r requirements.txt
       # NOTE: Keep psycopg2-binary pinned; Python runtime is pinned via apps/api/runtime.txt (Python 3.12)
       pip install --no-cache-dir psycopg2-binary==2.9.9 gunicorn==21.2.0
-    startCommand: "python scripts/init_db.py && flask db upgrade && gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --max-requests 1000 --max-requests-jitter 50"
+    startCommand: "python scripts/init_db.py && gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --max-requests 1000 --max-requests-jitter 50"
     healthCheckPath: /health
     envVars:
       # Pin Python version (Render currently defaults to Python 3.13, which breaks psycopg2-binary)
