@@ -21,7 +21,6 @@ type DocType = {
 
 export default function DocumentsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
-  const selectedProvince = useAppStore((s) => s.selectedProvince)
   const user = useAppStore((s) => s.user)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()

@@ -3,7 +3,7 @@ import { adminApi, handleApiError, userApi, issueApi, marketplaceApi, announceme
 import UserVerificationList from '../components/UserVerificationList'
 import { useNavigate } from 'react-router-dom'
 import { useAdminStore } from '../lib/store'
-import { StatCard, Card, Button, Select } from '@munlink/ui'
+import { StatCard, Card, Button, Select, getBestRegion3Seal } from '@munlink/ui'
 import { Hand, Users, AlertTriangle, ShoppingBag, Megaphone } from 'lucide-react'
 
 export default function Dashboard() {
@@ -175,6 +175,11 @@ export default function Dashboard() {
 
   const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
+  // Get municipality seal for transparent background watermark
+  const municipalitySeal = getBestRegion3Seal({
+    municipality: (user as any)?.admin_municipality_slug || (user as any)?.admin_municipality_name || (user as any)?.municipality_slug || (user as any)?.municipality_name,
+  })
+
   function IconFromCode({ code, className }: { code: string; className?: string }) {
     if (code === '👥') return <Users className={className || 'w-5 h-5'} aria-hidden="true" />
     if (code === '⚠️') return <AlertTriangle className={className || 'w-5 h-5'} aria-hidden="true" />
@@ -184,8 +189,18 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="pt-0">
+    <div className="min-h-screen relative">
+      {/* Transparent municipality seal watermark */}
+      <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-0 overflow-hidden">
+        <img
+          src={municipalitySeal.src}
+          alt=""
+          aria-hidden="true"
+          className="w-[500px] h-[500px] object-contain opacity-[0.04] select-none"
+        />
+      </div>
+      
+      <div className="pt-0 relative z-10">
         <div className="">
           {error && (
             <div className="mb-4 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>

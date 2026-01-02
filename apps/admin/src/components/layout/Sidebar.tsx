@@ -48,7 +48,7 @@ export default function Sidebar({ collapsed, onToggle, className = '' }: Sidebar
         <div className="flex flex-col items-center px-4 py-5 border-b border-neutral-200">
           <img src={seal.src} className="w-10 h-10 object-contain" alt={seal.alt} />
         </div>
-        <nav className="px-4 py-6 space-y-3 flex-1">
+        <nav className="px-4 py-4 space-y-3">
           {navItems.map((item) => (
             <div key={item.path} className="relative group">
               <NavLink
@@ -69,8 +69,8 @@ export default function Sidebar({ collapsed, onToggle, className = '' }: Sidebar
             </div>
           ))}
         </nav>
-        {/* Toggle button at bottom */}
-        <div className="px-4 py-2 border-t border-neutral-200">
+        {/* Toggle button directly after nav */}
+        <div className="px-4 pb-4">
           <button onClick={onToggle} className="w-12 h-9 bg-neutral-100 hover:bg-neutral-200 rounded-lg flex items-center justify-center transition-colors mx-auto">
             <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
