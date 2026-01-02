@@ -4,6 +4,8 @@ import { useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopHeader from './TopHeader'
 import MobileNav from './MobileNav'
+import { useAdminStore } from '../../lib/store'
+import { getBestRegion3Seal } from '@munlink/ui'
 
 interface AdminLayoutProps {
   children: ReactNode
@@ -13,6 +15,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const location = useLocation()
+  const user = useAdminStore((s) => s.user)
+
+  // Get municipality seal for transparent background watermark
+  const municipalitySeal = getBestRegion3Seal({
+    municipality: (user as any)?.admin_municipality_slug || (user as any)?.admin_municipality_name || (user as any)?.municipality_slug || (user as any)?.municipality_name,
+  })
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -21,6 +29,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-ocean-50/30 to-forest-50/20">
+      {/* Transparent municipality seal watermark */}
+      <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-0 overflow-hidden">
+        <img
+          src={municipalitySeal.src}
+          alt=""
+          aria-hidden="true"
+          className="w-[600px] h-[600px] object-contain opacity-[0.07] select-none"
+        />
+      </div>
+
       {/* Sidebar (md+): allow true collapse/expand everywhere, not only on xl */}
       <Sidebar
         collapsed={isSidebarCollapsed}
@@ -45,7 +63,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main content */}
       <main
-        className={`admin-main-content pt-16 pb-24 md:pb-28 overflow-x-hidden max-w-full transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-[80px]' : 'md:ml-[260px]'}`}
+        className={`admin-main-content pt-16 pb-24 md:pb-28 overflow-x-hidden max-w-full transition-all duration-300 relative z-10 ${isSidebarCollapsed ? 'md:ml-[80px]' : 'md:ml-[260px]'}`}
       >
         <div className="p-6 md:p-8 container-responsive">
           {children}
