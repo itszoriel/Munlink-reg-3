@@ -46,23 +46,44 @@ export default function RegisterPage() {
   const selectedProvince = provinces.find(p => p.id === Number(formData.province))
   const provinceSeal = selectedProvince?.slug ? provinceSealMap[selectedProvince.slug] : null
 
-  // Load provinces on component mount
+  // Load provinces on component mount with retry for slow API
   useEffect(() => {
-    const loadProvinces = async () => {
+    let cancelled = false
+    const loadProvinces = async (retryCount = 0) => {
       setLoadingProvinces(true)
+      setError(null)
       try {
+        console.log(`[RegisterPage] Fetching provinces... (attempt ${retryCount + 1})`)
         const response = await provinceApi.getAll()
+        if (cancelled) return
+        console.log('[RegisterPage] Province response:', response)
         const data = response?.data
         const list = Array.isArray(data?.provinces) ? data.provinces : []
+        console.log('[RegisterPage] Parsed provinces:', list.length, list.map((p: Province) => p.name))
+        if (list.length === 0 && retryCount < 2) {
+          // API might be waking up, retry after delay
+          console.warn('[RegisterPage] No provinces returned, retrying in 2s...')
+          setTimeout(() => !cancelled && loadProvinces(retryCount + 1), 2000)
+          return
+        }
         setProvinces(list)
-      } catch (error) {
-        console.error('Failed to load provinces:', error)
-        setProvinces([])
-      } finally {
         setLoadingProvinces(false)
+      } catch (err: any) {
+        if (cancelled) return
+        console.error('[RegisterPage] Failed to load provinces:', err)
+        if (retryCount < 2) {
+          // Retry on error (API might be spinning up)
+          console.log('[RegisterPage] Retrying in 3s...')
+          setTimeout(() => !cancelled && loadProvinces(retryCount + 1), 3000)
+        } else {
+          setError('Failed to load provinces. Please refresh the page.')
+          setProvinces([])
+          setLoadingProvinces(false)
+        }
       }
     }
     loadProvinces()
+    return () => { cancelled = true }
   }, [])
 
   // Load municipalities when province changes
@@ -336,13 +357,18 @@ export default function RegisterPage() {
                   disabled={loadingProvinces}
                   required
                 >
-                  <option value="">{loadingProvinces ? 'Loading...' : 'Select province'}</option>
+                  <option value="">
+                    {loadingProvinces ? 'Loading provinces...' : provinces.length === 0 ? 'No provinces available' : 'Select province'}
+                  </option>
                   {provinces.map((prov) => (
                     <option key={prov.id} value={prov.id}>
                       {prov.name}
                     </option>
                   ))}
                 </select>
+                {!loadingProvinces && provinces.length === 0 && (
+                  <p className="text-xs text-red-500 mt-1">Could not load provinces. Please refresh the page.</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Municipality <span className="text-red-500">*</span></label>
