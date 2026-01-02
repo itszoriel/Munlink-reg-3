@@ -62,11 +62,11 @@ def get_engine_options():
     if db_url.startswith('postgresql://'):
         options.update({
             'pool_recycle': 300,    # Recycle connections every 5 minutes
-            'pool_timeout': 30,     # Wait up to 30 seconds for a connection
-            'pool_size': 5,         # Keep 5 connections in the pool
-            'max_overflow': 10,     # Allow up to 10 additional connections
+            'pool_timeout': 60,     # Wait up to 60 seconds for a connection from pool
+            'pool_size': 3,         # Keep 3 connections in the pool (fewer for free tier)
+            'max_overflow': 5,      # Allow up to 5 additional connections
             'connect_args': {
-                'connect_timeout': 30,      # 30 second connection timeout
+                'connect_timeout': 60,      # 60 second connection timeout (increased for Supabase)
                 'keepalives': 1,            # Enable TCP keepalives
                 'keepalives_idle': 30,      # Seconds before sending keepalive
                 'keepalives_interval': 10,  # Seconds between keepalives

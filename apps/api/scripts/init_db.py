@@ -4,11 +4,39 @@ Creates all tables from models, stamps with latest migration, and seeds initial 
 """
 import sys
 import os
+import time
 
 # Ensure project root is importable
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+
+
+def wait_for_db(app, max_retries=5, retry_delay=10):
+    """
+    Wait for database to be available with retries.
+    Supabase connections can sometimes be slow to establish.
+    """
+    from apps.api import db
+    from sqlalchemy import text
+    
+    for attempt in range(max_retries):
+        try:
+            with app.app_context():
+                # Try a simple query to test connection
+                db.session.execute(text("SELECT 1"))
+                db.session.commit()
+                print(f"  Database connection successful!")
+                return True
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"  Database connection attempt {attempt + 1}/{max_retries} failed: {e}")
+                print(f"  Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                print(f"  Database connection failed after {max_retries} attempts: {e}")
+                raise
+    return False
 
 
 def seed_if_empty():
@@ -102,6 +130,10 @@ def init_database():
     from apps.api import db
     
     app = create_app()
+    
+    # Wait for database to be available (with retries for Supabase)
+    print("Connecting to database...")
+    wait_for_db(app, max_retries=5, retry_delay=15)
     
     with app.app_context():
         # Import all models to ensure they're registered with SQLAlchemy
