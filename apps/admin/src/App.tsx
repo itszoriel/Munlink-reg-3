@@ -164,9 +164,11 @@ export default function App() {
           }
         />
 
-        {/* Auth pages - With nav */}
+        {/* Auth pages */}
+        <Route path="/" element={<AdminLoginPage />} />
+        <Route path="/login" element={<AdminLoginPage />} />
         <Route
-          path="/*"
+          path="/register"
           element={
             <>
               {!isAuthenticated && (
@@ -181,11 +183,7 @@ export default function App() {
                 </nav>
               )}
               <main className="container mx-auto px-4 py-10">
-                <Routes>
-                  <Route path="/" element={<AdminLoginPage />} />
-                  <Route path="/login" element={<AdminLoginPage />} />
-                  <Route path="/register" element={<AdminRegisterPage />} />
-                </Routes>
+                <AdminRegisterPage />
               </main>
             </>
           }
