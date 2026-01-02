@@ -124,26 +124,43 @@ def init_database():
         try:
             User.query.first()
             print("  Tables already exist, skipping creation.")
-            
-            # Always stamp to head to ensure migrations are in sync
-            # This handles cases where migration chain was modified
-            from flask_migrate import stamp
-            try:
-                stamp(revision='head')
-                print("  Database stamped with latest migration (ensuring sync).")
-            except Exception as stamp_err:
-                print(f"  Note: Stamp skipped - {stamp_err}")
-                
         except Exception as e:
             print(f"  Tables don't exist, creating all tables...")
             db.create_all()
             print("  All tables created successfully!")
             tables_created = True
+        
+        # Always fix alembic_version to have a single head
+        # This prevents "overlaps with other requested revisions" errors
+        print("  Ensuring single migration head...")
+        try:
+            from sqlalchemy import text
+            conn = db.engine.connect()
             
-            # Stamp with latest migration so future migrations work correctly
-            from flask_migrate import stamp
-            stamp(revision='head')
-            print("  Database stamped with latest migration.")
+            # Check if alembic_version table exists
+            result = conn.execute(text(
+                "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'alembic_version')"
+            ))
+            table_exists = result.scalar()
+            
+            if table_exists:
+                # Clear all entries and set to latest single head
+                conn.execute(text("DELETE FROM alembic_version"))
+                conn.execute(text("INSERT INTO alembic_version (version_num) VALUES ('20260102_bp_img')"))
+                conn.commit()
+                print("  Alembic version set to latest migration (20260102_bp_img).")
+            else:
+                # Create alembic_version table with latest migration
+                conn.execute(text(
+                    "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL, PRIMARY KEY (version_num))"
+                ))
+                conn.execute(text("INSERT INTO alembic_version (version_num) VALUES ('20260102_bp_img')"))
+                conn.commit()
+                print("  Created alembic_version table with latest migration.")
+            
+            conn.close()
+        except Exception as stamp_err:
+            print(f"  Note: Alembic version fix skipped - {stamp_err}")
         
         # Always check if we need to seed data (even if tables existed but are empty)
         print("Checking if database needs seeding...")
