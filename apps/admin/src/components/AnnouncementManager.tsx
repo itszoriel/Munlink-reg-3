@@ -1,9 +1,11 @@
 /**
- * MunLink Region 3 - Announcement Manager Component
+ * MunLink Region III - Announcement Manager Component
  * Component for managing municipality announcements
  */
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Plus } from 'lucide-react'
 import { announcementApi, handleApiError, mediaUrl } from '../lib/api'
 import { EmptyState } from '@munlink/ui'
 
@@ -32,6 +34,7 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
   const [showModal, setShowModal] = useState(false)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [fabExpanded, setFabExpanded] = useState(false)
 
   // Load announcements
   const loadAnnouncements = async () => {
@@ -184,15 +187,17 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
 
   return (
     <>
-      {/* Header with Create Button */}
+      {/* Header with Create Button - only show desktop button if there are announcements */}
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-medium text-gray-900">Announcements</h3>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 text-sm font-medium text-white bg-zambales-green hover:bg-green-700 rounded-md transition-colors"
-        >
-          Create Announcement
-        </button>
+        {announcements.length > 0 && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 text-sm font-medium text-white bg-zambales-green hover:bg-green-700 rounded-md transition-colors hidden sm:inline-flex"
+          >
+            Create Announcement
+          </button>
+        )}
       </div>
 
       {/* Announcements List */}
@@ -268,6 +273,73 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
           onCreate={handleCreateAnnouncement}
           loading={actionLoading === -1}
         />
+      )}
+
+      {/* Mobile FAB - Floating Action Button - positioned above mobile nav, hidden when no announcements */}
+      {announcements.length > 0 && (
+      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
+        <motion.button
+          className="relative flex items-center justify-center bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-600/30 hover:shadow-green-600/50 transition-shadow"
+          onClick={() => {
+            if (fabExpanded) {
+              setShowCreateModal(true)
+              setFabExpanded(false)
+            } else {
+              setFabExpanded(true)
+            }
+          }}
+          animate={{
+            width: fabExpanded ? 180 : 56,
+            height: 56,
+            borderRadius: 28,
+          }}
+          transition={{
+            type: "spring",
+            stiffness: 400,
+            damping: 25,
+          }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <AnimatePresence mode="wait">
+            {fabExpanded ? (
+              <motion.div
+                key="expanded"
+                className="flex items-center gap-2 px-4"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Plus className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm font-medium whitespace-nowrap">New Announcement</span>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="collapsed"
+                initial={{ opacity: 0, rotate: -90 }}
+                animate={{ opacity: 1, rotate: 0 }}
+                exit={{ opacity: 0, rotate: 90 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Plus className="w-6 h-6" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.button>
+        
+        {/* Backdrop to close FAB when clicking outside */}
+        <AnimatePresence>
+          {fabExpanded && (
+            <motion.div
+              className="fixed inset-0 -z-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFabExpanded(false)}
+            />
+          )}
+        </AnimatePresence>
+      </div>
       )}
     </>
   )

@@ -121,29 +121,6 @@ const About: React.FC = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-12 bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-ocean-600">{provinces.length}</div>
-              <div className="text-gray-600">Provinces</div>
-            </div>
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-ocean-600">{totalMunicipalities}</div>
-              <div className="text-gray-600">Local Government Units</div>
-            </div>
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-ocean-600">4</div>
-              <div className="text-gray-600">Service Categories</div>
-            </div>
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-ocean-600">1</div>
-              <div className="text-gray-600">Unified Platform</div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Mission Section */}
       <section className="py-16">
@@ -152,14 +129,14 @@ const About: React.FC = () => {
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h2>
               <p className="text-lg text-gray-600 mb-6">
-                To modernize municipal governance across Central Luzon (Region 3) by providing 
+                To modernize municipal governance across Central Luzon (Region III) by providing 
                 a unified digital platform that enhances citizen engagement, streamlines 
                 municipal services, and fosters cross-provincial community connections.
               </p>
               <p className="text-lg text-gray-600">
                 We believe that technology should bridge the gap between government 
                 and citizens, making municipal services more accessible, transparent, 
-                and efficient for all residents of Region 3.
+                and efficient for all residents of Region III.
               </p>
             </div>
             <div className="bg-ocean-50 rounded-2xl p-8">
@@ -209,7 +186,7 @@ const About: React.FC = () => {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Serving All of Central Luzon</h2>
             <p className="text-xl text-gray-600">
-              MunLink connects all {provinces.length} provinces of Region 3
+              MunLink connects all {provinces.length} provinces of Region III
             </p>
           </div>
           
@@ -346,7 +323,7 @@ const About: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-gray-600">
-              MunLink Region 3 - Connecting Communities, Empowering Citizens Across Central Luzon
+              MunLink Region III - Connecting Communities, Empowering Citizens Across Central Luzon
             </p>
           </div>
         </div>

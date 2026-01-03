@@ -148,7 +148,7 @@ export default function AdminRegisterPage() {
         )}
       </div>
       <h1 className="text-3xl font-bold text-center mb-2 text-ocean-700">Create Admin Account</h1>
-      <p className="text-center text-sm text-gray-600 mb-6">MunLink Region 3 — Central Luzon</p>
+      <p className="text-center text-sm text-gray-600 mb-6">MunLink Region III — Central Luzon</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
         {success && <div className="rounded-md border border-green-200 bg-green-50 text-green-700 px-3 py-2 text-sm">{success}</div>}

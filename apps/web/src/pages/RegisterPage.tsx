@@ -148,7 +148,7 @@ export default function RegisterPage() {
           Create Account
         </h2>
         <p className="text-center text-sm text-gray-600 mb-6">
-          Join MunLink Region 3 — serving 7 provinces across Central Luzon
+          Join MunLink Region III — serving 7 provinces across Central Luzon
         </p>
         
         <form onSubmit={handleSubmit} className="space-y-4">

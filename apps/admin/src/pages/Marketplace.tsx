@@ -150,47 +150,53 @@ export default function Marketplace() {
       )}
 
       {tab === 'items' && (
-      <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/50 mb-6 -mx-2 px-2 overflow-x-auto">
-        <div className="inline-flex items-center gap-4 min-w-max">
-          <div className="flex gap-2">
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/50 mb-6">
+        <div className="flex flex-col gap-3">
+          {/* Type filter - horizontal scroll on mobile */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
             {[
-              { value: 'all', label: 'All Items', icon: 'store' },
-              { value: 'sell', label: 'For Sale', icon: 'money' },
-              { value: 'lend', label: 'For Lending', icon: 'handshake' },
+              { value: 'all', label: 'All', icon: 'store' },
+              { value: 'sell', label: 'Sale', icon: 'money' },
+              { value: 'lend', label: 'Lend', icon: 'handshake' },
               { value: 'donate', label: 'Free', icon: 'gift' },
             ].map((type) => (
-              <button key={type.value} onClick={() => setFilter(type.value as any)} className={`shrink-0 px-4 py-2 rounded-xl font-medium transition-all ${filter === type.value ? 'bg-ocean-gradient text-white shadow-lg' : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'}`}>
-                <span className="mr-2 inline-flex items-center">
+              <button key={type.value} onClick={() => setFilter(type.value as any)} className={`shrink-0 px-3 py-2 rounded-xl font-medium transition-all text-sm ${filter === type.value ? 'bg-ocean-gradient text-white shadow-lg' : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'}`}>
+                <span className="mr-1.5 inline-flex items-center">
                   {type.icon === 'store' && <Store className="w-4 h-4" aria-hidden="true" />}
                   {type.icon === 'money' && <BadgeDollarSign className="w-4 h-4" aria-hidden="true" />}
                   {type.icon === 'handshake' && <Handshake className="w-4 h-4" aria-hidden="true" />}
                   {type.icon === 'gift' && <Gift className="w-4 h-4" aria-hidden="true" />}
                 </span>
-                {type.label}
+                <span className="hidden sm:inline">{type.label === 'All' ? 'All Items' : type.label === 'Sale' ? 'For Sale' : type.label === 'Lend' ? 'For Lending' : 'Free'}</span>
+                <span className="sm:hidden">{type.label}</span>
               </button>
             ))}
           </div>
-          <select
-            name="statusFilter"
-            id="marketplace-status-filter"
-            aria-label="Filter by status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="ml-auto px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium"
-          >
-            <option value="all">All Status</option>
-            <option value="available">Approved</option>
-            <option value="pending">Pending Review</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          {userRole === 'admin' ? (
-            <select name="municipalityFilter" id="marketplace-municipality-filter" aria-label="Filter by municipality" className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium"><option>All Municipalities</option></select>
-          ) : (
-            <div className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium inline-flex items-center gap-2" aria-label="Municipality">
-              <svg className="w-4 h-4 text-neutral-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm-2 6V6a2 2 0 114 0v2H8z"/></svg>
-              <span className="truncate max-w-[12rem]">{adminMunicipalityName || 'Municipality'}</span>
-            </div>
-          )}
+          
+          {/* Status filter and municipality - stack on mobile */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <select
+              name="statusFilter"
+              id="marketplace-status-filter"
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="flex-1 sm:flex-none px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium"
+            >
+              <option value="all">All Status</option>
+              <option value="available">Approved</option>
+              <option value="pending">Pending Review</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            {userRole === 'admin' ? (
+              <select name="municipalityFilter" id="marketplace-municipality-filter" aria-label="Filter by municipality" className="flex-1 sm:flex-none px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium"><option>All Municipalities</option></select>
+            ) : (
+              <div className="flex-1 sm:flex-none px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium inline-flex items-center gap-2" aria-label="Municipality">
+                <svg className="w-4 h-4 text-neutral-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm-2 6V6a2 2 0 114 0v2H8z"/></svg>
+                <span className="truncate max-w-[12rem]">{adminMunicipalityName || 'Municipality'}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       )}

@@ -1,5 +1,7 @@
 import { StatusBadge, Card, EmptyState } from '@munlink/ui'
 import { useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, X } from 'lucide-react'
 import GatedAction from '@/components/GatedAction'
 import { useAppStore } from '@/lib/store'
 import { issuesApi, mediaUrl, showToast } from '@/lib/api'
@@ -41,6 +43,7 @@ export default function ProblemsPage() {
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [openId, setOpenId] = useState<string | number | null>(null)
+  const [fabExpanded, setFabExpanded] = useState(false)
   const isMismatch = !!(user as any)?.municipality_id && !!selectedMunicipality?.id && (user as any).municipality_id !== selectedMunicipality.id
 
   useEffect(() => {
@@ -93,38 +96,41 @@ export default function ProblemsPage() {
 
       <Card className="mb-6">
         <div className="flex flex-col gap-3">
-          <p>Browse reported problems in the municipality. Viewing is open to everyone. To file a new report, create an account and get verified.</p>
-          <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Status</label>
-              <select className="input-field" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="all">All</option>
-                <option value="submitted">Submitted</option>
-                <option value="under_review">Under Review</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-                <option value="rejected">Rejected</option>
-              </select>
+          <p className="text-sm sm:text-base">Browse reported problems in the municipality. Viewing is open to everyone. To file a new report, create an account and get verified.</p>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+                <label className="text-sm text-gray-600 whitespace-nowrap">Status</label>
+                <select className="input-field flex-1" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="all">All</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+                <label className="text-sm text-gray-600 whitespace-nowrap">Category</label>
+                <select className="input-field flex-1" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                  <option value="all">All</option>
+                  {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                </select>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Category</label>
-              <select className="input-field" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                <option value="all">All</option>
-                {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
-              </select>
-            </div>
-            <div className="md:ml-auto flex items-center gap-2">
-              <div className="flex items-center gap-2">
-                <button className={`btn ${tab==='all'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('all')}>All Problems</button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pt-2 border-t">
+              <div className="flex flex-wrap items-center gap-2">
+                <button className={`btn text-sm ${tab==='all'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('all')}>All Problems</button>
                 <GatedAction
                   required="fullyVerified"
                   onAllowed={() => setTab('mine')}
                   featureDescription="View your submitted problem reports"
                 >
-                  <button className={`btn ${tab==='mine'?'btn-primary':'btn-secondary'}`}>My Reports</button>
+                  <button className={`btn text-sm ${tab==='mine'?'btn-primary':'btn-secondary'}`}>My Reports</button>
                 </GatedAction>
               </div>
+              {/* Desktop: Regular button */}
               <GatedAction
                 required="fullyVerified"
                 onAllowed={() => {
@@ -133,7 +139,7 @@ export default function ProblemsPage() {
                 }}
                 featureDescription="Report a problem in your municipality"
               >
-                <button className="btn btn-primary" disabled={isMismatch} title={isMismatch ? 'Reporting is limited to your municipality' : undefined}>Report a Problem</button>
+                <button className="btn btn-primary text-sm sm:ml-auto hidden sm:inline-flex" disabled={isMismatch} title={isMismatch ? 'Reporting is limited to your municipality' : undefined}>Report a Problem</button>
               </GatedAction>
             </div>
           </div>
@@ -151,24 +157,24 @@ export default function ProblemsPage() {
           {filtered.length === 0 ? (
             <EmptyState title="No problems found" description="Adjust filters or check back later." />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((p: any) => (
-                <Card key={p.id}>
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-lg font-semibold">{p.title}</h3>
-                    <div className="flex items-center gap-2">
+                <Card key={p.id} className="flex flex-col">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                    <h3 className="text-base sm:text-lg font-semibold flex-1">{p.title}</h3>
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <StatusBadge status={statusLabel[(p.status as Problem['status'])]} />
-                      <button className="btn-ghost text-blue-700" onClick={() => setOpenId(openId===p.id?null:p.id)} aria-expanded={openId===p.id}>{openId===p.id? 'Hide':'View details'}</button>
+                      <button className="btn-ghost text-blue-700 text-xs sm:text-sm whitespace-nowrap" onClick={() => setOpenId(openId===p.id?null:p.id)} aria-expanded={openId===p.id}>{openId===p.id? 'Hide':'View'}</button>
                     </div>
                   </div>
                   <p className={`text-sm text-gray-700 mt-1 mb-2 ${openId===p.id ? '' : 'line-clamp-2'}`}>{p.description}</p>
                   {openId===p.id && (
                     <div className="mt-2 space-y-2">
-                      <div className="text-xs text-gray-500">{p.municipality || 'Region 3'}{p.category ? ` • ${p.category?.name || p.category}` : ''}</div>
+                      <div className="text-xs text-gray-500 break-words">{p.municipality || 'Region III'}{p.category ? ` • ${p.category?.name || p.category}` : ''}</div>
                       {!!(p.attachments && p.attachments.length) && (
-                        <div className="mt-2 flex gap-2 overflow-x-auto">
+                        <div className="mt-2 flex gap-2 overflow-x-auto pb-2">
                           {p.attachments.slice(0,5).map((path: string, idx: number) => (
-                            <img key={idx} src={mediaUrl(path)} alt="attachment" className="h-16 w-16 object-cover rounded border" />
+                            <img key={idx} src={mediaUrl(path)} alt="attachment" className="h-16 w-16 flex-shrink-0 object-cover rounded border" />
                           ))}
                         </div>
                       )}
@@ -179,10 +185,10 @@ export default function ProblemsPage() {
             </div>
           )}
           {tab==='all' && pages>1 && (
-            <div className="mt-6 flex items-center justify-center gap-3">
-              <button className="btn btn-secondary" disabled={page<=1} onClick={() => setPage(p => Math.max(1, p-1))}>Prev</button>
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button className="btn btn-secondary text-sm w-full sm:w-auto" disabled={page<=1} onClick={() => setPage(p => Math.max(1, p-1))}>Prev</button>
               <div className="text-sm">Page {page} / {pages}</div>
-              <button className="btn btn-secondary" disabled={page>=pages} onClick={() => setPage(p => Math.min(pages, p+1))}>Next</button>
+              <button className="btn btn-secondary text-sm w-full sm:w-auto" disabled={page>=pages} onClick={() => setPage(p => Math.min(pages, p+1))}>Next</button>
             </div>
           )}
         </>
@@ -208,8 +214,8 @@ export default function ProblemsPage() {
             <label className="block text-sm font-medium mb-1">Address / Specific Location</label>
             <input className="input-field" placeholder="e.g., Sitio A, Barangay B (near landmark)" value={form.specific_location} onChange={(e) => setForm({ ...form, specific_location: e.target.value })} />
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input className="input-field" placeholder="Latitude (optional)" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} />
-              <input className="input-field" placeholder="Longitude (optional)" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
+              <input className="input-field text-sm" placeholder="Latitude (optional)" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} />
+              <input className="input-field text-sm" placeholder="Longitude (optional)" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
             </div>
           </div>
           <div className="flex justify-end">
@@ -249,6 +255,79 @@ export default function ProblemsPage() {
           )}
         </div>
       </Modal>
+
+      {/* Mobile FAB - Floating Action Button */}
+      <div className="fixed bottom-6 right-6 z-50 sm:hidden">
+        <GatedAction
+          required="fullyVerified"
+          onAllowed={() => {
+            if (fabExpanded) {
+              if (isMismatch) { alert('Reporting is limited to your registered municipality'); return }
+              setOpen(true)
+              setFabExpanded(false)
+            } else {
+              setFabExpanded(true)
+            }
+          }}
+          featureDescription="Report a problem in your municipality"
+        >
+          <motion.button
+            className="relative flex items-center justify-center bg-gradient-to-r from-ocean-500 to-ocean-600 text-white shadow-lg shadow-ocean-500/30 hover:shadow-ocean-500/50 transition-shadow"
+            disabled={isMismatch}
+            animate={{
+              width: fabExpanded ? 180 : 56,
+              height: 56,
+              borderRadius: fabExpanded ? 28 : 28,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 25,
+            }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {}}
+          >
+            <AnimatePresence mode="wait">
+              {fabExpanded ? (
+                <motion.div
+                  key="expanded"
+                  className="flex items-center gap-2 px-4"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Plus className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm font-medium whitespace-nowrap">Report Problem</span>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="collapsed"
+                  initial={{ opacity: 0, rotate: -90 }}
+                  animate={{ opacity: 1, rotate: 0 }}
+                  exit={{ opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Plus className="w-6 h-6" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </GatedAction>
+        
+        {/* Backdrop to close FAB when clicking outside */}
+        <AnimatePresence>
+          {fabExpanded && (
+            <motion.div
+              className="fixed inset-0 -z-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFabExpanded(false)}
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

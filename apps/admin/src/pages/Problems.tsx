@@ -2,6 +2,16 @@ import { useEffect, useState } from 'react'
 import { issueApi, handleApiError, mediaUrl } from '../lib/api'
 import { EmptyState } from '@munlink/ui'
 
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'all' },
+  { value: 'submitted', label: 'submitted' },
+  { value: 'pending', label: 'pending' },
+  { value: 'under_review', label: 'under review' },
+  { value: 'in_progress', label: 'in progress' },
+  { value: 'resolved', label: 'resolved' },
+  { value: 'closed', label: 'closed' },
+]
+
 type Problem = {
   id: number
   title: string
@@ -18,7 +28,7 @@ export default function Problems() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [items, setItems] = useState<Problem[]>([])
-  const [status, setStatus] = useState<'all' | 'pending' | 'in_progress' | 'resolved' | 'closed'>('all')
+  const [status, setStatus] = useState<string>('all')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
   useEffect(() => {
@@ -54,17 +64,17 @@ export default function Problems() {
 
   return (
     <div className="min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-neutral-900 mb-2">Problems in Municipality</h1>
-        <p className="text-neutral-600">Manage resident-submitted problems</p>
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">Problems in Municipality</h1>
+        <p className="text-neutral-600">Review, track, and resolve issues reported by residents. Use the status filters to manage the workflow from submission to resolution.</p>
       </div>
 
       <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-xl font-bold text-neutral-900">Reported Problems</h2>
-          <div className="inline-flex gap-2 overflow-x-auto">
-            {['all','pending','in_progress','resolved','closed'].map((s) => (
-              <button key={s} onClick={()=> setStatus(s as any)} className={`px-3 py-1.5 rounded-full text-sm font-medium ${status===s? 'bg-ocean-600 text-white' : 'bg-white border border-neutral-200 text-neutral-700'}`}>{s.replace('_',' ')}</button>
+          <div className="inline-flex gap-2 overflow-x-auto pb-2">
+            {STATUS_OPTIONS.map((s) => (
+              <button key={s.value} onClick={()=> setStatus(s.value)} className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${status===s.value? 'bg-ocean-600 text-white' : 'bg-white border border-neutral-200 text-neutral-700'}`}>{s.label}</button>
             ))}
           </div>
         </div>

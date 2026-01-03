@@ -55,7 +55,7 @@ export default function LoginPage() {
         <img
           src="/assets/resident_login.jpg"
           alt="MunLink Login"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/20 to-black/30" />
         {/* Animated background elements */}
@@ -67,9 +67,9 @@ export default function LoginPage() {
 
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-16 w-full">
-          {/* Province seals */}
+          {/* Province seals - hidden on mobile, show MunLink logo instead */}
           <motion.div 
-            className="flex items-center gap-2 mb-8"
+            className="hidden lg:flex items-center gap-2 mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -102,7 +102,7 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            Region 3 — Central Luzon
+            Region III — Central Luzon
           </motion.p>
           <motion.p 
             className="text-white/80 max-w-md mb-10 drop-shadow"
@@ -142,19 +142,16 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="flex justify-center gap-1.5 mb-4">
-              {provinces.slice(0, 5).map((province) => (
-                <img
-                  key={province}
-                  src={`/logos/provinces/${province}.png`}
-                  alt={`${province} Seal`}
-                  className="h-8 w-8 object-contain"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                />
-              ))}
+            <div className="flex justify-center mb-4">
+              <img
+                src="/logos/MunLink Logo.png"
+                alt="MunLink Logo"
+                className="h-16 w-16 object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
             </div>
             <h1 className="text-2xl font-serif font-bold text-gray-900">MunLink</h1>
-            <p className="text-gray-600 text-sm">Region 3 — Central Luzon</p>
+            <p className="text-gray-600 text-sm">Region III — Central Luzon</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">

@@ -57,7 +57,7 @@ export default function AdminLoginPage() {
         <img
           src="/assets/admin_login.jpg"
           alt="Admin Login"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/20 to-black/30" />
         
@@ -67,9 +67,9 @@ export default function AdminLoginPage() {
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
           <div className="max-w-lg">
-            {/* Province seals */}
+            {/* Province seals - hidden on mobile, show MunLink logo instead */}
             <motion.div 
-              className="flex items-center gap-2 mb-8"
+              className="hidden lg:flex items-center gap-2 mb-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -149,7 +149,13 @@ export default function AdminLoginPage() {
         
         <div className={`w-full max-w-md px-6 sm:px-8 py-12 relative z-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* Mobile logo */}
-          <div className="lg:hidden mb-8 flex justify-center">
+          <div className="lg:hidden mb-8 flex flex-col items-center">
+            <img
+              src="/logos/MunLink Logo.png"
+              alt="MunLink Logo"
+              className="h-16 w-16 object-contain mb-2"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
             <span className="text-2xl font-serif font-bold text-slate-900">MunLink</span>
           </div>
           
@@ -267,7 +273,7 @@ export default function AdminLoginPage() {
           {/* Decorative elements */}
           <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between text-xs text-slate-400">
             <span>© 2026 MunLink</span>
-            <span>Region 3 — Central Luzon</span>
+            <span>Region III — Central Luzon</span>
           </div>
         </div>
       </div>

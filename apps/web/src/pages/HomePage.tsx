@@ -5,7 +5,7 @@ import { useAppStore } from '@/lib/store'
 import { Link } from 'react-router-dom'
 import AnnouncementCard from '@/components/AnnouncementCard'
 import MarketplaceCard from '@/components/MarketplaceCard'
-import { EmptyState } from '@munlink/ui'
+import { EmptyState, getBestRegion3Seal } from '@munlink/ui'
 
 // Province seals for Region 3 (use absolute paths from public folder)
 const provinceSeals = [
@@ -66,16 +66,39 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-ocean-900/60 via-ocean-900/40 to-neutral-900/60" />
         
-        {/* Province seals watermark - show selected or all 7 */}
+        {/* Transparent watermark area */}
+        {/* Mobile: MunLink logo for guests, Province logo for logged in */}
+        {/* Tablet+: Province seal if selected, or all 7 province seals */}
+        
+        {/* Mobile watermark */}
+        <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-20 mix-blend-overlay sm:hidden">
+          {isAuthenticated && displaySeal ? (
+            <img
+              src={displaySeal.src}
+              alt={`${displaySeal.name} Seal`}
+              className="h-[40%] w-auto"
+              style={{ filter: 'grayscale(100%)', maxWidth: '70%', maxHeight: '40%' }}
+            />
+          ) : (
+            <img
+              src="/logos/MunLink Logo.png"
+              alt="MunLink Logo"
+              className="h-[40%] w-auto"
+              style={{ filter: 'grayscale(100%)', maxWidth: '70%', maxHeight: '40%' }}
+            />
+          )}
+        </div>
+        
+        {/* Tablet+ watermark */}
         {displaySeal ? (
           <img
             src={displaySeal.src}
             alt={`${displaySeal.name} Seal`}
-            className="pointer-events-none select-none absolute inset-0 m-auto h-[50%] w-auto opacity-20 mix-blend-overlay"
+            className="pointer-events-none select-none absolute inset-0 m-auto h-[50%] w-auto opacity-20 mix-blend-overlay hidden sm:block"
             style={{ filter: 'grayscale(100%)', maxWidth: '80%', maxHeight: '50%' }}
           />
         ) : (
-          <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-15 mix-blend-overlay">
+          <div className="pointer-events-none select-none absolute inset-0 items-center justify-center opacity-15 mix-blend-overlay hidden sm:flex">
             <div className="flex gap-2 sm:gap-4 md:gap-6 lg:gap-8 flex-wrap justify-center px-4">
               {provinceSeals.map((seal, idx) => (
                 <motion.img
@@ -85,7 +108,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-24 lg:w-24 xl:h-28 xl:w-28 w-auto"
+                  className="h-16 w-16 md:h-20 md:w-20 lg:h-24 lg:w-24 xl:h-28 xl:w-28"
                   style={{ filter: 'grayscale(100%)', maxHeight: '20vh' }}
                 />
               ))}
@@ -109,28 +132,63 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-white/90 mt-3 sm:mt-4 max-w-4xl leading-relaxed text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl xl:text-[1.5rem] 2xl:text-[1.75rem]"
             >
-              MunLink: Empowering Central Luzon's 7 provinces and 129 local government units (municipalities and cities) with modern digital governance solutions.
+              {selectedProvince 
+                ? `MunLink: Empowering ${selectedProvince.name} and its local government units with modern digital governance solutions.`
+                : "MunLink: Empowering Central Luzon's 7 provinces and 129 local government units (municipalities and cities) with modern digital governance solutions."}
             </motion.p>
             
-            {/* Province seals showcase row - visible at bottom of hero */}
+            {/* Province seals showcase row - hidden on mobile, visible on tablet+ */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="mt-8 flex items-center gap-3 sm:gap-4"
+              className="mt-8 hidden sm:flex items-center gap-3 sm:gap-4"
             >
-              {provinceSeals.map((seal, idx) => (
-                <motion.img
-                  key={seal.name}
-                  src={seal.src}
-                  alt={`${seal.name} Seal`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.4 + idx * 0.08 }}
-                  className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto rounded-full border-2 border-white/30 shadow-lg bg-white/10 backdrop-blur-sm p-1"
-                  title={seal.name}
-                />
-              ))}
+              {/* Tablet and up: Show province+municipality logos if logged in, or all 7 province logos if guest */}
+              {isAuthenticated && selectedProvince ? (
+                <>
+                  {selectedMunicipality && (() => {
+                    const seal = getBestRegion3Seal({ municipality: selectedMunicipality.name, province: selectedProvince.name })
+                    return seal ? (
+                      <motion.img
+                        key="municipality"
+                        src={seal.src}
+                        alt={seal.alt}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.4 }}
+                        className="h-10 md:h-14 lg:h-16 w-auto rounded-full border-2 border-white/30 shadow-lg bg-white/10 backdrop-blur-sm p-1"
+                        title={selectedMunicipality.name}
+                      />
+                    ) : null
+                  })()}
+                  {displaySeal && (
+                    <motion.img
+                      key="province"
+                      src={displaySeal.src}
+                      alt={`${displaySeal.name} Seal`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.48 }}
+                      className="h-10 md:h-14 lg:h-16 w-auto rounded-full border-2 border-white/30 shadow-lg bg-white/10 backdrop-blur-sm p-1"
+                      title={displaySeal.name}
+                    />
+                  )}
+                </>
+              ) : (
+                provinceSeals.map((seal, idx) => (
+                  <motion.img
+                    key={seal.name}
+                    src={seal.src}
+                    alt={`${seal.name} Seal`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.4 + idx * 0.08 }}
+                    className="h-10 md:h-14 lg:h-16 w-auto rounded-full border-2 border-white/30 shadow-lg bg-white/10 backdrop-blur-sm p-1"
+                    title={seal.name}
+                  />
+                ))
+              )}
             </motion.div>
           </div>
         </div>
@@ -240,7 +298,7 @@ export default function HomePage() {
           <div className="max-w-6xl mx-auto bg-white/80 backdrop-blur-xl border rounded-2xl shadow-card p-6 md:p-8">
             <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3 md:gap-6">
               <div className="flex-1">
-                <h2 className="text-2xl md:text-3xl font-serif font-semibold text-gray-900">Welcome to MunLink Region 3</h2>
+                <h2 className="text-2xl md:text-3xl font-serif font-semibold text-gray-900">Welcome to MunLink Region III</h2>
                 <p className="text-gray-700 mt-2">Serving 7 provinces and 129 local government units across Central Luzon. Browse public announcements and the marketplace. Create an account to post items, request documents, report problems, and more.</p>
               </div>
               <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3">

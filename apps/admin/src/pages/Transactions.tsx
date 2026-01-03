@@ -21,9 +21,13 @@ export default function TransactionsPage() {
   useEffect(() => { load() }, [status])
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">Transactions</h1>
+        <p className="text-neutral-600">Monitor and manage marketplace transactions between residents, including sales, lending, and donations.</p>
+      </div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">Transactions</h1>
+        <h2 className="text-lg font-semibold text-neutral-800">All Transactions</h2>
         <select className="border rounded px-2 py-1" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">All</option>
           <option value="pending">pending</option>

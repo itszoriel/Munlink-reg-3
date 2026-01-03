@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { benefitsApi, benefitsAdminApi, handleApiError, showToast, mediaUrl } from '../lib/api'
 import { useAdminStore } from '../lib/store'
 import { Modal, Button, FileUpload, EmptyState } from '@munlink/ui'
-import { ClipboardList, Users, Hourglass, CheckCircle } from 'lucide-react'
+import { ClipboardList, Users, Hourglass, CheckCircle, Plus } from 'lucide-react'
 
 export default function Programs() {
   const [activeTab, setActiveTab] = useState<'active' | 'applications' | 'archived'>('active')
@@ -17,6 +18,7 @@ export default function Programs() {
   const [viewApplicants, setViewApplicants] = useState<{ program: any; applications: any[] } | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [fabExpanded, setFabExpanded] = useState(false)
   const adminMunicipalityId = useAdminStore((s) => (s.user as any)?.admin_municipality_id || (s.user as any)?.municipality_id)
 
   useEffect(() => {
@@ -158,7 +160,7 @@ export default function Programs() {
           <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">Programs with Benefits</h1>
           <p className="text-neutral-600">Manage government assistance and community programs</p>
         </div>
-        <button onClick={openCreate} className="px-4 py-2 sm:px-6 sm:py-3 bg-forest-gradient hover:scale-105 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center gap-2 w-full sm:w-auto" aria-haspopup="dialog" aria-controls="create-program-modal">
+        <button onClick={openCreate} className="px-4 py-2 sm:px-6 sm:py-3 bg-forest-gradient hover:scale-105 text-white rounded-xl font-semibold transition-all shadow-lg hidden sm:flex items-center gap-2" aria-haspopup="dialog" aria-controls="create-program-modal">
           <span className="text-lg" aria-hidden>+</span>
           Create New Program
         </button>
@@ -426,6 +428,71 @@ export default function Programs() {
           />
         </Modal>
       )}
+
+      {/* Mobile FAB - Floating Action Button - positioned above mobile nav */}
+      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
+        <motion.button
+          className="relative flex items-center justify-center bg-gradient-to-r from-forest-500 to-forest-600 text-white shadow-lg shadow-forest-500/30 hover:shadow-forest-500/50 transition-shadow"
+          onClick={() => {
+            if (fabExpanded) {
+              setCreateOpen(true)
+              setFabExpanded(false)
+            } else {
+              setFabExpanded(true)
+            }
+          }}
+          animate={{
+            width: fabExpanded ? 180 : 56,
+            height: 56,
+            borderRadius: 28,
+          }}
+          transition={{
+            type: "spring",
+            stiffness: 400,
+            damping: 25,
+          }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <AnimatePresence mode="wait">
+            {fabExpanded ? (
+              <motion.div
+                key="expanded"
+                className="flex items-center gap-2 px-4"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Plus className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm font-medium whitespace-nowrap">New Program</span>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="collapsed"
+                initial={{ opacity: 0, rotate: -90 }}
+                animate={{ opacity: 1, rotate: 0 }}
+                exit={{ opacity: 0, rotate: 90 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Plus className="w-6 h-6" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.button>
+        
+        {/* Backdrop to close FAB when clicking outside */}
+        <AnimatePresence>
+          {fabExpanded && (
+            <motion.div
+              className="fixed inset-0 -z-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFabExpanded(false)}
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

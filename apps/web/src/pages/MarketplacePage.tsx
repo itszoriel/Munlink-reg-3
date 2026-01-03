@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Plus } from 'lucide-react'
 import GatedAction from '@/components/GatedAction'
 import { marketplaceApi, mediaUrl, showToast } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
@@ -76,12 +77,14 @@ export default function MarketplacePage() {
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<any>({ title: '', description: '', category: '', condition: 'good', transaction_type: 'sell', price: '' })
   const [files, setFiles] = useState<File[]>([])
+  const [fabExpanded, setFabExpanded] = useState(false)
 
   return (
     <div className="container-responsive py-12">
       <div className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-3 mb-8">
         <h1 className="text-fluid-3xl font-serif font-semibold">Marketplace</h1>
         <div className="w-full xs:w-auto min-w-[140px]">
+          {/* Desktop: Regular button */}
           <GatedAction
             required="fullyVerified"
             onAllowed={() => {
@@ -97,7 +100,7 @@ export default function MarketplacePage() {
             }}
             featureDescription="Post an item on the marketplace"
           >
-            <button className="btn btn-primary w-full xs:w-auto" disabled={isViewingMismatch} title={isViewingMismatch ? 'Posting is limited to your municipality' : undefined}>+ Post Item</button>
+            <button className="btn btn-primary w-full xs:w-auto hidden sm:inline-flex" disabled={isViewingMismatch} title={isViewingMismatch ? 'Posting is limited to your municipality' : undefined}>+ Post Item</button>
           </GatedAction>
         </div>
       </div>
@@ -346,6 +349,88 @@ export default function MarketplacePage() {
           </div>
         </div>
       )}
+
+      {/* Mobile FAB - Floating Action Button - positioned above mobile nav */}
+      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
+        <GatedAction
+          required="fullyVerified"
+          onAllowed={() => {
+            if (fabExpanded) {
+              if (!userMunicipalityId) {
+                alert('Set your municipality in your profile before posting items')
+                setFabExpanded(false)
+                return
+              }
+              if (isViewingMismatch) {
+                alert('Posting is limited to your registered municipality')
+                setFabExpanded(false)
+                return
+              }
+              setOpen(true)
+              setFabExpanded(false)
+            } else {
+              setFabExpanded(true)
+            }
+          }}
+          featureDescription="Post an item on the marketplace"
+        >
+          <motion.button
+            className="relative flex items-center justify-center bg-gradient-to-r from-ocean-500 to-ocean-600 text-white shadow-lg shadow-ocean-500/30 hover:shadow-ocean-500/50 transition-shadow"
+            disabled={isViewingMismatch}
+            animate={{
+              width: fabExpanded ? 140 : 56,
+              height: 56,
+              borderRadius: 28,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 25,
+            }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {}}
+          >
+            <AnimatePresence mode="wait">
+              {fabExpanded ? (
+                <motion.div
+                  key="expanded"
+                  className="flex items-center gap-2 px-4"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Plus className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm font-medium whitespace-nowrap">Post Item</span>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="collapsed"
+                  initial={{ opacity: 0, rotate: -90 }}
+                  animate={{ opacity: 1, rotate: 0 }}
+                  exit={{ opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Plus className="w-6 h-6" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </GatedAction>
+        
+        {/* Backdrop to close FAB when clicking outside */}
+        <AnimatePresence>
+          {fabExpanded && (
+            <motion.div
+              className="fixed inset-0 -z-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFabExpanded(false)}
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

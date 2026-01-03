@@ -141,7 +141,7 @@ export default function ProvinceSelect() {
               onClick={handleClear}
               className="w-full text-left px-3 py-2 rounded hover:bg-red-50 text-red-600 text-sm mb-1 border-b"
             >
-              ✕ Clear selection (show all Region 3)
+              ✕ Clear selection
             </button>
           )}
           <ul className="max-h-64 overflow-auto" role="listbox">
