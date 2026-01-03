@@ -322,7 +322,30 @@ export function getBestRegion3Seal(params: {
   province?: string
   fallbackProvince?: string
 }): Region3Seal {
-  const municipalitySrc = getMunicipalitySealSrc(params.municipality)
+  // First try province-qualified lookup if province is provided
+  let municipalitySrc: string | null = null
+  if (params.municipality && params.province) {
+    const provSlug = provinceSlugMap[normalize(params.province)] || slugify(params.province)
+    const munRaw = normalize(params.municipality)
+    const munSlug = slugify(params.municipality)
+    // Try province-qualified keys first
+    const qualifiedCandidates = [
+      `${munRaw} ${provSlug}`,
+      `${munSlug}-${provSlug}`,
+    ]
+    for (const c of qualifiedCandidates) {
+      if (c && municipalitySeals[c]) {
+        municipalitySrc = municipalitySeals[c]
+        break
+      }
+    }
+  }
+  
+  // Fall back to generic lookup if province-qualified didn't work
+  if (!municipalitySrc) {
+    municipalitySrc = getMunicipalitySealSrc(params.municipality)
+  }
+  
   if (municipalitySrc) {
     const name = (params.municipality || '').trim() || 'Municipality'
     return { src: municipalitySrc, alt: `${name} Seal`, kind: 'municipality' }
