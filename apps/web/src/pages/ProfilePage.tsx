@@ -215,13 +215,43 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-          <div className="pt-4 border-t">
-            <p className="text-sm text-gray-600 mb-3">
-              Need to move to a different municipality or province? Request a transfer below.
-            </p>
-            <Button onClick={() => setShowTransferModal(true)} variant="secondary">
-              Request Location Transfer
-            </Button>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
+            <div>
+              <Button 
+                onClick={async () => {
+                  if (!form.barangay_id) {
+                    showToast('Please select a barangay', 'error')
+                    return
+                  }
+                  setSaving(true)
+                  setError(null)
+                  setOk(null)
+                  try {
+                    await authApi.updateProfile({ barangay_id: form.barangay_id })
+                    setOk('Address updated successfully')
+                    showToast('Address updated successfully', 'success')
+                  } catch (e: any) {
+                    setError('Failed to update address')
+                    showToast('Failed to update address', 'error')
+                  } finally {
+                    setSaving(false)
+                  }
+                }} 
+                disabled={saving || loading || !form.barangay_id}
+              >
+                {saving ? 'Saving...' : 'Save Barangay'}
+              </Button>
+            </div>
+            <div className="text-sm text-gray-600">
+              <span>Need to move to a different municipality or province? </span>
+              <button 
+                type="button"
+                onClick={() => setShowTransferModal(true)} 
+                className="text-ocean-600 hover:text-ocean-700 font-medium underline"
+              >
+                Request a transfer
+              </button>
+            </div>
           </div>
         </div>
 
