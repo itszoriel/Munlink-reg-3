@@ -326,8 +326,8 @@ export default function HomePage() {
       {!isAuthenticated && (
         <section className="container-responsive py-8">
           <div className="max-w-6xl mx-auto bg-white/80 backdrop-blur-xl border rounded-2xl shadow-card p-6 md:p-8">
-            <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3 md:gap-6">
-              <div className="flex-1">
+            <div className="flex flex-col gap-4 md:gap-6">
+              <div>
                 <h2 className="text-2xl md:text-3xl font-serif font-semibold text-gray-900">Welcome to MunLink Region III</h2>
                 <p className="text-gray-700 mt-2">Serving 7 provinces and 129 local government units across Central Luzon. Browse public announcements and the marketplace. Create an account to post items, request documents, report problems, and more.</p>
               </div>

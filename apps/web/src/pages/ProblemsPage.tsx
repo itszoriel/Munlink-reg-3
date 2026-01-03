@@ -320,19 +320,20 @@ export default function ProblemsPage() {
           </motion.button>
         </GatedAction>
         
-        {/* Backdrop to close FAB when clicking outside */}
-        <AnimatePresence>
-          {fabExpanded && (
-            <motion.div
-              className="fixed inset-0 -z-10"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setFabExpanded(false)}
-            />
-          )}
-        </AnimatePresence>
       </div>
+
+      {/* Backdrop to close FAB when clicking outside - must be separate from FAB container */}
+      <AnimatePresence>
+        {fabExpanded && (
+          <motion.div
+            className="fixed inset-0 z-40 sm:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFabExpanded(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

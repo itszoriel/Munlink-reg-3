@@ -372,10 +372,20 @@ def get_user_growth():
         range_param = request.args.get('range', 'last_30_days')
         start, end = _parse_range(range_param)
 
-        # SQLite-friendly daily buckets
+        # Detect database type and use appropriate date formatting function
+        db_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        is_postgresql = db_url.startswith('postgresql://') or db_url.startswith('postgres://')
+        
+        if is_postgresql:
+            # PostgreSQL: use TO_CHAR for date formatting
+            day_expr = func.to_char(User.created_at, 'YYYY-MM-DD').label('day')
+        else:
+            # SQLite: use strftime
+            day_expr = func.strftime('%Y-%m-%d', User.created_at).label('day')
+
         rows = (
             db.session.query(
-                func.strftime('%Y-%m-%d', User.created_at).label('day'),
+                day_expr,
                 func.count(User.id)
             )
             .filter(and_(
