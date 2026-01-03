@@ -65,23 +65,23 @@ const About: React.FC = () => {
   const totalMunicipalities = Object.values(provinceData).reduce((sum, p) => sum + p.municipalities.length, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 -mt-24">
       {/* Hero Section */}
-      <section className="py-20 relative overflow-hidden">
+      <section className="relative w-full min-h-[70vh] sm:min-h-[80vh] md:min-h-screen flex items-center justify-center overflow-hidden pt-24">
         <img
           src="/assets/about.jpg"
           alt="About MunLink"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/40" />
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-64 h-64 bg-white rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-white rounded-full blur-3xl" />
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full py-16 sm:py-20 md:py-24">
           <div className="text-center">
             <motion.div 
-              className="flex justify-center gap-3 mb-8 flex-wrap"
+              className="flex justify-center gap-3 mb-6 sm:mb-8 flex-wrap"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -91,7 +91,7 @@ const About: React.FC = () => {
                   key={province}
                   src={`/logos/provinces/${province.toLowerCase().replace(/\s+/g, '-')}.png`}
                   alt={`${province} Seal`}
-                  className="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-full bg-white/10 p-1"
+                  className="w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 object-contain rounded-full bg-white/10 p-1"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
@@ -100,7 +100,7 @@ const About: React.FC = () => {
               ))}
             </motion.div>
             <motion.h1 
-              className="text-4xl md:text-5xl font-serif font-bold text-white mb-4"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-white mb-3 sm:mb-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -108,7 +108,7 @@ const About: React.FC = () => {
               About MunLink Region III
             </motion.h1>
             <motion.p 
-              className="text-xl text-white/90 max-w-3xl mx-auto drop-shadow-lg"
+              className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 max-w-3xl mx-auto drop-shadow-lg px-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
@@ -190,7 +190,7 @@ const About: React.FC = () => {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
             {provinces.map((province) => {
               const data = provinceData[province];
               const isExpanded = expandedProvince === province;

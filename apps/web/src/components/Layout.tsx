@@ -24,6 +24,11 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [location.pathname])
+
   // Re-validate auth on history navigation to prevent back access after logout
   useEffect(() => {
     const recheckAuth = () => {
@@ -100,7 +105,7 @@ export default function Layout() {
                 Home
               </Link>
               <Link to="/announcements" className="hover:text-ocean-700 transition-colors font-serif px-2 py-1 rounded-lg hover:bg-ocean-50">
-                News
+                Updates
               </Link>
               <Link to="/marketplace" className="hover:text-ocean-700 transition-colors font-serif px-2 py-1 rounded-lg hover:bg-ocean-50">
                 Marketplace
