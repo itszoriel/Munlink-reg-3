@@ -56,6 +56,7 @@ class Municipality(db.Model):
             'name': self.name,
             'slug': self.slug,
             'province_id': self.province_id,
+            'province_name': self.province.name if self.province else None,
             'psgc_code': self.psgc_code,
             'contact_email': self.contact_email,
             'contact_phone': self.contact_phone,

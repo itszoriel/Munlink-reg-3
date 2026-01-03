@@ -40,9 +40,16 @@ def send_verification_email(to_email: str, verify_link: str) -> None:
     # Best effort send; raise with detailed logs so caller can surface in DEBUG
     try:
         if not smtp_server:
+            current_app.logger.error("Email send failed: SMTP_SERVER is not configured")
             raise RuntimeError("SMTP_SERVER is not configured")
-        if not (smtp_username and smtp_password):
-            raise RuntimeError("SMTP credentials are not configured (SMTP_USERNAME/SMTP_PASSWORD)")
+        if not smtp_username:
+            current_app.logger.error("Email send failed: SMTP_USERNAME is not configured")
+            raise RuntimeError("SMTP_USERNAME is not configured")
+        if not smtp_password:
+            current_app.logger.error("Email send failed: SMTP_PASSWORD is not configured")
+            raise RuntimeError("SMTP_PASSWORD is not configured")
+        
+        current_app.logger.info(f"Attempting to send email to {to_email} via {smtp_server}:{smtp_port}")
 
         # Use SSL for 465, STARTTLS for others (e.g., 587)
         if smtp_port == 465:
@@ -62,11 +69,15 @@ def send_verification_email(to_email: str, verify_link: str) -> None:
                     pass
                 server.login(smtp_username, smtp_password)
                 server.sendmail(from_email, [to_email], msg.as_string())
+        current_app.logger.info(f"Email sent successfully to {to_email}")
+    except smtplib.SMTPAuthenticationError as exc:
+        current_app.logger.error(f"SMTP Authentication failed for {smtp_username}: {exc}. Make sure you're using a Gmail App Password, not your regular password.")
+        raise
+    except smtplib.SMTPException as exc:
+        current_app.logger.error(f"SMTP error sending to {to_email}: {exc}")
+        raise
     except Exception as exc:
-        try:
-            current_app.logger.exception("Failed to send verification email to %s: %s", to_email, exc)
-        except Exception:
-            pass
+        current_app.logger.exception("Failed to send verification email to %s: %s", to_email, exc)
         raise
 
 
