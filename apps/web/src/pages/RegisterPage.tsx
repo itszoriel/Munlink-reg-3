@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { authApi, municipalityApi } from '@/lib/api'
 import { getProvinces, getMunicipalities } from '@/lib/locations'
 

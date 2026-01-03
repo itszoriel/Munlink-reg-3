@@ -27,7 +27,6 @@ export default function HomePage() {
   const [featuredItems, setFeaturedItems] = useState<any[]>([])
   // Removed mock announcements; show nothing if none.
   // Keep marketplace fallback minimal to maintain layout without empty collapse.
-  const fallbackItems: Array<{ id?: number; title: string; price?: number; transaction_type: string; images?: string[] }> = []
 
   useEffect(() => {
     let cancelled = false
