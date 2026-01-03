@@ -256,8 +256,8 @@ export default function ProblemsPage() {
         </div>
       </Modal>
 
-      {/* Mobile FAB - Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-50 sm:hidden">
+      {/* Mobile FAB - Floating Action Button - positioned above mobile nav */}
+      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
         <GatedAction
           required="fullyVerified"
           onAllowed={() => {

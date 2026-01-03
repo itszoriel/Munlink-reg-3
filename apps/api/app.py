@@ -88,13 +88,13 @@ def create_app(config_class=Config):
     app.register_blueprint(benefits_bp)
     app.register_blueprint(admin_bp)
     
-    # Health check endpoint
+    # Health check endpoint - MUST NOT depend on DB or any external service
     @app.route('/health', methods=['GET'])
     def health_check():
-        """Health check endpoint for monitoring"""
+        """Health check endpoint for monitoring - responds immediately without DB"""
         return jsonify({
             'status': 'healthy',
-            'service': 'Munilink Region 3 API',
+            'service': 'MunLink Region III API',
             'version': '1.0.0'
         }), 200
     
@@ -103,11 +103,11 @@ def create_app(config_class=Config):
     def root():
         """API root endpoint"""
         return jsonify({
-            'message': 'Munilink Region 3 API',
+            'message': 'MunLink Region III API',
             'version': '1.0.0',
             'region': 'Central Luzon (Region III)',
             'provinces': 7,
-            'municipalities': 130,
+            'municipalities': 129,
             'docs': '/api/docs'
         }), 200
     

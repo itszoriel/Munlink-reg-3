@@ -608,7 +608,7 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
 
     # Footer note
     _set_font(c, "Times-Italic", 10)
-    footer_text = footer or "This is a digitally issued document. No physical signature required. Generated via Munilink Region 3 System."
+    footer_text = footer or "This is a digitally issued document. No physical signature required. Generated via MunLink Region III System."
     c.drawString(25 * mm, 20 * mm, footer_text)
 
     # Optional QR code (simple URL based on request number)

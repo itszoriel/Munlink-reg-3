@@ -137,7 +137,7 @@ class Config:
     QR_EXPIRY_DAYS = int(os.getenv('QR_EXPIRY_DAYS', 30))
     
     # Application
-    APP_NAME = os.getenv('APP_NAME', 'MunLink Region 3')
+    APP_NAME = os.getenv('APP_NAME', 'MunLink Region III')
     
     # Frontend URLs (for CORS)
     WEB_URL = os.getenv('WEB_URL', 'http://localhost:3000')

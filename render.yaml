@@ -1,4 +1,4 @@
-﻿# MunLink Region 3 - Render Deployment Configuration
+﻿# MunLink Region III - Render Deployment Configuration
 # Uses Supabase for database (PostgreSQL)
 
 services:
@@ -14,7 +14,7 @@ services:
       pip install --no-cache-dir -r requirements.txt
       # NOTE: Keep psycopg2-binary pinned; Python runtime is pinned via apps/api/runtime.txt (Python 3.12)
       pip install --no-cache-dir psycopg2-binary==2.9.9 gunicorn==21.2.0
-    startCommand: "python scripts/init_db.py && gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --max-requests 1000 --max-requests-jitter 50"
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --max-requests 1000 --max-requests-jitter 50"
     healthCheckPath: /health
     envVars:
       # Pin Python version (Render currently defaults to Python 3.13, which breaks psycopg2-binary)
@@ -28,7 +28,7 @@ services:
       - key: FLASK_APP
         value: app.py
       - key: APP_NAME
-        value: MunLink Region 3
+        value: MunLink Region III
       
       # Security Keys (set in Render Dashboard)
       - key: SECRET_KEY
@@ -114,7 +114,7 @@ services:
       - key: VITE_API_URL
         value: https://munlink-api-9c02.onrender.com
       - key: VITE_APP_NAME
-        value: MunLink Region 3
+        value: MunLink Region III
 
   # ============================================
   # Admin Dashboard (React/Vite)
@@ -140,7 +140,7 @@ services:
       - key: VITE_API_URL
         value: https://munlink-api-9c02.onrender.com
       - key: VITE_APP_NAME
-        value: MunLink Region 3 Admin
+        value: MunLink Region III Admin
       - key: VITE_PUBLIC_SITE_URL
         value: https://munlink-web-y9lj.onrender.com
 
