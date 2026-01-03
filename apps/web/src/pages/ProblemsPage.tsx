@@ -1,7 +1,7 @@
 import { StatusBadge, Card, EmptyState } from '@munlink/ui'
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import GatedAction from '@/components/GatedAction'
 import { useAppStore } from '@/lib/store'
 import { issuesApi, mediaUrl, showToast } from '@/lib/api'
