@@ -1,5 +1,5 @@
 /**
- * Munilink Region 3 - Admin API Client
+ * MunLink Region III - Admin API Client
  * Centralized API client with authentication and error handling
  */
 import axios from 'axios'

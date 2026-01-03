@@ -1,5 +1,5 @@
 """
-Munilink Region 3 - Flask API Application
+MunLink Region III - Flask API Application
 Main application entry point
 """
 import sys

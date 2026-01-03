@@ -9,6 +9,8 @@ import { Hand, Users, AlertTriangle, ShoppingBag, Megaphone } from 'lucide-react
 export default function Dashboard() {
   const user = useAdminStore((s) => s.user)
   const navigate = useNavigate()
+  // Track if we've ever loaded data (for first-load-only skeleton)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dash, setDash] = useState<{ pending_verifications?: number; active_problems?: number; marketplace_items?: number; announcements?: number } | null>(null)
@@ -39,15 +41,20 @@ export default function Dashboard() {
     ;(async () => {
       try {
         setError(null)
+        // Only show loading skeleton on first load
+        if (!hasLoadedOnce) setLoading(true)
         // Prefer admin reports; fallback to dashboard stats is implemented inside adminApi.getReports
         const data = await adminApi.getReports()
         const d = (data?.dashboard || data) as any
-        if (mounted) setDash({
-          pending_verifications: d?.pending_verifications ?? 0,
-          active_problems: d?.active_issues ?? d?.active_problems ?? 0,
-          marketplace_items: d?.marketplace_items ?? 0,
-          announcements: d?.announcements ?? 0,
-        })
+        if (mounted) {
+          setDash({
+            pending_verifications: d?.pending_verifications ?? 0,
+            active_problems: d?.active_issues ?? d?.active_problems ?? 0,
+            marketplace_items: d?.marketplace_items ?? 0,
+            announcements: d?.announcements ?? 0,
+          })
+          setHasLoadedOnce(true)
+        }
       } catch (e: any) {
         const msg = handleApiError(e)
         setError(msg)
@@ -56,7 +63,7 @@ export default function Dashboard() {
       }
     })()
     return () => { mounted = false }
-  }, [])
+  }, [hasLoadedOnce])
 
   // Refresh stats when a verification action occurs
   const reloadStats = async () => {
@@ -156,7 +163,9 @@ export default function Dashboard() {
     ;(async () => {
       await loadActivity()
     })()
-    const id = window.setInterval(() => { if (mounted) reloadAll() }, 30000)
+    // Poll every 2 minutes instead of 30 seconds to reduce unnecessary API calls
+    // Admin dashboards don't need real-time updates - 2 min is sufficient
+    const id = window.setInterval(() => { if (mounted) reloadAll() }, 120000)
     return () => { mounted = false; window.clearInterval(id) }
   }, [])
 

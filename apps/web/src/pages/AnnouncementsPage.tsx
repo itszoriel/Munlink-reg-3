@@ -20,6 +20,8 @@ export default function AnnouncementsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const [priority, setPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all')
   const [items, setItems] = useState<Announcement[]>([])
+  // Track if we've ever loaded data (for first-load-only skeleton)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [loading, setLoading] = useState<boolean>(true)
   const [hideRead, setHideReadState] = useState<boolean>(getHideRead())
 
@@ -33,13 +35,17 @@ export default function AnnouncementsPage() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      setLoading(true)
+      // Only show loading skeleton on first load
+      if (!hasLoadedOnce) setLoading(true)
       try {
         const res = await announcementsApi.getAll(params)
         let list: Announcement[] = res.data?.announcements || []
         if (priority !== 'all') list = list.filter(a => a.priority === priority)
         if (hideRead) list = list.filter(a => !isRead(a.id))
-        if (!cancelled) setItems(list)
+        if (!cancelled) {
+          setItems(list)
+          setHasLoadedOnce(true)
+        }
       } catch {
         if (!cancelled) setItems([])
       } finally {
@@ -48,7 +54,7 @@ export default function AnnouncementsPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [params, priority, hideRead])
+  }, [params, priority, hideRead, hasLoadedOnce])
 
   return (
     <div className="container-responsive py-12">
@@ -82,7 +88,8 @@ export default function AnnouncementsPage() {
         </div>
       </div>
 
-      {loading ? (
+      {/* Only show skeleton on first load */}
+      {loading && !hasLoadedOnce ? (
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={`ann-skel-${i}`} className="skeleton-card">

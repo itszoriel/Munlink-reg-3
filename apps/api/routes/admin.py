@@ -1,5 +1,5 @@
 """
-Munilink Region 3 - Admin Routes
+MunLink Region III - Admin Routes
 Admin-specific operations with municipality scoping
 """
 from flask import Blueprint, request, jsonify, current_app

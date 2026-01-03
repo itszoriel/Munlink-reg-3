@@ -24,6 +24,8 @@ export default function ProgramsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const user = useAppStore((s) => s.user)
   const [programs, setPrograms] = useState<Program[]>([])
+  // Track if we've ever loaded data (for first-load-only skeleton)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState('all')
   const [open, setOpen] = useState(false)
@@ -40,19 +42,26 @@ export default function ProgramsPage() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      setLoading(true)
+      // Only show loading skeleton on first load
+      if (!hasLoadedOnce) setLoading(true)
       try {
         if (tab === 'applications') {
           const isAuthenticated = !!useAppStore.getState().isAuthenticated
           if (!isAuthenticated) { if (!cancelled) setApplications([]); return }
           const my = await benefitsApi.getMyApplications()
-          if (!cancelled) setApplications(my.data?.applications || [])
+          if (!cancelled) {
+            setApplications(my.data?.applications || [])
+            setHasLoadedOnce(true)
+          }
         } else {
           const params: any = {}
           if (selectedMunicipality?.id) params.municipality_id = selectedMunicipality.id
           if (typeFilter !== 'all') params.type = typeFilter
           const res = await benefitsApi.getPrograms(params)
-          if (!cancelled) setPrograms(res.data?.programs || [])
+          if (!cancelled) {
+            setPrograms(res.data?.programs || [])
+            setHasLoadedOnce(true)
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -60,7 +69,7 @@ export default function ProgramsPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [selectedMunicipality?.id, typeFilter, tab])
+  }, [selectedMunicipality?.id, typeFilter, tab, hasLoadedOnce])
 
   // Initialize tab from query param (?tab=applications)
   useEffect(() => {
@@ -106,7 +115,8 @@ export default function ProgramsPage() {
         </div>
       )}
 
-      {loading ? (
+      {/* Only show skeleton on first load */}
+      {loading && !hasLoadedOnce ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton-card h-40" />

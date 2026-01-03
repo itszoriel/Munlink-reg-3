@@ -4,6 +4,8 @@ import ExportArchive from '../components/reports/ExportArchive.tsx'
 import AuditLogs from '../components/reports/AuditLogs.tsx'
 
 export default function Reports() {
+  // Track if we've ever loaded data (for first-load-only skeleton)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [report, setReport] = useState<any>(null)
@@ -16,7 +18,8 @@ export default function Reports() {
     ;(async () => {
       try {
         setError(null)
-        setLoading(true)
+        // Only show loading skeleton on first load
+        if (!hasLoadedOnce) setLoading(true)
         const [dashRes, userRes, marketRes, annRes, docsRes, growthRes] = await Promise.allSettled([
           dashboardApi.getDashboardStats(),
           userApi.getUserStats(),
@@ -33,7 +36,10 @@ export default function Reports() {
         const documents = docsRes.status === 'fulfilled' ? ((docsRes.value as any).data || docsRes.value) : undefined
         
         const usersGrowth = growthRes.status === 'fulfilled' ? ((growthRes.value as any).data || growthRes.value) : undefined
-        if (mounted) setReport({ dashboard, users, marketplace, announcements, documents, usersGrowth })
+        if (mounted) {
+          setReport({ dashboard, users, marketplace, announcements, documents, usersGrowth })
+          setHasLoadedOnce(true)
+        }
       } catch (e: any) {
         setError(handleApiError(e))
       } finally {
@@ -41,7 +47,7 @@ export default function Reports() {
       }
     })()
     return () => { mounted = false }
-  }, [range])
+  }, [range, hasLoadedOnce])
 
   const metrics = useMemo(() => ([
     { label: 'Total Users', value: String(report?.users?.total_users ?? '—'), change: '+0%', trend: 'up', icon: '👥', color: 'ocean' },
@@ -80,10 +86,11 @@ export default function Reports() {
           <button key={t} onClick={()=> setTab(t)} className={`px-4 py-2 text-sm ${tab===t?'bg-ocean-600 text-white':'bg-white hover:bg-neutral-50'}`}>{t==='overview'?'Overview':t==='export'?'Export & Archive':'Audit Logs'}</button>
         ))}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-8">
-        {(loading ? [...Array(4)] : metrics).map((metric: any, i: number) => (
-          <div key={i} className="bg-white/70 backdrop-blur-xl rounded-2xl p-6 border border-white/50 shadow-lg hover:scale-105 transition-transform">
-            {loading ? (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        {/* Only show skeleton on first load */}
+        {((loading && !hasLoadedOnce) ? [...Array(4)] : metrics).map((metric: any, i: number) => (
+          <div key={i} className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-white/50 shadow-lg hover:scale-105 transition-transform">
+            {loading && !hasLoadedOnce ? (
               <>
                 <div className="h-12 w-12 skeleton rounded-xl mb-4" />
                 <div className="h-6 w-24 skeleton rounded mb-2" />

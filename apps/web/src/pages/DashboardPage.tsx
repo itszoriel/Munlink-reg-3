@@ -14,6 +14,8 @@ type MyReq = { id: number, request_number: string, status: string, delivery_meth
 type MyBenefitApp = { id: number, status: string, application_number: string, created_at?: string, supporting_documents?: string[], program?: { name?: string } }
 
 export default function DashboardPage() {
+  // Track if we've ever loaded data (for first-load-only skeleton)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<MyItem[]>([])
   const [txs, setTxs] = useState<MyTx[]>([])
@@ -30,7 +32,8 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      setLoading(true)
+      // Only show loading skeleton on first load, not on subsequent refreshes
+      if (!hasLoadedOnce) setLoading(true)
       try {
         if (!isAuthBootstrapped || !isAuthenticated) {
           if (!cancelled) { setItems([]); setTxs([]); setReqs([]); setApps([]) }
@@ -49,6 +52,7 @@ export default function DashboardPage() {
           setTxs([...(asBuyer as any[]), ...(asSeller as any[])].slice(0, 5))
           setReqs((myReqRes.data?.requests || []).slice(0, 5))
           setApps(((myAppsRes.data?.applications || []) as any[]))
+          setHasLoadedOnce(true)
         }
       } catch {
         if (!cancelled) {
@@ -60,7 +64,7 @@ export default function DashboardPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [isAuthenticated, isAuthBootstrapped])
+  }, [isAuthenticated, isAuthBootstrapped, hasLoadedOnce])
 
   return (
     <div className="container-responsive py-8 md:py-10">
@@ -115,7 +119,8 @@ export default function DashboardPage() {
         <StatCard icon={<FileText size={16} />} label="Requests" value={reqs.length} hint="in progress" />
       </div>
 
-      {loading ? (
+      {/* Only show skeleton on first load; keep existing data visible during refresh */}
+      {loading && !hasLoadedOnce ? (
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton-card p-6">

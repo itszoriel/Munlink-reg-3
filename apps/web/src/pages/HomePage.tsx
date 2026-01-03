@@ -177,16 +177,16 @@ export default function HomePage() {
                 </>
               ) : (
                 provinceSeals.map((seal, idx) => (
-                  <motion.img
-                    key={seal.name}
-                    src={seal.src}
-                    alt={`${seal.name} Seal`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.4 + idx * 0.08 }}
+                <motion.img
+                  key={seal.name}
+                  src={seal.src}
+                  alt={`${seal.name} Seal`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.4 + idx * 0.08 }}
                     className="h-10 md:h-14 lg:h-16 w-auto rounded-full border-2 border-white/30 shadow-lg bg-white/10 backdrop-blur-sm p-1"
-                    title={seal.name}
-                  />
+                  title={seal.name}
+                />
                 ))
               )}
             </motion.div>

@@ -33,6 +33,8 @@ export default function ProblemsPage() {
   const [problems, setProblems] = useState<Problem[]>([])
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  // Track if we've ever loaded data (for first-load-only skeleton)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -49,7 +51,8 @@ export default function ProblemsPage() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      setLoading(true)
+      // Only show loading skeleton on first load
+      if (!hasLoadedOnce) setLoading(true)
       try {
         // Load categories once
         if (categories.length === 0) {
@@ -57,7 +60,7 @@ export default function ProblemsPage() {
         }
         if (tab === 'mine') {
           const res = await issuesApi.getMine()
-          if (!cancelled) { setProblems(res.data?.issues || []); setPages(1); setPage(1) }
+          if (!cancelled) { setProblems(res.data?.issues || []); setPages(1); setPage(1); setHasLoadedOnce(true) }
         } else {
           const params: any = { page }
           if (selectedMunicipality?.id) params.municipality_id = selectedMunicipality.id
@@ -67,6 +70,7 @@ export default function ProblemsPage() {
           if (!cancelled) {
             setProblems(res.data?.issues || [])
             setPages(res.data?.pagination?.pages || 1)
+            setHasLoadedOnce(true)
           }
         }
       } finally {
@@ -75,7 +79,7 @@ export default function ProblemsPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [selectedMunicipality?.id, statusFilter, categoryFilter, tab, page])
+  }, [selectedMunicipality?.id, statusFilter, categoryFilter, tab, page, hasLoadedOnce])
 
   const filtered = useMemo(() => {
     if (statusFilter === 'all') return problems
@@ -146,7 +150,8 @@ export default function ProblemsPage() {
         </div>
       </Card>
 
-      {loading ? (
+      {/* Only show skeleton on first load */}
+      {loading && !hasLoadedOnce ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton-card h-40" />

@@ -8,6 +8,8 @@ import { useAppStore } from '@/lib/store'
 import Stepper from '@/components/ui/Stepper'
 import FileUploader from '@/components/ui/FileUploader'
 import { EmptyState } from '@munlink/ui'
+import ProvinceSelect from '@/components/ProvinceSelect'
+import MunicipalitySelect from '@/components/MunicipalitySelect'
 // pickup location is tied to resident profile; no remote fetch needed
 
 type DocType = {
@@ -22,11 +24,15 @@ type DocType = {
 
 export default function DocumentsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
+  const selectedProvince = useAppStore((s) => s.selectedProvince)
   const user = useAppStore((s) => s.user)
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
   const [types, setTypes] = useState<DocType[]>([])
+  // Track if we've ever loaded data (for first-load-only skeleton)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null)
@@ -48,10 +54,14 @@ export default function DocumentsPage() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      setLoading(true)
+      // Only show loading skeleton on first load
+      if (!hasLoadedOnce) setLoading(true)
       try {
         const res = await documentsApi.getTypes()
-        if (!cancelled) setTypes(res.data?.types || [])
+        if (!cancelled) {
+          setTypes(res.data?.types || [])
+          setHasLoadedOnce(true)
+        }
       } catch {
         if (!cancelled) setTypes([])
       } finally {
@@ -60,7 +70,7 @@ export default function DocumentsPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [])
+  }, [hasLoadedOnce])
 
   // Load my requests when tab=requests
   useEffect(() => {
@@ -109,6 +119,36 @@ export default function DocumentsPage() {
         <h1 className="text-fluid-3xl font-serif font-semibold text-gray-900">Documents</h1>
         <p className="text-sm text-gray-600">Request documents for your selected municipality.</p>
       </div>
+
+      {/* Location Selection - Only show for logged-in users if no province/municipality selected */}
+      {isAuthenticated && (!selectedProvince || !selectedMunicipality) && (
+        <div className="bg-white rounded-xl border p-4 mb-6">
+          <h2 className="text-lg font-semibold mb-3">Select Location</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Select a province and municipality to view documents for that area. Your requests will be submitted to your registered municipality.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Province:</label>
+              <ProvinceSelect />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Municipality:</label>
+              <MunicipalitySelect />
+            </div>
+          </div>
+          {!selectedProvince && (
+            <div className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <strong>Step 1:</strong> Select a province first. This will enable municipality selection.
+            </div>
+          )}
+          {selectedProvince && !selectedMunicipality && (
+            <div className="mt-3 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <strong>Step 2:</strong> Now select a municipality from the dropdown above.
+            </div>
+          )}
+        </div>
+      )}
       { (searchParams.get('tab') || '').toLowerCase() === 'requests' && (
         <div className="bg-white rounded-xl border p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
@@ -149,7 +189,8 @@ export default function DocumentsPage() {
           You are viewing {selectedMunicipality?.name}. Actions are limited to your registered municipality{userMunicipalityName?`: ${userMunicipalityName}`:'.'}
         </div>
       )}
-      {loading ? (
+      {/* Only show skeleton on first load */}
+      {loading && !hasLoadedOnce ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="skeleton-card">
@@ -201,11 +242,27 @@ export default function DocumentsPage() {
                   ))}
                 </div>
                 <div className="mt-6 flex justify-end">
-                  <button className="btn-primary inline-flex items-center gap-2" onClick={() => setStep(2)} disabled={!selectedTypeId}>
-                    <span>Continue</span>
-                    <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                  </button>
+                  <GatedAction
+                    required="fullyVerified"
+                    onAllowed={() => {
+                      if (!selectedTypeId) return
+                      if (isAuthenticated && !selectedMunicipality) return
+                      setStep(2)
+                    }}
+                    featureDescription="Request a document from your municipality"
+                  >
+                    <button 
+                      className="btn-primary inline-flex items-center gap-2" 
+                      disabled={isAuthenticated && (!selectedTypeId || !selectedMunicipality)}
+                    >
+                      <span>Continue</span>
+                      <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                  </GatedAction>
                 </div>
+                {isAuthenticated && !selectedMunicipality && (
+                  <div className="mt-2 text-xs text-amber-700 text-right">Please select a municipality above to continue.</div>
+                )}
               </div>
             )}
 
@@ -213,10 +270,22 @@ export default function DocumentsPage() {
             {step === 2 && (
               <div>
                 <h2 className="text-xl font-bold mb-4">Request Details</h2>
+                {(!selectedProvince || !selectedMunicipality) && (
+                  <div className="mb-4 p-3 rounded-lg border border-red-300 bg-red-50 text-sm text-red-900">
+                    <strong>Location Required:</strong> Please select a province and municipality using the selectors at the top of this page before continuing.
+                  </div>
+                )}
                 <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">Municipality</label>
-                    <input className="input-field" value={selectedMunicipality?.name || ''} disabled title={(user as any)?.municipality_id && selectedMunicipality?.id && (user as any).municipality_id !== selectedMunicipality.id ? 'Viewing other municipality. Submissions go to your registered municipality.' : ''} />
+                    {selectedMunicipality ? (
+                      <input className="input-field" value={selectedMunicipality.name} disabled title={(user as any)?.municipality_id && selectedMunicipality?.id && (user as any).municipality_id !== selectedMunicipality.id ? 'Viewing other municipality. Submissions go to your registered municipality.' : ''} />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input className="input-field flex-1" value="" placeholder="No municipality selected" disabled />
+                        <MunicipalitySelect />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Delivery Method</label>
@@ -271,7 +340,7 @@ export default function DocumentsPage() {
                     <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                     <span>Back</span>
                   </button>
-                  <button className="btn btn-primary w-full xs:w-auto inline-flex items-center gap-2" onClick={() => setStep(3)} disabled={!canSubmit || isMismatch}>
+                  <button className="btn btn-primary w-full xs:w-auto inline-flex items-center gap-2" onClick={() => setStep(3)} disabled={!canSubmit || isMismatch || !selectedMunicipality}>
                     <span>Continue</span>
                     <ArrowRight className="w-4 h-4" aria-hidden="true" />
                   </button>

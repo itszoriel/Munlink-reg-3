@@ -28,6 +28,8 @@ export default function MarketplacePage() {
   const [category, setCategory] = useState<string>('All')
   const [type, setType] = useState<typeof TYPES[number]>('All')
   const [items, setItems] = useState<Item[]>([])
+  // Track if we've ever loaded data (for first-load-only skeleton)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [loading, setLoading] = useState<boolean>(true)
   const [creatingTxId, setCreatingTxId] = useState<number | null>(null)
   const [myPending, setMyPending] = useState<Record<number, string>>({})
@@ -45,10 +47,14 @@ export default function MarketplacePage() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      setLoading(true)
+      // Only show loading skeleton on first load
+      if (!hasLoadedOnce) setLoading(true)
       try {
         const res = await marketplaceApi.getItems(params)
-        if (!cancelled) setItems(res.data?.items || [])
+        if (!cancelled) {
+          setItems(res.data?.items || [])
+          setHasLoadedOnce(true)
+        }
         // Also load my transactions to reflect requested state (only if authenticated)
         try {
           if (isAuthenticated) {
@@ -71,7 +77,7 @@ export default function MarketplacePage() {
     }
     load()
     return () => { cancelled = true }
-  }, [params])
+  }, [params, hasLoadedOnce])
 
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -81,8 +87,11 @@ export default function MarketplacePage() {
 
   return (
     <div className="container-responsive py-12">
-      <div className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-3 mb-8">
-        <h1 className="text-fluid-3xl font-serif font-semibold">Marketplace</h1>
+      <div className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-3 mb-6">
+        <div>
+          <h1 className="text-fluid-3xl font-serif font-semibold">Marketplace</h1>
+          <p className="text-gray-600 text-sm mt-1">Buy, sell, donate, or lend items within your community. Connect with fellow residents for local transactions.</p>
+        </div>
         <div className="w-full xs:w-auto min-w-[140px]">
           {/* Desktop: Regular button */}
           <GatedAction
@@ -105,7 +114,7 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 xs:grid-cols-2 gap-3">
+      <div className="mb-6 grid grid-cols-2 gap-3">
         <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value)}>
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>{c}</option>
@@ -119,7 +128,8 @@ export default function MarketplacePage() {
         </select>
       </div>
 
-      {loading ? (
+      {/* Only show skeleton on first load; keep existing data visible during filter changes */}
+      {loading && !hasLoadedOnce ? (
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="skeleton-card">
