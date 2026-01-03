@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Update database schema for MunLink Zambales
+Update database schema for MunLink Region 3
 This script adds missing columns to existing tables
 """
 
@@ -18,7 +18,7 @@ from apps.api import db
 
 def update_database():
     """Add missing columns to existing tables"""
-    print("Updating MunLink Zambales database...")
+    print("Updating MunLink Region 3 database...")
 
     try:
         # Create Flask app

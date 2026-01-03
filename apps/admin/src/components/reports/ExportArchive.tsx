@@ -7,9 +7,9 @@ export default function ExportArchive({ defaultRange, onRangeChange }: { default
   const [lastArchiveUrl, setLastArchiveUrl] = useState<string>('')
   const entities: Array<{ key: any; label: string; desc: string }> = [
     { key: 'users', label: 'Users', desc: 'All residents in your municipality' },
-    { key: 'benefits', label: 'Benefits', desc: 'Active benefits and programs' },
+    { key: 'benefits', label: 'Programs', desc: 'Active programs with benefits' },
     { key: 'requests', label: 'Document Requests', desc: 'Requests in selected range' },
-    { key: 'issues', label: 'Issues', desc: 'Reported issues' },
+    { key: 'issues', label: 'Problems', desc: 'Reported problems in municipality' },
     { key: 'items', label: 'Marketplace Items', desc: 'Uploaded items' },
     { key: 'announcements', label: 'Announcements', desc: 'Published announcements' },
   ]
@@ -87,8 +87,8 @@ export default function ExportArchive({ defaultRange, onRangeChange }: { default
               <option value="announcements">Announcements</option>
               <option value="requests">Document Requests</option>
               <option value="users" disabled>Users (disabled)</option>
-              <option value="benefits" disabled>Benefits (soon)</option>
-              <option value="issues" disabled>Issues (soon)</option>
+              <option value="benefits" disabled>Programs (soon)</option>
+              <option value="issues" disabled>Problems (soon)</option>
               <option value="items" disabled>Items (soon)</option>
             </select>
           </div>

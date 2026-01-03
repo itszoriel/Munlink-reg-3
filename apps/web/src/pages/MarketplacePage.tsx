@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import GatedAction from '@/components/GatedAction'
 import { marketplaceApi, mediaUrl, showToast } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { EmptyState } from '@munlink/ui'
 
 type Item = {
   id: number
@@ -223,7 +224,24 @@ export default function MarketplacePage() {
             </div>
           ))}
           {items.length === 0 && (
-            <div className="col-span-full text-center text-gray-600">No items found.</div>
+            <div className="col-span-full">
+              <EmptyState
+                icon="cart"
+                title={category !== 'All' || type !== 'All' ? "No items match your filters" : "No items available"}
+                description={category !== 'All' || type !== 'All' 
+                  ? "Try adjusting your category or type filters." 
+                  : "Be the first to post an item in the marketplace!"
+                }
+                action={category !== 'All' || type !== 'All' ? (
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => { setCategory('All'); setType('All') }}
+                  >
+                    Clear Filters
+                  </button>
+                ) : undefined}
+              />
+            </div>
           )}
         </div>
       )}

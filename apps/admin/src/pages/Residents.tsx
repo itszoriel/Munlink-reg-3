@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { handleApiError, userApi, mediaUrl, transferAdminApi, showToast, municipalitiesApi } from '../lib/api'
 import { useLocation } from 'react-router-dom'
 import { useAdminStore } from '../lib/store'
-import { DataTable, Modal, Button } from '@munlink/ui'
+import { DataTable, Modal, Button, EmptyState } from '@munlink/ui'
 import { X, Check, RotateCcw, Pause, ExternalLink, Hourglass } from 'lucide-react'
 import TransferRequestCard from '../components/transfers/TransferRequestCard'
 import TransferRequestModal from '../components/transfers/TransferRequestModal'
@@ -323,7 +323,14 @@ export default function Residents() {
             {loadingTransfers ? (
               <div className="text-sm text-neutral-600">Loading transfers…</div>
             ) : transfers.length === 0 ? (
-              <div className="text-sm text-neutral-600">No transfer requests.</div>
+              <EmptyState
+                icon="users"
+                title={transferStatus !== 'all' ? "No transfers match this status" : "No transfer requests"}
+                description={transferStatus !== 'all' ? "Try selecting a different status filter." : "Residents haven't submitted any municipality transfer requests yet."}
+                action={transferStatus !== 'all' ? (
+                  <button className="btn btn-secondary" onClick={() => { setTransferStatus('all') }}>Clear Filter</button>
+                ) : undefined}
+              />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {transfers.map((t: any) => {

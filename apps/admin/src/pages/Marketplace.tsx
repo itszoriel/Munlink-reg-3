@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { adminApi, handleApiError, marketplaceApi, mediaUrl, showToast, transactionsAdminApi, userApi } from '../lib/api'
 import { useAdminStore } from '../lib/store'
 import { ShoppingBag, Hourglass, CheckCircle, XCircle, Store, BadgeDollarSign, Handshake, Gift, Check, X } from 'lucide-react'
+import { EmptyState } from '@munlink/ui'
 
 export default function Marketplace() {
   const [tab, setTab] = useState<'items' | 'transactions'>('items')
@@ -252,7 +253,16 @@ export default function Marketplace() {
           </div>
         ))}
         {!loading && filtered.length === 0 && (
-          <div className="col-span-full text-center text-neutral-600 py-10">No items yet.</div>
+          <div className="col-span-full">
+            <EmptyState
+              icon="cart"
+              title={filter !== 'all' || statusFilter !== 'pending' ? "No items match your filters" : "No pending items"}
+              description={filter !== 'all' || statusFilter !== 'pending' ? "Try adjusting your category or status filters." : "No marketplace items are awaiting review."}
+              action={filter !== 'all' || statusFilter !== 'pending' ? (
+                <button className="btn btn-secondary" onClick={() => { setFilter('all'); setStatusFilter('pending') }}>Reset Filters</button>
+              ) : undefined}
+            />
+          </div>
         )}
       </div>
       )}
@@ -323,7 +333,16 @@ export default function Marketplace() {
                   ))}
                 </tbody>
               </table>
-              {txRows.length === 0 && <div className="text-sm text-gray-600 mt-4">No transactions found.</div>}
+              {txRows.length === 0 && (
+                <div className="mt-4">
+                  <EmptyState
+                    icon="cart"
+                    title={txStatus ? "No transactions match this status" : "No transactions yet"}
+                    description={txStatus ? "Try selecting a different status." : "Marketplace transactions will appear here."}
+                    compact
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

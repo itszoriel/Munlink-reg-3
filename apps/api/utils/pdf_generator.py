@@ -90,6 +90,9 @@ def _load_barangay_officials() -> Dict[str, Dict[str, str]]:
 def _resolve_logo_paths(municipality_name: str, province_slug: str | None = None) -> Tuple[Path | None, Path | None]:
     """Return (municipal_logo, province_logo) if available.
 
+    Logo structure (preferred):
+      public/logos/municipalities/{province_slug}/{municipality_slug}/*seal*.png
+    
     Province logo is resolved from Region 3 province seals under:
       public/logos/provinces/{province_slug}.png
     """
@@ -99,39 +102,54 @@ def _resolve_logo_paths(municipality_name: str, province_slug: str | None = None
     prov_dir = repo_root / "public" / "logos" / "provinces"
 
     slug = _slugify(municipality_name)
-    # Try flat structure first (files directly in municipalities/)
-    candidates = [
-        mun_dir / f"{municipality_name}.png",
-        mun_dir / f"{municipality_name}.jpg",
-        mun_dir / f"{slug}.png",
-        mun_dir / f"{slug}.jpg",
-    ]
-    mun_logo = next((p for p in candidates if p.exists()), None)
+    mun_logo: Path | None = None
     
-    # Try nested structure (municipalities/MunicipalityName/*.png)
+    # Helper to find seal in a directory
+    def find_seal_in_dir(folder: Path) -> Path | None:
+        if not folder.exists() or not folder.is_dir():
+            return None
+        # Priority: files with 'seal' or 'logo' in name
+        seal_patterns = ['*seal*.png', '*Seal*.png', '*logo*.png', '*Logo*.png']
+        for pattern in seal_patterns:
+            matches = sorted(folder.glob(pattern))
+            if matches:
+                return matches[0]
+        # Fallback: any png/jpg
+        for ext in ['*.png', '*.jpg']:
+            matches = sorted(folder.glob(ext))
+            if matches:
+                return matches[0]
+        return None
+    
+    # PRIORITY 1: New province-based structure: municipalities/{province_slug}/{municipality_slug}/
+    if province_slug and mun_dir.exists():
+        province_mun_dir = mun_dir / province_slug
+        if province_mun_dir.exists():
+            for folder_variant in [slug, municipality_name.lower().replace(' ', '-'), municipality_name.lower().replace(' ', '_')]:
+                nested = province_mun_dir / folder_variant
+                mun_logo = find_seal_in_dir(nested)
+                if mun_logo:
+                    break
+    
+    # PRIORITY 2: Old flat structure: municipalities/{MunicipalityName}/
     if not mun_logo and mun_dir.exists():
-        for folder_variant in [municipality_name, slug, municipality_name.replace(' ', '')]:
+        for folder_variant in [municipality_name, slug, municipality_name.replace(' ', ''), municipality_name.replace(' ', '-')]:
             nested = mun_dir / folder_variant
-            if nested.exists() and nested.is_dir():
-                # Look for seal files first, then any png/jpg
-                seal_patterns = ['*seal*.png', '*Seal*.png', '*logo*.png', '*Logo*.png']
-                for pattern in seal_patterns:
-                    matches = sorted(nested.glob(pattern))
-                    if matches:
-                        mun_logo = matches[0]
-                        break
-                if mun_logo:
-                    break
-                # Fallback: any png/jpg in folder
-                for ext in ['*.png', '*.jpg']:
-                    matches = sorted(nested.glob(ext))
-                    if matches:
-                        mun_logo = matches[0]
-                        break
-                if mun_logo:
-                    break
+            mun_logo = find_seal_in_dir(nested)
+            if mun_logo:
+                break
     
-    # Final fallback: first png in flat dir matching slug fragment
+    # PRIORITY 3: Flat files directly in municipalities/
+    if not mun_logo:
+        candidates = [
+            mun_dir / f"{municipality_name}.png",
+            mun_dir / f"{municipality_name}.jpg",
+            mun_dir / f"{slug}.png",
+            mun_dir / f"{slug}.jpg",
+        ]
+        mun_logo = next((p for p in candidates if p.exists()), None)
+    
+    # PRIORITY 4: Final fallback - search for matching filename
     if not mun_logo and mun_dir.exists():
         try:
             for p in sorted(mun_dir.glob("*.png")):

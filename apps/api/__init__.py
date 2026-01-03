@@ -1,5 +1,5 @@
 """
-MunLink Zambales API Package
+MunLink Region 3 API Package
 """
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate

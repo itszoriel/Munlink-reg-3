@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Users, Building, Heart, Shield, Globe, ArrowRight, Mail, Phone, Bug, Info, ChevronDown } from 'lucide-react';
 
 // Province data with their municipalities and capitals
@@ -66,32 +67,56 @@ const About: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-ocean-600 to-ocean-800 py-20 relative overflow-hidden">
+      <section className="py-20 relative overflow-hidden">
+        <img
+          src="/assets/about.jpg"
+          alt="About MunLink"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/30" />
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-64 h-64 bg-white rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-white rounded-full blur-3xl" />
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center">
-            <div className="flex justify-center gap-3 mb-8 flex-wrap">
-              {provinces.map((province) => (
-                <img
+            <motion.div 
+              className="flex justify-center gap-3 mb-8 flex-wrap"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              {provinces.map((province, idx) => (
+                <motion.img
                   key={province}
                   src={`/logos/provinces/${province.toLowerCase().replace(/\s+/g, '-')}.png`}
                   alt={`${province} Seal`}
                   className="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-full bg-white/10 p-1"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                 />
               ))}
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              About MunLink Region 3
-            </h1>
-            <p className="text-xl text-ocean-100 max-w-3xl mx-auto">
+            </motion.div>
+            <motion.h1 
+              className="text-4xl md:text-5xl font-serif font-bold text-white mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              About MunLink Region III
+            </motion.h1>
+            <motion.p 
+              className="text-xl text-white/90 max-w-3xl mx-auto drop-shadow-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
               A comprehensive digital governance platform connecting all {provinces.length} provinces 
-              and {totalMunicipalities}+ municipalities of Central Luzon for seamless municipal services 
-              and community engagement.
-            </p>
+              and {totalMunicipalities} local government units (municipalities and cities) of Central Luzon 
+              for seamless municipal services and community engagement.
+            </motion.p>
           </div>
         </div>
       </section>
@@ -105,16 +130,16 @@ const About: React.FC = () => {
               <div className="text-gray-600">Provinces</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-ocean-600">{totalMunicipalities}+</div>
-              <div className="text-gray-600">Municipalities</div>
+              <div className="text-3xl md:text-4xl font-bold text-ocean-600">{totalMunicipalities}</div>
+              <div className="text-gray-600">Local Government Units</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-ocean-600">12M+</div>
-              <div className="text-gray-600">Residents Served</div>
+              <div className="text-3xl md:text-4xl font-bold text-ocean-600">4</div>
+              <div className="text-gray-600">Service Categories</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-ocean-600">24/7</div>
-              <div className="text-gray-600">Online Access</div>
+              <div className="text-3xl md:text-4xl font-bold text-ocean-600">1</div>
+              <div className="text-gray-600">Unified Platform</div>
             </div>
           </div>
         </div>

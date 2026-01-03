@@ -25,7 +25,7 @@ def main() -> int:
         except Exception:
             from utils.email_sender import send_generic_email
 
-        subj = f"{app.config.get('APP_NAME', 'MunLink Zambales')} SMTP Test"
+        subj = f"{app.config.get('APP_NAME', 'MunLink Region 3')} SMTP Test"
         body = (
             "This is a test email to confirm SMTP configuration.\n\n"
             f"From: {app.config.get('FROM_EMAIL')}\n"

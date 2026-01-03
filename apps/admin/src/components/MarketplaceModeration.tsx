@@ -1,5 +1,5 @@
 /**
- * MunLink Zambales - Marketplace Moderation Component
+ * MunLink Region 3 - Marketplace Moderation Component
  * Component for moderating marketplace listings
  */
 import { useState, useEffect } from 'react'

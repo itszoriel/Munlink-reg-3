@@ -1,5 +1,5 @@
 """
-MunLink Zambales - Announcement Model
+MunLink Region 3 - Announcement Model
 Database model for municipality announcements
 """
 try:

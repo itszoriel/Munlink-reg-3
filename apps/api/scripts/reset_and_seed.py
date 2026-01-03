@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Reset and seed the MunLink Zambales database while preserving municipalities and barangays.
+Reset and seed the MunLink Region 3 database while preserving municipalities and barangays.
 
 Features:
 - Backup existing SQLite DB file
@@ -349,7 +349,7 @@ def seed_distinct_benefits(per_muni: int = 3):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Reset and seed MunLink Zambales database (preserve municipalities and barangays).')
+    parser = argparse.ArgumentParser(description='Reset and seed MunLink Region 3 database (preserve municipalities and barangays).')
     parser.add_argument('--confirm', action='store_true', help='Confirm destructive reset of non-geo tables')
     parser.add_argument('--admins', choices=['from-file', 'none'], default='from-file', help='Create admin users from file or skip')
     parser.add_argument('--admins-file', default=os.path.join(PROJECT_ROOT, 'data', 'admins_gmails.txt'), help='Path to Markdown admins table file')
@@ -359,7 +359,7 @@ def main():
     app = create_app()
     with app.app_context():
         print("\n" + "=" * 64)
-        print("MUNLINK ZAMBALES - RESET AND SEED (PRESERVE MUNICIPALITIES)")
+        print("MUNLINK REGION 3 - RESET AND SEED (PRESERVE MUNICIPALITIES)")
         print("=" * 64 + "\n")
 
         # Safety confirmation

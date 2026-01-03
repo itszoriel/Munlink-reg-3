@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { issueApi, handleApiError, mediaUrl } from '../lib/api'
+import { EmptyState } from '@munlink/ui'
 
 type Problem = {
   id: number
@@ -74,6 +75,18 @@ export default function Problems() {
             <div className="px-6 py-6">
               <div className="h-6 w-40 skeleton rounded mb-4" />
               <div className="space-y-2">{[...Array(5)].map((_, i) => (<div key={i} className="h-16 skeleton rounded" />))}</div>
+            </div>
+          )}
+          {!loading && items.length === 0 && (
+            <div className="px-6 py-6">
+              <EmptyState
+                icon="alert"
+                title={status !== 'all' ? "No problems match this filter" : "No problems reported"}
+                description={status !== 'all' ? "Try selecting a different status filter." : "Residents haven't reported any problems yet."}
+                action={status !== 'all' ? (
+                  <button className="btn btn-secondary" onClick={() => setStatus('all')}>Clear Filter</button>
+                ) : undefined}
+              />
             </div>
           )}
           {!loading && items.map((it) => (

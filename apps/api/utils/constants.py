@@ -1,5 +1,5 @@
 """
-MunLink Zambales - Constants
+MunLink Region 3 - Constants
 Application-wide constants
 """
 

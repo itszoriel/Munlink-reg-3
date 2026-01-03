@@ -7,6 +7,7 @@ import { documentsApi } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import Stepper from '@/components/ui/Stepper'
 import FileUploader from '@/components/ui/FileUploader'
+import { EmptyState } from '@munlink/ui'
 // pickup location is tied to resident profile; no remote fetch needed
 
 type DocType = {
@@ -117,7 +118,12 @@ export default function DocumentsPage() {
           {loadingMy ? (
             <div className="text-sm text-gray-600">Loading…</div>
           ) : myRequests.length === 0 ? (
-            <div className="text-sm text-gray-600">You have no document requests yet.</div>
+            <EmptyState
+              icon="document"
+              title="No requests yet"
+              description="You haven't submitted any document requests. Start by selecting a document type."
+              compact
+            />
           ) : (
             <div className="space-y-2">
               {myRequests.map((r: any) => (

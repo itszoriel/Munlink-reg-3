@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { authApi } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { Eye, EyeOff, User, Lock, MapPin, Users, FileText, ShoppingBag } from 'lucide-react'
@@ -50,7 +51,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-ocean-600 via-ocean-700 to-ocean-900">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+        <img
+          src="/assets/resident_login.jpg"
+          alt="MunLink Login"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/20 to-black/30" />
         {/* Animated background elements */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 -left-20 w-96 h-96 bg-ocean-400/20 rounded-full blur-3xl animate-pulse" />
@@ -61,42 +68,72 @@ export default function LoginPage() {
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-16 w-full">
           {/* Province seals */}
-          <div className="flex items-center gap-2 mb-8">
+          <motion.div 
+            className="flex items-center gap-2 mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
             {provinces.map((province, i) => (
-              <img
+              <motion.img
                 key={province}
                 src={`/logos/provinces/${province}.png`}
                 alt={`${province} Seal`}
                 className="h-10 w-10 object-contain opacity-90 hover:opacity-100 hover:scale-110 transition-all"
-                style={{ animationDelay: `${i * 100}ms` }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
               />
             ))}
-          </div>
+          </motion.div>
 
-          <h1 className="text-4xl xl:text-5xl font-serif font-bold text-white mb-4">
+          <motion.h1 
+            className="text-4xl xl:text-5xl font-serif font-bold text-white mb-4 drop-shadow-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             MunLink
-          </h1>
-          <p className="text-xl text-ocean-100 mb-2">
+          </motion.h1>
+          <motion.p 
+            className="text-xl text-white/90 mb-2 drop-shadow"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
             Region 3 — Central Luzon
-          </p>
-          <p className="text-ocean-200 max-w-md mb-10">
-            Connecting residents with government services across 7 provinces and 130+ municipalities.
-          </p>
+          </motion.p>
+          <motion.p 
+            className="text-white/80 max-w-md mb-10 drop-shadow"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            Connecting residents with government services across 7 provinces and 129 local government units.
+          </motion.p>
 
           {/* Feature grid */}
-          <div className="grid grid-cols-2 gap-4 max-w-md">
+          <motion.div 
+            className="grid grid-cols-2 gap-4 max-w-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
             {features.map((feature, i) => (
-              <div
+              <motion.div
                 key={i}
                 className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-colors"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, delay: 0.6 + i * 0.1 }}
               >
-                <feature.icon className="w-6 h-6 text-ocean-200 mb-2" />
+                <feature.icon className="w-6 h-6 text-white/90 mb-2" />
                 <div className="text-white font-medium text-sm">{feature.label}</div>
-                <div className="text-ocean-200 text-xs">{feature.desc}</div>
-              </div>
+                <div className="text-white/70 text-xs">{feature.desc}</div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </div>
 
@@ -213,7 +250,15 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-xs text-gray-400 mt-6">
-            By signing in, you agree to MunLink's Terms of Service and Privacy Policy.
+            By signing in, you agree to MunLink's{' '}
+            <Link to="/terms-of-service" state={{ from: '/login' }} className="text-ocean-600 hover:text-ocean-700 underline">
+              Terms of Service
+            </Link>
+            {' '}and{' '}
+            <Link to="/privacy-policy" state={{ from: '/login' }} className="text-ocean-600 hover:text-ocean-700 underline">
+              Privacy Policy
+            </Link>
+            .
           </p>
         </div>
       </div>

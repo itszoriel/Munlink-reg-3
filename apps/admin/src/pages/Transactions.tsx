@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { transactionsAdminApi } from '@/lib/api'
+import { EmptyState } from '@munlink/ui'
 
 export default function TransactionsPage() {
   const [rows, setRows] = useState<any[]>([])
@@ -77,7 +78,16 @@ export default function TransactionsPage() {
               ))}
             </tbody>
           </table>
-          {rows.length === 0 && <div className="text-sm text-gray-600 mt-4">No transactions found.</div>}
+          {rows.length === 0 && (
+            <div className="mt-4">
+              <EmptyState
+                icon="cart"
+                title={status ? "No transactions match this status" : "No transactions yet"}
+                description={status ? "Try selecting a different status filter." : "Marketplace transactions will appear here."}
+                compact
+              />
+            </div>
+          )}
         </div>
       )}
       {selected && (

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Inspect and list current MunLink Zambales database contents.
+Inspect and list current MunLink Region 3 database contents.
 
 Outputs:
 - Municipalities (id, name, slug, barangays_count)
@@ -45,7 +45,7 @@ def main():
     app = create_app()
     with app.app_context():
         print("\n" + "=" * 64)
-        print("MUNLINK ZAMBALES - DATABASE INSPECTION")
+        print("MUNLINK REGION 3 - DATABASE INSPECTION")
         print("=" * 64 + "\n")
 
         # Municipalities

@@ -1,34 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useAppStore, type Municipality } from '@/lib/store'
-import { municipalityApi } from '@/lib/api'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useAppStore } from '@/lib/store'
+import { getMunicipalities } from '@/lib/locations'
+
+// Custom event to close other location dropdowns (same as ProvinceSelect)
+const CLOSE_LOCATION_DROPDOWNS = 'munlink:closeLocationDropdowns'
 
 export default function MunicipalitySelect() {
   const selected = useAppStore((s) => s.selectedMunicipality)
   const selectedProvince = useAppStore((s) => s.selectedProvince)
   const setMunicipality = useAppStore((s) => s.setMunicipality)
-  const [municipalities, setMunicipalities] = useState<Municipality[]>([])
-  const [loading, setLoading] = useState(true)
+  // Use static data - no API call needed, instant load
+  const municipalities = useMemo(
+    () => getMunicipalities(selectedProvince?.id),
+    [selectedProvince?.id]
+  )
   const [query, setQuery] = useState('')
-  const detailsRef = useRef<HTMLDetailsElement>(null)
-
-  useEffect(() => {
-    const loadMunicipalities = async () => {
-      setLoading(true)
-      try {
-        const params = selectedProvince ? { province_id: selectedProvince.id } : {}
-        const response = await municipalityApi.getAll(params)
-        const data = response?.data
-        const list = Array.isArray(data?.municipalities) ? data.municipalities : []
-        setMunicipalities(list)
-      } catch (error) {
-        console.error('Failed to load municipalities:', error)
-        setMunicipalities([])
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadMunicipalities()
-  }, [selectedProvince])
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('munlink:selectedMunicipality')
@@ -43,25 +31,75 @@ export default function MunicipalitySelect() {
     if (selected) localStorage.setItem('munlink:selectedMunicipality', JSON.stringify(selected))
   }, [selected])
 
+  // Close this dropdown when another location dropdown opens
+  useEffect(() => {
+    const handleCloseOthers = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.source !== 'municipality') {
+        setIsOpen(false)
+      }
+    }
+    window.addEventListener(CLOSE_LOCATION_DROPDOWNS, handleCloseOthers)
+    return () => window.removeEventListener(CLOSE_LOCATION_DROPDOWNS, handleCloseOthers)
+  }, [])
+
+  // Close on click outside
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen])
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false)
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen])
+
+  const handleToggle = useCallback(() => {
+    const newState = !isOpen
+    if (newState) {
+      // Dispatch event to close other dropdowns
+      window.dispatchEvent(new CustomEvent(CLOSE_LOCATION_DROPDOWNS, { detail: { source: 'municipality' } }))
+    }
+    setIsOpen(newState)
+  }, [isOpen])
+
+  const handleSelect = useCallback((m: typeof municipalities[0]) => {
+    setMunicipality(m)
+    setIsOpen(false)
+  }, [setMunicipality])
+
   const filtered = useMemo(() =>
     municipalities.filter(m => m.name.toLowerCase().includes(query.toLowerCase())),
     [municipalities, query]
   )
-
-  if (loading) {
-    return <span className="text-sm text-gray-400 font-serif">Loading...</span>
-  }
 
   if (!selectedProvince) {
     return <span className="text-sm text-gray-400 font-serif cursor-not-allowed" title="Select a province first">Municipality ▾</span>
   }
 
   return (
-    <div className="relative">
-      <details ref={detailsRef} className="group">
-        <summary className="list-none cursor-pointer select-none hover:text-ocean-700 font-serif whitespace-nowrap">
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="cursor-pointer select-none hover:text-ocean-700 font-serif whitespace-nowrap"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
           {selected ? selected.name : 'Municipality'} ▾
-        </summary>
+      </button>
+      {isOpen && (
         <div className="absolute right-0 mt-3 w-64 bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 p-2 z-50">
           <input
             type="text"
@@ -69,13 +107,16 @@ export default function MunicipalitySelect() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="input-field mb-2"
+            autoFocus
           />
-          <ul className="max-h-64 overflow-auto">
+          <ul className="max-h-64 overflow-auto" role="listbox">
             {filtered.map(m => (
-              <li key={m.id}>
+              <li key={m.id} role="option" aria-selected={selected?.id === m.id}>
                 <button
-                  onClick={() => { setMunicipality(m); try { if (detailsRef.current) detailsRef.current.open = false } catch {} }}
-                  className="w-full text-left px-3 py-2 rounded hover:bg-ocean-50"
+                  onClick={() => handleSelect(m)}
+                  className={`w-full text-left px-3 py-2 rounded hover:bg-ocean-50 ${
+                    selected?.id === m.id ? 'bg-ocean-100 font-medium' : ''
+                  }`}
                 >
                   {m.name}
                 </button>
@@ -86,9 +127,7 @@ export default function MunicipalitySelect() {
             )}
           </ul>
         </div>
-      </details>
+      )}
     </div>
   )
 }
-
-

@@ -1,9 +1,10 @@
 /**
- * MunLink Zambales - Issue Management Component
+ * MunLink Region 3 - Issue Management Component
  * Component for managing and responding to issues
  */
 import { useState, useEffect } from 'react'
 import { issueApi, handleApiError } from '../lib/api'
+import { EmptyState } from '@munlink/ui'
 
 interface Issue {
   id: number
@@ -277,15 +278,11 @@ export default function IssueManagement({ onIssueUpdated }: IssueManagementProps
       </div>
 
       {issues.length === 0 && (
-        <div className="text-center py-8">
-          <div className="text-gray-400 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No issues found</h3>
-          <p className="text-gray-500">No issues match your current filters.</p>
-        </div>
+        <EmptyState
+          icon="alert"
+          title="No issues found"
+          description="No issues match your current filters. Try adjusting the status or category filter."
+        />
       )}
 
       {/* Issue Detail Modal */}

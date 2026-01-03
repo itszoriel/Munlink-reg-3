@@ -17,7 +17,7 @@ import bcrypt
 def create_admin():
     """Create a municipal admin user interactively."""
     print("\n" + "="*50)
-    print("MUNLINK ZAMBALES - CREATE ADMIN USER")
+    print("MUNLINK REGION 3 - CREATE ADMIN USER")
     print("="*50 + "\n")
     
     # List municipalities
@@ -131,7 +131,7 @@ def create_admin():
 def create_admin_batch():
     """Create admin users from admins_gmails.txt file."""
     print("\n" + "="*50)
-    print("MUNLINK ZAMBALES - BATCH CREATE ADMIN USERS")
+    print("MUNLINK REGION 3 - BATCH CREATE ADMIN USERS")
     print("="*50 + "\n")
     
     # Read admins file

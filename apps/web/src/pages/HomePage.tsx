@@ -5,6 +5,7 @@ import { useAppStore } from '@/lib/store'
 import { Link } from 'react-router-dom'
 import AnnouncementCard from '@/components/AnnouncementCard'
 import MarketplaceCard from '@/components/MarketplaceCard'
+import { EmptyState } from '@munlink/ui'
 
 // Province seals for Region 3 (use absolute paths from public folder)
 const provinceSeals = [
@@ -34,8 +35,8 @@ export default function HomePage() {
       setLoading(true)
       try {
         const [a, i] = await Promise.allSettled([
-          announcementsApi.getAll({ active: true, page: 1, per_page: 3, municipality_id: selectedMunicipality?.id }),
-          marketplaceApi.getItems({ status: 'available', page: 1, per_page: 4, municipality_id: selectedMunicipality?.id })
+          announcementsApi.getAll({ active: true, page: 1, per_page: 2, municipality_id: selectedMunicipality?.id }),
+          marketplaceApi.getItems({ status: 'available', page: 1, per_page: 2, municipality_id: selectedMunicipality?.id })
         ])
         if (cancelled) return
         if (a.status === 'fulfilled') setRecentAnnouncements(a.value.data?.announcements || [])
@@ -58,11 +59,11 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero with scenic background and provincial seals */}
-      <section className="relative h-[70vh] min-h-[560px] w-full overflow-hidden">
+      <section className="relative w-full min-h-screen h-screen overflow-hidden">
         <img
-          src="/reference/Nature.jpg"
+          src="/assets/hero.jpg"
           alt="Central Luzon scenic"
-          className="absolute inset-0 h-full w-full object-cover scale-110"
+          className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-ocean-900/60 via-ocean-900/40 to-neutral-900/60" />
         
@@ -72,11 +73,11 @@ export default function HomePage() {
             src={displaySeal.src}
             alt={`${displaySeal.name} Seal`}
             className="pointer-events-none select-none absolute inset-0 m-auto h-[50%] w-auto opacity-20 mix-blend-overlay"
-            style={{ filter: 'grayscale(100%)' }}
+            style={{ filter: 'grayscale(100%)', maxWidth: '80%', maxHeight: '50%' }}
           />
         ) : (
           <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-15 mix-blend-overlay">
-            <div className="flex gap-4 md:gap-8">
+            <div className="flex gap-2 sm:gap-4 md:gap-6 lg:gap-8 flex-wrap justify-center px-4">
               {provinceSeals.map((seal, idx) => (
                 <motion.img
                   key={seal.name}
@@ -85,21 +86,21 @@ export default function HomePage() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  className="h-16 sm:h-20 md:h-24 lg:h-28 xl:h-32 w-auto"
-                  style={{ filter: 'grayscale(100%)' }}
+                  className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-24 lg:w-24 xl:h-28 xl:w-28 w-auto"
+                  style={{ filter: 'grayscale(100%)', maxHeight: '20vh' }}
                 />
               ))}
             </div>
           </div>
         )}
         
-        <div className="relative z-10 h-full flex items-center">
-          <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-12">
+        <div className="relative z-10 h-full flex items-center justify-center">
+          <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 md:py-12 lg:py-16">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-white leading-tight tracking-tight font-serif font-semibold drop-shadow text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5rem] 2xl:text-[6rem]"
+              className="text-white leading-tight tracking-tight font-serif font-semibold drop-shadow text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5rem] 2xl:text-[6rem]"
             >
               {selectedProvince ? `Lalawigan ng ${selectedProvince.name}` : 'Region III — Central Luzon'}
             </motion.h1>
@@ -107,9 +108,9 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-white/90 mt-4 max-w-4xl leading-relaxed text-base sm:text-lg md:text-xl lg:text-2xl xl:text-[1.5rem] 2xl:text-[1.75rem]"
+              className="text-white/90 mt-3 sm:mt-4 max-w-4xl leading-relaxed text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl xl:text-[1.5rem] 2xl:text-[1.75rem]"
             >
-              MunLink: Empowering Central Luzon's 7 provinces and 130+ municipalities with modern digital governance solutions.
+              MunLink: Empowering Central Luzon's 7 provinces and 129 local government units (municipalities and cities) with modern digital governance solutions.
             </motion.p>
             
             {/* Province seals showcase row - visible at bottom of hero */}
@@ -176,7 +177,14 @@ export default function HomePage() {
                   />
                 ))}
                 {(!recentAnnouncements || recentAnnouncements.length === 0) && (
-                  <div className="text-sm text-gray-600">No announcements.</div>
+                  <div className="col-span-full">
+                    <EmptyState
+                      icon="announcement"
+                      title="No announcements yet"
+                      description="Check back soon for updates from your municipality."
+                      compact
+                    />
+                  </div>
                 )}
               </div>
             )}
@@ -190,7 +198,7 @@ export default function HomePage() {
             </div>
             {loading ? (
               <div className="grid grid-cols-1 xs:grid-cols-2 gap-5">
-                {Array.from({ length: 4 }).map((_, i) => (
+                {Array.from({ length: 2 }).map((_, i) => (
                   <div key={`market-skel-${i}`} className="skeleton-card">
                     <div className="aspect-[4/3] skeleton-image" />
                     <div className="p-4 space-y-2">
@@ -200,9 +208,16 @@ export default function HomePage() {
                   </div>
                 ))}
               </div>
+            ) : featuredItems.length === 0 ? (
+              <EmptyState
+                icon="cart"
+                title="No marketplace items yet"
+                description="Be the first to post an item in your municipality."
+                compact
+              />
             ) : (
               <div className="grid grid-cols-1 xs:grid-cols-2 gap-5">
-                {(featuredItems.length ? featuredItems : fallbackItems).map((it: any) => (
+                {featuredItems.map((it: any) => (
                   <motion.div key={it.id} initial={{opacity:0,y:8}} whileInView={{opacity:1,y:0}} viewport={{once:true}}>
                     <MarketplaceCard
                       imageUrl={it.images?.[0] ? mediaUrl(it.images[0]) : undefined}
@@ -227,7 +242,7 @@ export default function HomePage() {
             <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3 md:gap-6">
               <div className="flex-1">
                 <h2 className="text-2xl md:text-3xl font-serif font-semibold text-gray-900">Welcome to MunLink Region 3</h2>
-                <p className="text-gray-700 mt-2">Serving 7 provinces and 130+ municipalities across Central Luzon. Browse public announcements and the marketplace. Create an account to post items, request documents, report problems, and more.</p>
+                <p className="text-gray-700 mt-2">Serving 7 provinces and 129 local government units across Central Luzon. Browse public announcements and the marketplace. Create an account to post items, request documents, report problems, and more.</p>
               </div>
               <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3">
                 <Link to="/register" className="btn btn-primary w-full xs:w-auto text-center">Create Account</Link>

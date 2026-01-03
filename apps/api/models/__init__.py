@@ -1,5 +1,5 @@
 """
-MunLink Zambales - Database Models
+MunLink Region 3 - Database Models
 Import all models here for Flask-Migrate to detect them
 """
 try:

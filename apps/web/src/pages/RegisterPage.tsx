@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { authApi, municipalityApi, provinceApi } from '@/lib/api'
-import type { Municipality, Province } from '@/lib/store'
+import { useState, useEffect, useMemo } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { authApi, municipalityApi } from '@/lib/api'
+import { getProvinces, getMunicipalities } from '@/lib/locations'
 
 // Province seals for visual feedback (use absolute paths from public folder)
 const provinceSealMap: Record<string, string> = {
@@ -36,80 +36,24 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [provinces, setProvinces] = useState<Province[]>([])
-  const [municipalities, setMunicipalities] = useState<Municipality[]>([])
   const [barangays, setBarangays] = useState<{ id: number; name: string }[]>([])
-  const [loadingProvinces, setLoadingProvinces] = useState(true)
-  const [loadingMunicipalities, setLoadingMunicipalities] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+
+  // Use static data - instant load, no API call needed!
+  const provinces = useMemo(() => getProvinces(), [])
+  const municipalities = useMemo(
+    () => formData.province ? getMunicipalities(Number(formData.province)) : [],
+    [formData.province]
+  )
 
   // Get the selected province seal
   const selectedProvince = provinces.find(p => p.id === Number(formData.province))
   const provinceSeal = selectedProvince?.slug ? provinceSealMap[selectedProvince.slug] : null
 
-  // Load provinces on component mount with retry for slow API
+  // Reset municipality and barangay when province changes
   useEffect(() => {
-    let cancelled = false
-    const loadProvinces = async (retryCount = 0) => {
-      setLoadingProvinces(true)
-      setError(null)
-      try {
-        console.log(`[RegisterPage] Fetching provinces... (attempt ${retryCount + 1})`)
-        const response = await provinceApi.getAll()
-        if (cancelled) return
-        console.log('[RegisterPage] Province response:', response)
-        const data = response?.data
-        const list = Array.isArray(data?.provinces) ? data.provinces : []
-        console.log('[RegisterPage] Parsed provinces:', list.length, list.map((p: Province) => p.name))
-        if (list.length === 0 && retryCount < 2) {
-          // API might be waking up, retry after delay
-          console.warn('[RegisterPage] No provinces returned, retrying in 2s...')
-          setTimeout(() => !cancelled && loadProvinces(retryCount + 1), 2000)
-          return
-        }
-        setProvinces(list)
-        setLoadingProvinces(false)
-      } catch (err: any) {
-        if (cancelled) return
-        console.error('[RegisterPage] Failed to load provinces:', err)
-        if (retryCount < 2) {
-          // Retry on error (API might be spinning up)
-          console.log('[RegisterPage] Retrying in 3s...')
-          setTimeout(() => !cancelled && loadProvinces(retryCount + 1), 3000)
-        } else {
-          setError('Failed to load provinces. Please refresh the page.')
-          setProvinces([])
-          setLoadingProvinces(false)
-        }
-      }
-    }
-    loadProvinces()
-    return () => { cancelled = true }
-  }, [])
-
-  // Load municipalities when province changes
-  useEffect(() => {
-    const loadMunicipalities = async () => {
-      if (!formData.province) {
-        setMunicipalities([])
-        setFormData(f => ({ ...f, municipality: '', barangay_id: '' }))
-        return
-      }
-      setLoadingMunicipalities(true)
-      try {
-        const response = await municipalityApi.getAll({ province_id: Number(formData.province) })
-        const data = response?.data
-        const list = Array.isArray(data) ? data : (Array.isArray(data?.municipalities) ? data.municipalities : [])
-        setMunicipalities(list)
-        // Reset municipality and barangay when province changes
-        setFormData(f => ({ ...f, municipality: '', barangay_id: '' }))
-      } catch (error) {
-        console.error('Failed to load municipalities:', error)
-        setMunicipalities([])
-      } finally {
-        setLoadingMunicipalities(false)
-      }
-    }
-    loadMunicipalities()
+    setFormData(f => ({ ...f, municipality: '', barangay_id: '' }))
+    setBarangays([])
   }, [formData.province])
 
   // Load barangays when a municipality is selected
@@ -139,6 +83,12 @@ export default function RegisterPage() {
     e.preventDefault()
     setError(null)
     setSuccess(null)
+    
+    if (!agreedToTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy to create an account')
+      return
+    }
+    
     setSubmitting(true)
     try {
       if (formData.password !== formData.confirmPassword) {
@@ -354,21 +304,15 @@ export default function RegisterPage() {
                   className="input-field"
                   value={formData.province}
                   onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-                  disabled={loadingProvinces}
                   required
                 >
-                  <option value="">
-                    {loadingProvinces ? 'Loading provinces...' : provinces.length === 0 ? 'No provinces available' : 'Select province'}
-                  </option>
+                  <option value="">Select province</option>
                   {provinces.map((prov) => (
                     <option key={prov.id} value={prov.id}>
                       {prov.name}
                     </option>
                   ))}
                 </select>
-                {!loadingProvinces && provinces.length === 0 && (
-                  <p className="text-xs text-red-500 mt-1">Could not load provinces. Please refresh the page.</p>
-                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Municipality <span className="text-red-500">*</span></label>
@@ -376,11 +320,11 @@ export default function RegisterPage() {
                   className="input-field"
                   value={formData.municipality}
                   onChange={(e) => setFormData({ ...formData, municipality: e.target.value })}
-                  disabled={!formData.province || loadingMunicipalities}
+                  disabled={!formData.province}
                   required
                 >
                   <option value="">
-                    {!formData.province ? 'Select province first' : loadingMunicipalities ? 'Loading...' : 'Select municipality'}
+                    {!formData.province ? 'Select province first' : 'Select municipality'}
                   </option>
                   {municipalities.map((mun) => (
                     <option key={mun.id} value={mun.slug}>
@@ -406,8 +350,37 @@ export default function RegisterPage() {
             </div>
           </div>
           
-          <button type="submit" className="btn-primary w-full disabled:opacity-60" disabled={submitting}>
-            {submitting ? 'Registering...' : 'Register'}
+          {/* Terms and Privacy Agreement */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="agree-terms"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 text-ocean-600 border-gray-300 rounded focus:ring-ocean-500"
+                required
+              />
+              <label htmlFor="agree-terms" className="text-sm text-gray-700 cursor-pointer">
+                I have read and agree to the{' '}
+                <Link to="/terms-of-service" state={{ from: '/register' }} className="text-ocean-600 hover:text-ocean-700 font-semibold underline">
+                  Terms of Service
+                </Link>
+                {' '}and{' '}
+                <Link to="/privacy-policy" state={{ from: '/register' }} className="text-ocean-600 hover:text-ocean-700 font-semibold underline">
+                  Privacy Policy
+                </Link>
+                . <span className="text-red-500">*</span>
+              </label>
+            </div>
+            <p className="text-xs text-gray-600 ml-7">
+              By creating an account, you acknowledge that you understand and accept our Terms of Service and Privacy Policy. 
+              Please read them carefully before proceeding.
+            </p>
+          </div>
+          
+          <button type="submit" className="btn-primary w-full disabled:opacity-60" disabled={submitting || !agreedToTerms}>
+            {submitting ? 'Registering...' : 'Create Account'}
           </button>
         </form>
         

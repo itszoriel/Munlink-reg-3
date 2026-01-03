@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { benefitsApi, benefitsAdminApi, handleApiError, showToast, mediaUrl } from '../lib/api'
 import { useAdminStore } from '../lib/store'
-import { Modal, Button, FileUpload } from '@munlink/ui'
+import { Modal, Button, FileUpload, EmptyState } from '@munlink/ui'
 import { ClipboardList, Users, Hourglass, CheckCircle } from 'lucide-react'
 
 export default function Programs() {
@@ -235,6 +235,16 @@ export default function Programs() {
             <div className="h-3 w-24 skeleton rounded" />
           </div>
         ))}
+        {!loading && activeTab === 'active' && programs.filter((p:any)=>p.is_active).length === 0 && (
+          <div className="col-span-full">
+            <EmptyState
+              icon="gift"
+              title="No active programs"
+              description="Create a new program to start helping your community."
+              action={<Button onClick={openCreate}>+ Create Program</Button>}
+            />
+          </div>
+        )}
         {!loading && activeTab === 'active' && programs.filter((p:any)=>p.is_active).map((program, i) => (
           <div key={i} className="group bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 hover:shadow-2xl hover:scale-105 transition-all duration-300">
             <div className="relative h-32 bg-gradient-to-br from-ocean-500 to-ocean-700 flex items-center justify-center overflow-hidden">
@@ -274,6 +284,15 @@ export default function Programs() {
             </div>
           </div>
         ))}
+        {!loading && activeTab === 'applications' && applications.length === 0 && (
+          <div className="col-span-full">
+            <EmptyState
+              icon="clipboard"
+              title="No applications yet"
+              description="Residents haven't submitted any program applications yet."
+            />
+          </div>
+        )}
         {!loading && activeTab === 'applications' && applications.map((app: any) => (
           <div key={app.id} className="bg-white/70 rounded-3xl p-5 border border-white/50">
             <div className="flex items-start justify-between gap-3">

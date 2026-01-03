@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
+import { getProvinces, getMunicipalities } from '@/lib/locations'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
@@ -13,8 +14,6 @@ const provinceSealMap: Record<string, string> = {
   'tarlac': new URL('../../../../public/logos/provinces/tarlac.png', import.meta.url).toString(),
   'zambales': new URL('../../../../public/logos/provinces/zambales.png', import.meta.url).toString(),
 }
-
-type Province = { id: number; name: string; slug: string }
 
 export default function AdminRegisterPage() {
   const [formData, setFormData] = useState({
@@ -37,69 +36,20 @@ export default function AdminRegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  // Province dropdown state
-  const [provinces, setProvinces] = useState<Province[]>([])
-  const [provincesLoading, setProvincesLoading] = useState(true)
-
-  // Municipality dropdown state
-  const [municipalities, setMunicipalities] = useState<Array<{ id: number; name: string; slug: string }>>([])
-  const [municipalitiesLoading, setMunicipalitiesLoading] = useState(false)
-  const [municipalitiesError, setMunicipalitiesError] = useState<string | null>(null)
+  // Use static data - instant load, no API call needed!
+  const provinces = useMemo(() => getProvinces(), [])
+  const municipalities = useMemo(
+    () => formData.admin_province_id ? getMunicipalities(Number(formData.admin_province_id)) : [],
+    [formData.admin_province_id]
+  )
 
   // Get the selected province seal
   const selectedProvince = provinces.find(p => p.id === Number(formData.admin_province_id))
   const provinceSeal = selectedProvince?.slug ? provinceSealMap[selectedProvince.slug] : null
 
-  // Load provinces on mount
+  // Reset municipality when province changes
   useEffect(() => {
-    let isMounted = true
-    setProvincesLoading(true)
-    axios
-      .get(`${API_BASE_URL}/api/provinces`)
-      .then(res => {
-        if (!isMounted) return
-        const list = res.data?.provinces || []
-        setProvinces(list.map((p: any) => ({ id: p.id, name: p.name, slug: p.slug })))
-      })
-      .catch(() => {
-        if (!isMounted) return
-        setProvinces([])
-      })
-      .finally(() => {
-        if (!isMounted) return
-        setProvincesLoading(false)
-      })
-    return () => { isMounted = false }
-  }, [])
-
-  // Load municipalities when province changes
-  useEffect(() => {
-    if (!formData.admin_province_id) {
-      setMunicipalities([])
-      setFormData(f => ({ ...f, admin_municipality_slug: '' }))
-      return
-    }
-    let isMounted = true
-    setMunicipalitiesLoading(true)
-    setMunicipalitiesError(null)
-    axios
-      .get(`${API_BASE_URL}/api/municipalities`, { params: { province_id: formData.admin_province_id } })
-      .then(res => {
-        if (!isMounted) return
-        const list = res.data?.municipalities || []
-        const simplified = list.map((m: any) => ({ id: m.id, name: m.name, slug: m.slug }))
-        setMunicipalities(simplified)
-        setFormData(f => ({ ...f, admin_municipality_slug: '' }))
-      })
-      .catch(() => {
-        if (!isMounted) return
-        setMunicipalitiesError('Failed to load municipalities')
-      })
-      .finally(() => {
-        if (!isMounted) return
-        setMunicipalitiesLoading(false)
-      })
-    return () => { isMounted = false }
+    setFormData(f => ({ ...f, admin_municipality_slug: '' }))
   }, [formData.admin_province_id])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -297,9 +247,8 @@ export default function AdminRegisterPage() {
                 className="input-field"
                 value={formData.admin_province_id}
                 onChange={(e) => setFormData({ ...formData, admin_province_id: e.target.value })}
-                disabled={provincesLoading}
               >
-                <option value="">{provincesLoading ? 'Loading...' : '— Select Province —'}</option>
+                <option value="">— Select Province —</option>
                 {provinces.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
@@ -307,29 +256,18 @@ export default function AdminRegisterPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Municipality</label>
-              {municipalitiesLoading ? (
-                <select name="admin_municipality_slug" className="input-field" disabled>
-                  <option>Loading...</option>
-                </select>
-              ) : (
-                <>
-                  <select
-                    name="admin_municipality_slug"
-                    className="input-field"
-                    value={formData.admin_municipality_slug}
-                    onChange={(e)=>setFormData({...formData, admin_municipality_slug:e.target.value})}
-                    disabled={!formData.admin_province_id}
-                  >
-                    <option value="">{!formData.admin_province_id ? 'Select province first' : '— Select Municipality —'}</option>
-                    {municipalities.map(m => (
-                      <option key={m.slug} value={m.slug}>{m.name}</option>
-                    ))}
-                  </select>
-                  {municipalitiesError && (
-                    <p className="text-xs text-red-600 mt-1">{municipalitiesError}</p>
-                  )}
-                </>
-              )}
+              <select
+                name="admin_municipality_slug"
+                className="input-field"
+                value={formData.admin_municipality_slug}
+                onChange={(e)=>setFormData({...formData, admin_municipality_slug:e.target.value})}
+                disabled={!formData.admin_province_id}
+              >
+                <option value="">{!formData.admin_province_id ? 'Select province first' : '— Select Municipality —'}</option>
+                {municipalities.map(m => (
+                  <option key={m.slug} value={m.slug}>{m.name}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

@@ -15,12 +15,20 @@ let accessToken: string | null = null
 let refreshPromise: Promise<string | null> | null = null
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
+// Flag to track if user has ever logged in (avoids 401 errors for guests)
+const HAS_SESSION_KEY = 'munlink:has_session'
+
 export const getAccessToken = (): string | null => accessToken
 export const setAccessToken = (token: string | null) => {
   accessToken = token
   try {
-    if (token) sessionStorage.setItem('access_token', token)
-    else sessionStorage.removeItem('access_token')
+    if (token) {
+      sessionStorage.setItem('access_token', token)
+      // Mark that user has a session (for refresh attempts)
+      localStorage.setItem(HAS_SESSION_KEY, 'true')
+    } else {
+      sessionStorage.removeItem('access_token')
+    }
   } catch {}
 }
 export const clearAccessToken = () => {
@@ -29,7 +37,20 @@ export const clearAccessToken = () => {
     clearTimeout(refreshTimer)
     refreshTimer = null
   }
-  try { sessionStorage.removeItem('access_token') } catch {}
+  try { 
+    sessionStorage.removeItem('access_token')
+    // Clear session flag on logout
+    localStorage.removeItem(HAS_SESSION_KEY)
+  } catch {}
+}
+
+// Check if user has ever had a session (to avoid unnecessary refresh calls for guests)
+const hasHadSession = (): boolean => {
+  try {
+    return localStorage.getItem(HAS_SESSION_KEY) === 'true'
+  } catch {
+    return false
+  }
 }
 
 export const setSessionAccessToken = (token: string | null) => {
@@ -112,7 +133,14 @@ export async function bootstrapAuth(): Promise<boolean> {
       return true
     }
   } catch {}
-  // Otherwise, attempt to hydrate from refresh cookie once on app load
+  
+  // Only attempt refresh if user has had a session before
+  // This prevents 401 errors for guests who have never logged in
+  if (!hasHadSession()) {
+    return false
+  }
+  
+  // Attempt to hydrate from refresh cookie once on app load
   const token = await doRefresh()
   return !!token
 }
@@ -307,6 +335,50 @@ export const mediaUrl = (p?: string): string => {
   if (idx !== -1) s = s.slice(idx + 9)
   s = s.replace(/^uploads\//, '')
   return `${API_BASE_URL}/uploads/${s}`
+}
+
+/**
+ * Keep-alive ping to prevent Render cold starts.
+ * Pings the API health endpoint every 10 minutes when the page is visible.
+ * This keeps the server warm so users don't experience slow initial loads.
+ */
+let keepAliveInterval: ReturnType<typeof setInterval> | null = null
+
+export const startKeepAlive = () => {
+  if (keepAliveInterval) return // Already running
+  
+  const ping = async () => {
+    // Only ping if the page is visible (don't waste resources when tab is hidden)
+    if (document.visibilityState === 'visible') {
+      try {
+        await axios.get(`${API_BASE_URL}/health`, { timeout: 30000 })
+        console.debug('[KeepAlive] Server pinged successfully')
+      } catch (err) {
+        console.debug('[KeepAlive] Ping failed (server may be waking up)')
+      }
+    }
+  }
+  
+  // Initial ping to warm up the server immediately
+  void ping()
+  
+  // Ping every 10 minutes (600,000ms) to keep server warm
+  // Render's free tier spins down after ~15 mins of inactivity
+  keepAliveInterval = setInterval(ping, 10 * 60 * 1000)
+  
+  // Also ping when the page becomes visible again (user returns to tab)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      void ping()
+    }
+  })
+}
+
+export const stopKeepAlive = () => {
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval)
+    keepAliveInterval = null
+  }
 }
 
 export default api

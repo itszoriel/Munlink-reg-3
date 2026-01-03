@@ -1,5 +1,5 @@
 """
-MunLink Zambales - Authentication Routes
+MunLink Region 3 - Authentication Routes
 User registration, login, email verification
 """
 from flask import Blueprint, request, jsonify, current_app

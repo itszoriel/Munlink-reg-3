@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import { marketplaceApi, mediaUrl, showToast } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import Modal from '@/components/ui/Modal'
+import { EmptyState } from '@munlink/ui'
 
 type MyItem = {
   id: number
@@ -175,7 +176,14 @@ export default function MyMarketplacePage() {
             </div>
           ))}
           {items.length === 0 && (
-            <div className="col-span-full text-center text-gray-600">You have no items yet.</div>
+            <div className="col-span-full">
+              <EmptyState
+                icon="cart"
+                title="No items yet"
+                description="You haven't posted any items to the marketplace. Start selling, lending, or donating!"
+                action={<a href="/marketplace" className="btn btn-primary">Go to Marketplace</a>}
+              />
+            </div>
           )}
         </div>
       ) : (
@@ -379,7 +387,12 @@ export default function MyMarketplacePage() {
             </div>
           ))}
           {txs.length === 0 && (
-            <div className="text-center text-gray-600">No transactions yet.</div>
+            <EmptyState
+              icon="cart"
+              title="No transactions yet"
+              description="Your buy, sell, and lend transactions will appear here."
+              compact
+            />
           )}
         </div>
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { adminApi, handleApiError, documentsAdminApi, mediaUrl, showToast, auditAdminApi } from '../lib/api'
 import { ClipboardList, Hourglass, Cog, CheckCircle, PartyPopper, Smartphone, Package as PackageIcon, Search } from 'lucide-react'
+import { EmptyState } from '@munlink/ui'
 
 type Status = 'all' | 'pending' | 'processing' | 'ready' | 'completed' | 'picked_up'
 
@@ -343,6 +344,18 @@ export default function Requests() {
             <div className="px-6 py-6">
               <div className="h-6 w-40 skeleton rounded mb-4" />
               <div className="space-y-2">{[...Array(5)].map((_, i) => (<div key={i} className="h-16 skeleton rounded" />))}</div>
+            </div>
+          )}
+          {!loading && visibleRows.length === 0 && (
+            <div className="px-6 py-6">
+              <EmptyState
+                icon="document"
+                title={statusFilter !== 'all' || deliveryFilter !== 'all' ? "No requests match your filters" : "No document requests"}
+                description={statusFilter !== 'all' || deliveryFilter !== 'all' ? "Try adjusting your status or delivery filters." : "Residents haven't submitted any document requests yet."}
+                action={statusFilter !== 'all' || deliveryFilter !== 'all' ? (
+                  <button className="btn btn-secondary" onClick={() => { setStatusFilter('all'); setDeliveryFilter('all') }}>Clear Filters</button>
+                ) : undefined}
+              />
             </div>
           )}
           {!loading && visibleRows.map((request) => (

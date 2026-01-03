@@ -3,6 +3,7 @@ import { announcementsApi } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import AnnouncementCard from '@/components/AnnouncementCard'
 import { getHideRead, isRead, setHideRead } from '@/utils/unread'
+import { EmptyState } from '@munlink/ui'
 
 type Announcement = {
   id: number
@@ -112,7 +113,19 @@ export default function AnnouncementsPage() {
             ))}
           </div>
           {items.length === 0 && (
-            <div className="text-center text-gray-600">No announcements.</div>
+            <EmptyState
+              icon="announcement"
+              title={priority !== 'all' || hideRead ? "No announcements match your filters" : "No announcements yet"}
+              description={priority !== 'all' || hideRead ? "Try adjusting your filters or check back later." : "Your municipality hasn't posted any announcements yet."}
+              action={priority !== 'all' || hideRead ? (
+                <button 
+                  className="btn btn-secondary"
+                  onClick={() => { setPriority('all'); setHideReadState(false); setHideRead(false) }}
+                >
+                  Clear Filters
+                </button>
+              ) : undefined}
+            />
           )}
         </>
       )}

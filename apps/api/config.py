@@ -1,5 +1,5 @@
 """
-MunLink Zambales - Configuration
+MunLink Region 3 - Configuration
 Application configuration management
 """
 import os

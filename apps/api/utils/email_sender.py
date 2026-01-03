@@ -20,7 +20,7 @@ def send_verification_email(to_email: str, verify_link: str) -> None:
     smtp_username = app.config.get('SMTP_USERNAME')
     smtp_password = app.config.get('SMTP_PASSWORD')
     from_email = app.config.get('FROM_EMAIL', smtp_username)
-    app_name = app.config.get('APP_NAME', 'MunLink Zambales')
+    app_name = app.config.get('APP_NAME', 'MunLink Region 3')
 
     subject = f"Verify your email for {app_name}"
     body = (
@@ -79,7 +79,7 @@ def send_generic_email(to_email: str, subject: str, body: str) -> None:
         smtp_username = app.config.get('SMTP_USERNAME')
         smtp_password = app.config.get('SMTP_PASSWORD')
         from_email = app.config.get('FROM_EMAIL', smtp_username or 'noreply@example.com')
-        app_name = app.config.get('APP_NAME', 'MunLink Zambales')
+        app_name = app.config.get('APP_NAME', 'MunLink Region 3')
 
         msg = MIMEText(body, 'plain', 'utf-8')
         msg['Subject'] = subject
@@ -108,7 +108,7 @@ def send_generic_email(to_email: str, subject: str, body: str) -> None:
 
 def send_user_status_email(to_email: str, approved: bool, reason: str | None = None) -> None:
     app = current_app
-    app_name = app.config.get('APP_NAME', 'MunLink Zambales')
+    app_name = app.config.get('APP_NAME', 'MunLink Region 3')
     if approved:
         subject = f"{app_name}: Registration Approved"
         body = (
@@ -126,7 +126,7 @@ def send_user_status_email(to_email: str, approved: bool, reason: str | None = N
 
 def send_document_request_status_email(to_email: str, doc_name: str, requested_at: str, approved: bool, reason: str | None = None) -> None:
     app = current_app
-    app_name = app.config.get('APP_NAME', 'MunLink Zambales')
+    app_name = app.config.get('APP_NAME', 'MunLink Region 3')
     if approved:
         subject = f"{app_name}: Document Request Approved"
         body = (
