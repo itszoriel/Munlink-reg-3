@@ -42,21 +42,22 @@ def create_app(config_class=Config):
     
     # CORS configuration - cover all routes including /health and /uploads
     cors_origins = [
-                app.config['WEB_URL'],
-                app.config['ADMIN_URL'],
-                "http://localhost:3000",
-                "http://localhost:3001"
+        app.config['WEB_URL'],
+        app.config['ADMIN_URL'],
+        "http://localhost:3000",
+        "http://localhost:3001"
     ]
     cors_settings = {
         "origins": cors_origins,
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": True
-        }
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+    # Note: Flask-CORS uses regex patterns, so use .* not * for wildcards
     CORS(app, resources={
-        r"/api/*": cors_settings,
+        r"/api/.*": cors_settings,
         r"/health": cors_settings,
-        r"/uploads/*": cors_settings,
+        r"/uploads/.*": cors_settings,
         r"/": cors_settings
     })
     
