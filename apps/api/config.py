@@ -49,7 +49,10 @@ def get_database_url():
 def get_engine_options():
     """
     Get SQLAlchemy engine options based on the database type.
-    PostgreSQL requires specific connection settings for Supabase pooler.
+    PostgreSQL requires specific connection settings for Supabase.
+    
+    NOTE: For Supabase, prefer direct connection (port 5432) over pooler (port 6543)
+    if you experience timeout issues.
     """
     db_url = get_database_url()
     
@@ -60,19 +63,39 @@ def get_engine_options():
     
     # PostgreSQL-specific options for Supabase connection
     if db_url.startswith('postgresql://'):
-        options.update({
-            'pool_recycle': 300,    # Recycle connections every 5 minutes
-            'pool_timeout': 60,     # Wait up to 60 seconds for a connection from pool
-            'pool_size': 3,         # Keep 3 connections in the pool (fewer for free tier)
-            'max_overflow': 5,      # Allow up to 5 additional connections
-            'connect_args': {
-                'connect_timeout': 60,      # 60 second connection timeout (increased for Supabase)
-                'keepalives': 1,            # Enable TCP keepalives
-                'keepalives_idle': 30,      # Seconds before sending keepalive
-                'keepalives_interval': 10,  # Seconds between keepalives
-                'keepalives_count': 5,      # Number of keepalives before giving up
-            }
-        })
+        # Check if using Supabase pooler (port 6543) vs direct (port 5432)
+        is_pooler = ':6543' in db_url or 'pooler.supabase.com' in db_url
+        
+        if is_pooler:
+            # Transaction pooler mode - use NullPool (no persistent connections)
+            # because PgBouncer in transaction mode doesn't play well with connection pooling
+            from sqlalchemy.pool import NullPool
+            options.update({
+                'poolclass': NullPool,  # Don't pool connections - let Supabase pooler handle it
+                'connect_args': {
+                    'connect_timeout': 30,      # 30 second connection timeout
+                    'keepalives': 1,            # Enable TCP keepalives
+                    'keepalives_idle': 10,      # Seconds before sending keepalive
+                    'keepalives_interval': 5,   # Seconds between keepalives
+                    'keepalives_count': 3,      # Number of keepalives before giving up
+                    'options': '-c statement_timeout=30000',  # 30 second query timeout
+                }
+            })
+        else:
+            # Direct connection - use standard pooling
+            options.update({
+                'pool_recycle': 300,    # Recycle connections every 5 minutes
+                'pool_timeout': 30,     # Wait up to 30 seconds for a connection from pool
+                'pool_size': 2,         # Keep 2 connections in the pool (fewer for free tier)
+                'max_overflow': 3,      # Allow up to 3 additional connections
+                'connect_args': {
+                    'connect_timeout': 30,      # 30 second connection timeout
+                    'keepalives': 1,            # Enable TCP keepalives
+                    'keepalives_idle': 30,      # Seconds before sending keepalive
+                    'keepalives_interval': 10,  # Seconds between keepalives
+                    'keepalives_count': 5,      # Number of keepalives before giving up
+                }
+            })
     
     return options
 
