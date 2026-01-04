@@ -16,6 +16,7 @@ def get_database_url():
     Get and process the database URL for proper connection handling.
     - Ensures SSL is enabled for PostgreSQL connections (required by Supabase)
     - Handles URL scheme conversion (postgres:// -> postgresql://)
+    - Adds connection parameters for better reliability
     """
     url = os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR}/munlink_region3.db')
     
@@ -51,8 +52,10 @@ def get_engine_options():
     Get SQLAlchemy engine options based on the database type.
     PostgreSQL requires specific connection settings for Supabase.
     
-    NOTE: For Supabase, prefer direct connection (port 5432) over pooler (port 6543)
-    if you experience timeout issues.
+    NOTE: Supabase pooler (port 6543) is recommended over direct (port 5432) because:
+    - Pooler doesn't require IP allowlisting
+    - Pooler handles connection management better
+    - Direct connection may have IPv6/IPv4 connectivity issues from some cloud providers
     """
     db_url = get_database_url()
     
@@ -82,18 +85,21 @@ def get_engine_options():
                 }
             })
         else:
-            # Direct connection - use standard pooling
+            # Direct connection - use minimal pooling and shorter timeouts
+            # Note: Direct connections may have IP restrictions or IPv6 issues
+            # Consider using pooler (port 6543) if you experience connection problems
             options.update({
-                'pool_recycle': 300,    # Recycle connections every 5 minutes
-                'pool_timeout': 30,     # Wait up to 30 seconds for a connection from pool
-                'pool_size': 2,         # Keep 2 connections in the pool (fewer for free tier)
-                'max_overflow': 3,      # Allow up to 3 additional connections
+                'pool_recycle': 180,    # Recycle connections every 3 minutes (shorter for direct)
+                'pool_timeout': 20,     # Wait up to 20 seconds for a connection from pool
+                'pool_size': 1,         # Keep only 1 connection (direct connections are more limited)
+                'max_overflow': 2,      # Allow up to 2 additional connections
                 'connect_args': {
-                    'connect_timeout': 30,      # 30 second connection timeout
+                    'connect_timeout': 20,      # 20 second connection timeout (shorter)
                     'keepalives': 1,            # Enable TCP keepalives
-                    'keepalives_idle': 30,      # Seconds before sending keepalive
-                    'keepalives_interval': 10,  # Seconds between keepalives
-                    'keepalives_count': 5,      # Number of keepalives before giving up
+                    'keepalives_idle': 20,      # Seconds before sending keepalive
+                    'keepalives_interval': 5,   # Seconds between keepalives (more frequent)
+                    'keepalives_count': 3,      # Number of keepalives before giving up
+                    'options': '-c statement_timeout=20000',  # 20 second query timeout
                 }
             })
     
