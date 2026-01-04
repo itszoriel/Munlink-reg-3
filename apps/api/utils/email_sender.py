@@ -1,57 +1,57 @@
-"""Simple email sending utility for verification and notification emails.
+"""Email sending utility for verification and notification emails.
 
-Uses SMTP (Gmail) for sending emails.
+Supports SendGrid API (works on Render free tier - no SMTP needed).
+SMTP is blocked on Render free tier, so we use HTTP-based email APIs.
 """
-import smtplib
-from email.mime.text import MIMEText
-from email.utils import formataddr
+import requests
+import json
 from flask import current_app
-import ssl
 
 
-def _send_via_smtp(to_email: str, subject: str, body: str) -> None:
-    """Send email via SMTP."""
+def _send_via_sendgrid(to_email: str, subject: str, body: str) -> None:
+    """Send email via SendGrid API (works on Render free tier)."""
     app = current_app
-    smtp_server = app.config.get('SMTP_SERVER')
-    smtp_port = int(app.config.get('SMTP_PORT', 587))
-    smtp_username = app.config.get('SMTP_USERNAME')
-    smtp_password = app.config.get('SMTP_PASSWORD')
-    from_email = app.config.get('FROM_EMAIL', smtp_username)
+    api_key = app.config.get('SENDGRID_API_KEY')
+    from_email = app.config.get('FROM_EMAIL')
     app_name = app.config.get('APP_NAME', 'MunLink Region III')
-
-    msg = MIMEText(body, 'plain', 'utf-8')
-    msg['Subject'] = subject
-    msg['From'] = formataddr((app_name, from_email))
-    msg['To'] = to_email
-
-    if not smtp_server:
-        raise RuntimeError("SMTP_SERVER is not configured")
-    if not smtp_username:
-        raise RuntimeError("SMTP_USERNAME is not configured")
-    if not smtp_password:
-        raise RuntimeError("SMTP_PASSWORD is not configured")
     
-    current_app.logger.info(f"Attempting to send email to {to_email} via {smtp_server}:{smtp_port}")
-
-    # Use SSL for 465, STARTTLS for others (e.g., 587)
-    if smtp_port == 465:
-        context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(smtp_server, smtp_port, context=context, timeout=30) as server:
-            server.ehlo()
-            server.login(smtp_username, smtp_password)
-            server.sendmail(from_email, [to_email], msg.as_string())
-    else:
-        with smtplib.SMTP(smtp_server, smtp_port, timeout=30) as server:
-            server.ehlo()
+    if not api_key:
+        raise RuntimeError("SENDGRID_API_KEY is not configured")
+    
+    if not from_email:
+        raise RuntimeError("FROM_EMAIL is not configured")
+    
+    url = "https://api.sendgrid.com/v3/mail/send"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "personalizations": [{"to": [{"email": to_email}]}],
+        "from": {"email": from_email, "name": app_name},
+        "subject": subject,
+        "content": [{"type": "text/plain", "value": body}]
+    }
+    
+    current_app.logger.info(f"Attempting to send email to {to_email} via SendGrid API")
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        # SendGrid returns 202 Accepted on success
+        if response.status_code not in [200, 201, 202]:
+            error_msg = f"SendGrid API error: {response.status_code}"
             try:
-                server.starttls(context=ssl.create_default_context())
-                server.ehlo()
-            except Exception:
-                # STARTTLS may be unsupported on some servers
-                pass
-            server.login(smtp_username, smtp_password)
-            server.sendmail(from_email, [to_email], msg.as_string())
-    current_app.logger.info(f"Email sent successfully to {to_email} via SMTP")
+                error_detail = response.json()
+                error_msg += f" - {json.dumps(error_detail)}"
+            except:
+                error_msg += f" - {response.text[:200]}"
+            current_app.logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        current_app.logger.info(f"Email sent successfully to {to_email} via SendGrid")
+    except requests.exceptions.RequestException as e:
+        error_msg = f"SendGrid API request failed: {e}"
+        current_app.logger.error(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 def send_verification_email(to_email: str, verify_link: str) -> None:
@@ -70,13 +70,7 @@ def send_verification_email(to_email: str, verify_link: str) -> None:
     )
 
     try:
-        _send_via_smtp(to_email, subject, body)
-    except smtplib.SMTPAuthenticationError as exc:
-        current_app.logger.error(f"SMTP Authentication failed: {exc}. Make sure you're using a Gmail App Password, not your regular password.")
-        raise
-    except smtplib.SMTPException as exc:
-        current_app.logger.error(f"SMTP error sending to {to_email}: {exc}")
-        raise
+        _send_via_sendgrid(to_email, subject, body)
     except Exception as exc:
         current_app.logger.exception("Failed to send verification email to %s: %s", to_email, exc)
         raise
@@ -85,7 +79,7 @@ def send_verification_email(to_email: str, verify_link: str) -> None:
 def send_generic_email(to_email: str, subject: str, body: str) -> None:
     """Send a generic email, with fallback to logging if sending fails."""
     try:
-        _send_via_smtp(to_email, subject, body)
+        _send_via_sendgrid(to_email, subject, body)
     except Exception:
         try:
             current_app.logger.info("Email (fallback log): to=%s subject=%s body=%s", to_email, subject, body)
