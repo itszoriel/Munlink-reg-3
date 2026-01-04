@@ -33,6 +33,7 @@ qrcode[pil]==7.4.2
 
 # Email
 secure-smtplib==0.1.1
+requests==2.31.0  # For Resend API
 
 # Validation
 email-validator==2.1.0

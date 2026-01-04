@@ -81,6 +81,11 @@ export default function RegisterPage() {
         setSubmitting(false)
         return
       }
+      if (!formData.barangay_id) {
+        setError('Please select a barangay')
+        setSubmitting(false)
+        return
+      }
       const payload: any = {
         username: formData.username.trim().toLowerCase(),
         email: formData.email.trim().toLowerCase(),
@@ -90,10 +95,7 @@ export default function RegisterPage() {
         last_name: formData.lastName,
         date_of_birth: formData.dateOfBirth,
         municipality_slug: formData.municipality,
-      }
-      // Include barangay_id if selected (optional)
-      if (formData.barangay_id) {
-        payload.barangay_id = Number(formData.barangay_id)
+        barangay_id: Number(formData.barangay_id),
       }
       const res = await authApi.register(payload, {
         profile_picture: uploads.profile_picture || undefined,
@@ -322,12 +324,13 @@ export default function RegisterPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Barangay <span className="text-gray-400">(optional)</span></label>
+                <label className="block text-sm font-medium mb-1">Barangay <span className="text-red-500">*</span></label>
                 <select
                   className="input-field"
                   value={formData.barangay_id}
                   onChange={(e) => setFormData({ ...formData, barangay_id: e.target.value })}
                   disabled={!formData.municipality || barangays.length === 0}
+                  required
                 >
                   <option value="">
                     {!formData.municipality ? 'Select municipality first' : barangays.length === 0 ? 'No barangays available' : 'Select barangay'}

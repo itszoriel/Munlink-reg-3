@@ -40,7 +40,13 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
 @admin_bp.before_request
 def enforce_admin_role():
-    """Middleware: require JWT and admin role for all /api/admin routes."""
+    """Middleware: require JWT and admin role for all /api/admin routes.
+    Skips OPTIONS preflight requests to allow CORS to work properly.
+    """
+    # Skip JWT verification for OPTIONS requests (CORS preflight)
+    if request.method == 'OPTIONS':
+        return None
+    
     try:
         verify_jwt_in_request()
         claims = get_jwt() or {}

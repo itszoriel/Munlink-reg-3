@@ -132,6 +132,9 @@ class Config:
     SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
     FROM_EMAIL = os.getenv('FROM_EMAIL', 'noreply@munlink-region3.gov.ph')
     
+    # Email (Resend API - for production on Render free tier)
+    RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
+    
     # QR Codes
     # Default to WEB_URL + /verify, or use QR_BASE_URL if set
     QR_BASE_URL = os.getenv('QR_BASE_URL') or None  # Will fallback to WEB_URL + /verify

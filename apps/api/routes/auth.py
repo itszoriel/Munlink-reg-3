@@ -261,7 +261,6 @@ def login():
             additional_claims={"role": user.role}
         )
         
-        from flask import jsonify
         resp = jsonify({
             'message': 'Login successful',
             'access_token': access_token,
@@ -273,7 +272,22 @@ def login():
         return resp, 200
     
     except Exception as e:
-        return jsonify({'error': 'Login failed', 'details': str(e)}), 500
+        # Log the error for debugging
+        import traceback
+        try:
+            current_app.logger.error(f"Login error: {str(e)}")
+            current_app.logger.error(traceback.format_exc())
+        except:
+            pass
+        
+        # Create error response with CORS headers
+        response = jsonify({'error': 'Login failed', 'details': str(e) if current_app.config.get('DEBUG') else None})
+        # Add CORS headers manually as backup (after_request should also add them)
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response, 500
 
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -523,7 +537,6 @@ def resend_verification_email_public():
     Always returns 200 to avoid account enumeration.
     """
     try:
-        from flask import request
         data = request.get_json(silent=True) or {}
         email = (data.get('email') or '').strip().lower()
         if not email:
@@ -808,7 +821,7 @@ def change_password():
         new_password = validate_password(new_password)
         
         # Hash and update password
-        user.password_hash = bcrypt.generate_password_hash(new_password).decode('utf-8')
+        user.password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         user.updated_at = datetime.utcnow()
         db.session.commit()
         

@@ -4,16 +4,22 @@ Main application entry point
 """
 import sys
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
+# Determine project root (2 levels up from this file)
+API_DIR = Path(__file__).parent.resolve()
+PROJECT_ROOT = API_DIR.parent.parent.resolve()
+
 # Load environment variables from .env file at project root
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-load_dotenv(os.path.join(project_root, '.env'))
+env_path = PROJECT_ROOT / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
 
-# Add parent directory to path for absolute imports
-sys.path.insert(0, project_root)
+# Add project root to path for absolute imports
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 
 # Import config - try absolute first, then relative
@@ -24,15 +30,23 @@ except ImportError:
     from config import Config
     from __init__ import db, migrate, jwt
 
+
 def create_app(config_class=Config):
     """Application factory pattern"""
     app = Flask(__name__)
     app.config.from_object(config_class)
+    
+    # Log database URL for debugging (masked)
+    db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if 'postgresql' in db_url:
+        app.logger.info("Database: PostgreSQL (Supabase)")
+    elif 'sqlite' in db_url:
+        app.logger.info("Database: SQLite (local)")
+    
     # Ensure directories and other config-dependent setup are initialized
     try:
         config_class.init_app(app)
     except Exception:
-        # Safe to ignore if init_app does not require running or fails in tests
         pass
     
     # Initialize extensions with app
@@ -40,26 +54,27 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     jwt.init_app(app)
     
-    # CORS configuration - cover all routes including /health and /uploads
+    # CORS configuration - simple and reliable
     cors_origins = [
-                app.config['WEB_URL'],
-                app.config['ADMIN_URL'],
-                "http://localhost:3000",
-                "http://localhost:3001"
+        app.config.get('WEB_URL', 'http://localhost:5173'),
+        app.config.get('ADMIN_URL', 'http://localhost:3001'),
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:5173"
     ]
-    cors_settings = {
-        "origins": cors_origins,
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": True
-        }
-    # Note: Flask-CORS uses regex patterns, so use .* not * for wildcards
-    CORS(app, resources={
-        r"/api/.*": cors_settings,
-        r"/health": cors_settings,
-        r"/uploads/.*": cors_settings,
-        r"/": cors_settings
-    })
+    # Remove duplicates
+    cors_origins = list(dict.fromkeys(cors_origins))
+    
+    # Apply CORS globally with Flask-CORS
+    CORS(app, 
+         origins=cors_origins,
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         supports_credentials=True,
+         expose_headers=["Content-Type", "Authorization"])
     
     # JWT token blacklist check
     @jwt.token_in_blocklist_loader
@@ -89,10 +104,10 @@ def create_app(config_class=Config):
     app.register_blueprint(benefits_bp)
     app.register_blueprint(admin_bp)
     
-    # Health check endpoint - MUST NOT depend on DB or any external service
+    # Health check endpoint
     @app.route('/health', methods=['GET'])
     def health_check():
-        """Health check endpoint for monitoring - responds immediately without DB"""
+        """Health check endpoint for monitoring"""
         return jsonify({
             'status': 'healthy',
             'service': 'MunLink Region III API',
@@ -112,8 +127,7 @@ def create_app(config_class=Config):
             'docs': '/api/docs'
         }), 200
     
-    # Public verify route (for QR codes that point directly to backend)
-    # This allows QR codes to work whether they point to frontend or backend
+    # Public verify route (for QR codes)
     @app.route('/verify/<string:request_number>', methods=['GET'])
     def public_verify_direct(request_number: str):
         """Handle verify requests directly (for QR codes pointing to backend)."""
@@ -139,7 +153,7 @@ def create_app(config_class=Config):
                 'muni_name': muni_name,
                 'doc_name': doc_name,
                 'issued_at': issued_at,
-                'url': f"/uploads/{str(r.document_file).replace('\\', '/')}"
+                'url': f"/uploads/{str(r.document_file).replace(chr(92), '/')}"
             }), 200
         except Exception as e:
             return jsonify({'valid': False, 'error': str(e)}), 500
@@ -149,9 +163,7 @@ def create_app(config_class=Config):
     def serve_uploaded_file(filename):
         """Serve uploaded files from the uploads directory"""
         try:
-            # Get the upload directory from config
             upload_dir = app.config.get('UPLOAD_FOLDER', 'uploads')
-            # Ensure string path for Flask static serving
             directory = str(upload_dir)
             return send_from_directory(directory, filename)
         except FileNotFoundError:
@@ -167,7 +179,16 @@ def create_app(config_class=Config):
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
     
+    @app.errorhandler(401)
+    def unauthorized(error):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    @app.errorhandler(403)
+    def forbidden(error):
+        return jsonify({'error': 'Forbidden'}), 403
+    
     return app
+
 
 # Create app instance
 app = create_app()
@@ -178,4 +199,3 @@ if __name__ == '__main__':
         port=5000,
         debug=app.config['DEBUG']
     )
-
