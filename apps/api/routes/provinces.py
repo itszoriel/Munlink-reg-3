@@ -3,11 +3,13 @@ from flask import Blueprint, jsonify, request
 from apps.api.models.province import Province
 from apps.api.models.municipality import Municipality
 from apps.api import db
+from apps.api.utils.db_retry import with_db_retry
 
 provinces_bp = Blueprint('provinces', __name__, url_prefix='/api/provinces')
 
 
 @provinces_bp.route('', methods=['GET'])
+@with_db_retry(max_retries=3, initial_delay=0.5)
 def list_provinces():
     """Get list of all provinces in Region 3."""
     try:

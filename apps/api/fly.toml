@@ -1,0 +1,52 @@
+# MunLink Region III API - Fly.io Configuration
+# Deploy to Singapore region for low latency to Supabase
+
+app = "munlink-api"
+primary_region = "sin"  # Singapore
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  FLASK_ENV = "production"
+  DEBUG = "False"
+  FLASK_APP = "app.py"
+  APP_NAME = "MunLink Region III"
+  PORT = "8080"
+  UPLOAD_FOLDER = "uploads/region3"
+  MAX_FILE_SIZE = "10485760"
+  ALLOWED_EXTENSIONS = "pdf,jpg,jpeg,png,doc,docx"
+  SMTP_SERVER = "smtp.gmail.com"
+  SMTP_PORT = "587"
+  JWT_ACCESS_TOKEN_EXPIRES = "86400"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"      # Keep running (long-running service)
+  auto_start_machines = true
+  min_machines_running = 1         # Always at least 1 machine
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  path = "/health"
+  timeout = "5s"
+
+[mounts]
+  source = "munlink_uploads"
+  destination = "/app/uploads"
+  initial_size = "1"   # 1GB, can expand later
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1
+

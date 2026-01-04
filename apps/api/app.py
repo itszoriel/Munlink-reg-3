@@ -54,18 +54,25 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     jwt.init_app(app)
     
-    # CORS configuration - simple and reliable
+    # CORS configuration - supports Vercel preview deployments
     cors_origins = [
         app.config.get('WEB_URL', 'http://localhost:5173'),
         app.config.get('ADMIN_URL', 'http://localhost:3001'),
+        # Local development
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
-        "http://127.0.0.1:5173"
+        "http://127.0.0.1:5173",
     ]
-    # Remove duplicates
+    
+    # Add Vercel preview URLs from environment (comma-separated)
+    vercel_previews = os.getenv('VERCEL_PREVIEW_ORIGINS', '')
+    if vercel_previews:
+        cors_origins.extend([url.strip() for url in vercel_previews.split(',') if url.strip()])
+    
+    # Remove duplicates while preserving order
     cors_origins = list(dict.fromkeys(cors_origins))
     
     # Apply CORS globally with Flask-CORS
@@ -113,6 +120,35 @@ def create_app(config_class=Config):
             'service': 'MunLink Region III API',
             'version': '1.0.0'
         }), 200
+    
+    # Database health check endpoint
+    @app.route('/health/db', methods=['GET'])
+    def db_health_check():
+        """Health check endpoint that tests database connectivity"""
+        import time
+        start = time.time()
+        try:
+            # Test database connection with a simple query
+            from sqlalchemy import text
+            result = db.session.execute(text('SELECT 1'))
+            result.fetchone()
+            db.session.rollback()  # Don't leave transaction open
+            elapsed = time.time() - start
+            return jsonify({
+                'status': 'healthy',
+                'database': 'connected',
+                'latency_ms': round(elapsed * 1000, 2),
+                'service': 'MunLink Region III API'
+            }), 200
+        except Exception as e:
+            elapsed = time.time() - start
+            app.logger.error(f"Database health check failed: {e}")
+            return jsonify({
+                'status': 'unhealthy',
+                'database': 'disconnected',
+                'latency_ms': round(elapsed * 1000, 2),
+                'error': str(e)[:200]
+            }), 503
     
     # Root endpoint
     @app.route('/', methods=['GET'])

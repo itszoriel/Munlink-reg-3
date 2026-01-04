@@ -17,7 +17,7 @@ def test_connection():
     db_url = os.getenv('DATABASE_URL')
     
     if not db_url:
-        print("❌ DATABASE_URL not set in .env")
+        print("[ERROR] DATABASE_URL not set in .env")
         return False
     
     # Mask password for display
@@ -39,7 +39,7 @@ def test_connection():
         cursor.execute("SELECT version();")
         version = cursor.fetchone()[0]
         
-        print(f"✅ Connected successfully!")
+        print(f"[OK] Connected successfully!")
         print(f"PostgreSQL version: {version[:50]}...")
         
         cursor.close()
@@ -47,10 +47,10 @@ def test_connection():
         return True
         
     except ImportError:
-        print("❌ psycopg2 not installed. Run: pip install psycopg2-binary")
+        print("[ERROR] psycopg2 not installed. Run: pip install psycopg2-binary")
         return False
     except Exception as e:
-        print(f"❌ Connection failed: {e}")
+        print(f"[ERROR] Connection failed: {e}")
         return False
 
 if __name__ == "__main__":

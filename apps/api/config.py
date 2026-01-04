@@ -56,6 +56,9 @@ def get_engine_options():
     - Pooler doesn't require IP allowlisting
     - Pooler handles connection management better
     - Direct connection may have IPv6/IPv4 connectivity issues from some cloud providers
+    
+    For Render free tier: We use aggressive connection settings to handle
+    intermittent network issues between Render and Supabase.
     """
     db_url = get_database_url()
     
@@ -76,12 +79,13 @@ def get_engine_options():
             options.update({
                 'poolclass': NullPool,  # Don't pool connections - let Supabase pooler handle it
                 'connect_args': {
-                    'connect_timeout': 30,      # 30 second connection timeout
+                    'connect_timeout': 15,      # 15 second connection timeout (reduced for faster retry)
                     'keepalives': 1,            # Enable TCP keepalives
-                    'keepalives_idle': 10,      # Seconds before sending keepalive
-                    'keepalives_interval': 5,   # Seconds between keepalives
-                    'keepalives_count': 3,      # Number of keepalives before giving up
-                    'options': '-c statement_timeout=30000',  # 30 second query timeout
+                    'keepalives_idle': 5,       # Start keepalives sooner (was 10)
+                    'keepalives_interval': 3,   # More frequent keepalives (was 5)
+                    'keepalives_count': 5,      # More retries (was 3)
+                    'options': '-c statement_timeout=60000',  # 60 second query timeout (increased)
+                    'application_name': 'munlink-api',  # For connection tracking in Supabase
                 }
             })
         else:
