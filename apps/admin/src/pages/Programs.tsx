@@ -56,6 +56,9 @@ export default function Programs() {
       const mapped = list.map((p) => ({
         id: p.id,
         title: p.title || p.name || 'Program',
+        name: p.name || p.title || 'Program',
+        code: p.code || '',
+        program_type: p.program_type || 'general',
         description: p.description || '—',
         image_path: p.image_path || p.image || p.image_url || null,
         beneficiaries: p.current_beneficiaries || p.beneficiaries || 0,
@@ -63,6 +66,7 @@ export default function Programs() {
         completed_at: p.completed_at || null,
         is_active: p.is_active !== false,
         status: (p.is_active === false ? 'archived' : 'active'),
+        eligibility: p.eligibility || p.eligibility_criteria || [],
         icon: '📋',
         color: 'ocean',
       }))
@@ -128,6 +132,11 @@ export default function Programs() {
       // Ensure admin-scoped municipality; backend will default to admin municipality if missing
       if (adminMunicipalityId) payload.append('municipality_id', String(adminMunicipalityId))
       if (data.imageFile) payload.append('file', data.imageFile)
+      
+      // Add eligibility as JSON array
+      if (data.eligibility && data.eligibility.length > 0) {
+        payload.append('eligibility', JSON.stringify(data.eligibility))
+      }
 
       const res = await benefitsAdminApi.createProgram(payload)
       const created = (res as any)?.program
@@ -136,6 +145,9 @@ export default function Programs() {
         dataStore.updateCached<any[]>(CACHE_KEYS.PROGRAMS, (prev) => [{
           id: created.id,
           title: created.name,
+          name: created.name,
+          code: created.code,
+          program_type: created.program_type || 'general',
           description: created.description,
           image_path: created.image_path || null,
           beneficiaries: created.current_beneficiaries || 0,
@@ -143,6 +155,7 @@ export default function Programs() {
           completed_at: created.completed_at || null,
           is_active: created.is_active !== false,
           status: created.is_active ? 'active' : 'archived',
+          eligibility: created.eligibility || created.eligibility_criteria || [],
           icon: '📋',
           color: 'ocean',
         }, ...prev])
@@ -351,105 +364,143 @@ export default function Programs() {
 
       {/* View / Edit Modal */}
       {viewProgram && (
-        <Modal open={true} onOpenChange={(o)=>{ if(!o) setViewProgram(null) }} title={viewProgram._edit ? 'Edit Program' : 'Program Details'}>
-          {viewProgram._edit ? (
-            <ProgramForm
-              initial={{
-                name: viewProgram.title || viewProgram.name,
-                code: viewProgram.code || '',
-                description: viewProgram.description || '',
-                program_type: viewProgram.program_type || 'general',
-                duration_days: viewProgram.duration_days ?? '',
-              }}
-              initialImagePath={viewProgram.image_path || viewProgram.image || viewProgram.image_url || null}
-              requireImage={false}
-              onCancel={()=> setViewProgram(null)}
-              onSubmit={async (data, imageFile)=>{
-                try {
-                  setActionLoading(viewProgram.id)
-                  const hasNewImage = !!imageFile
-                  if (hasNewImage) {
-                    const fd = new FormData()
-                    fd.append('name', data.name)
-                    fd.append('code', data.code)
-                    fd.append('description', data.description)
-                    fd.append('program_type', data.program_type || 'general')
-                    if (data.duration_days !== '' && data.duration_days !== null && data.duration_days !== undefined) {
-                      fd.append('duration_days', String(data.duration_days))
+        <Modal open={true} onOpenChange={(o)=>{ if(!o) setViewProgram(null) }} title={viewProgram._edit ? 'Edit Program' : 'Program Details'} size="md">
+          <div className="max-h-[calc(100vh-320px)] sm:max-h-[calc(100vh-250px)] overflow-y-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-4 sm:pb-0">
+            {viewProgram._edit ? (
+              <ProgramForm
+                initial={{
+                  name: viewProgram.title || viewProgram.name,
+                  code: viewProgram.code || '',
+                  description: viewProgram.description || '',
+                  program_type: viewProgram.program_type || 'general',
+                  duration_days: viewProgram.duration_days ?? '',
+                  eligibility: viewProgram.eligibility || [],
+                }}
+                initialImagePath={viewProgram.image_path || viewProgram.image || viewProgram.image_url || null}
+                requireImage={false}
+                isEditing={true}
+                onCancel={()=> setViewProgram(null)}
+                onSubmit={async (data, imageFile)=>{
+                  try {
+                    setActionLoading(viewProgram.id)
+                    const hasNewImage = !!imageFile
+                    if (hasNewImage) {
+                      const fd = new FormData()
+                      fd.append('description', data.description)
+                      if (data.duration_days !== '' && data.duration_days !== null && data.duration_days !== undefined) {
+                        fd.append('duration_days', String(data.duration_days))
+                      }
+                      if (data.eligibility && data.eligibility.length > 0) {
+                        fd.append('eligibility', JSON.stringify(data.eligibility))
+                      }
+                      fd.append('file', imageFile)
+                      const res = await benefitsAdminApi.updateProgram(viewProgram.id, fd)
+                      const updated = (res as any)?.program
+                      updateProgram(viewProgram.id, { 
+                        description: updated?.description ?? data.description, 
+                        duration_days: updated?.duration_days ?? data.duration_days, 
+                        image_path: updated?.image_path,
+                        eligibility: updated?.eligibility || updated?.eligibility_criteria || data.eligibility
+                      })
+                    } else {
+                      const payload: any = { description: data.description }
+                      if (data.duration_days !== '' && data.duration_days !== null && data.duration_days !== undefined) {
+                        payload.duration_days = data.duration_days
+                      }
+                      if (data.eligibility && data.eligibility.length > 0) {
+                        payload.eligibility = data.eligibility
+                      }
+                      const res = await benefitsAdminApi.updateProgram(viewProgram.id, payload)
+                      const updated = (res as any)?.program
+                      updateProgram(viewProgram.id, { 
+                        description: updated?.description ?? data.description, 
+                        duration_days: updated?.duration_days ?? data.duration_days, 
+                        image_path: updated?.image_path,
+                        eligibility: updated?.eligibility || updated?.eligibility_criteria || data.eligibility
+                      })
                     }
-                    fd.append('file', imageFile)
-                    const res = await benefitsAdminApi.updateProgram(viewProgram.id, fd)
-                    const updated = (res as any)?.program
-                    updateProgram(viewProgram.id, { title: updated?.name || data.name, description: updated?.description ?? data.description, duration_days: updated?.duration_days ?? data.duration_days, image_path: updated?.image_path })
-                  } else {
-                    const res = await benefitsAdminApi.updateProgram(viewProgram.id, data)
-                    const updated = (res as any)?.program
-                    updateProgram(viewProgram.id, { title: updated?.name || data.name, description: updated?.description ?? data.description, duration_days: updated?.duration_days ?? data.duration_days, image_path: updated?.image_path })
+                    setViewProgram(null)
+                  } catch(e:any){
+                    setError(handleApiError(e))
+                  } finally {
+                    setActionLoading(null)
                   }
-                  setViewProgram(null)
-                } catch(e:any){
-                  setError(handleApiError(e))
-                } finally {
-                  setActionLoading(null)
-                }
-              }}
-              submitting={actionLoading===viewProgram.id}
-            />
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-neutral-700"><span className="font-medium">Name:</span> {viewProgram.name || viewProgram.title}</p>
-              <p className="text-sm text-neutral-700"><span className="font-medium">Type:</span> {viewProgram.program_type || '—'}</p>
-              {Number(viewProgram.duration_days) > 0 && (<p className="text-sm text-neutral-700"><span className="font-medium">Duration:</span> {viewProgram.duration_days} days</p>)}
-              <p className="text-sm text-neutral-700 whitespace-pre-wrap"><span className="font-medium">Description:</span> {viewProgram.description}</p>
-            </div>
-          )}
+                }}
+                submitting={actionLoading===viewProgram.id}
+              />
+            ) : (
+              <div className="space-y-3">
+                <div className="text-sm"><span className="font-medium">Name:</span> {viewProgram.name || viewProgram.title}</div>
+                <div className="text-sm"><span className="font-medium">Code:</span> {viewProgram.code || '—'}</div>
+                <div className="text-sm"><span className="font-medium">Type:</span> {viewProgram.program_type || '—'}</div>
+                {Number(viewProgram.duration_days) > 0 && (
+                  <div className="text-sm"><span className="font-medium">Duration:</span> {viewProgram.duration_days} days</div>
+                )}
+                <div className="text-sm"><span className="font-medium">Description:</span> <div className="mt-1 text-neutral-700 whitespace-pre-wrap">{viewProgram.description}</div></div>
+                {viewProgram.eligibility && viewProgram.eligibility.length > 0 && (
+                  <div className="text-sm">
+                    <span className="font-medium">Eligibility:</span>
+                    <ul className="mt-1 list-disc list-inside text-neutral-700 space-y-1">
+                      {viewProgram.eligibility.map((e: string, i: number) => (
+                        <li key={i}>{e}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </Modal>
       )}
 
       {/* Applicants Modal */}
       {viewApplicants && (
-        <Modal open={true} onOpenChange={(o)=>{ if(!o) setViewApplicants(null) }} title={`Applicants — ${viewApplicants.program.title || viewApplicants.program.name}`}>
-          <div className="space-y-3 max-h-[70vh] overflow-auto">
-            {viewApplicants.applications.length === 0 ? (
-              <div className="text-sm text-neutral-600">No applicants.</div>
-            ) : viewApplicants.applications.map((a: any) => (
-              <div key={a.id} className="p-3 border rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{a.user?.first_name} {a.user?.last_name}</div>
-                    <div className="text-xs text-neutral-600">Applied: {(a.created_at || '').slice(0,10)}</div>
+        <Modal open={true} onOpenChange={(o)=>{ if(!o) setViewApplicants(null) }} title={`Applicants — ${viewApplicants.program.title || viewApplicants.program.name}`} size="md">
+          <div className="max-h-[calc(100vh-320px)] sm:max-h-[calc(100vh-250px)] overflow-y-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-4 sm:pb-0">
+            <div className="space-y-3">
+              {viewApplicants.applications.length === 0 ? (
+                <div className="text-sm text-neutral-600">No applicants.</div>
+              ) : viewApplicants.applications.map((a: any) => (
+                <div key={a.id} className="p-3 border rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">{a.user?.first_name} {a.user?.last_name}</div>
+                      <div className="text-xs text-neutral-600">Applied: {(a.created_at || '').slice(0,10)}</div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${a.status==='approved'?'bg-emerald-100 text-emerald-700':a.status==='rejected'?'bg-rose-100 text-rose-700':a.status==='under_review'?'bg-yellow-100 text-yellow-700':'bg-neutral-100 text-neutral-700'}`}>{a.status}</span>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${a.status==='approved'?'bg-emerald-100 text-emerald-700':a.status==='rejected'?'bg-rose-100 text-rose-700':a.status==='under_review'?'bg-yellow-100 text-yellow-700':'bg-neutral-100 text-neutral-700'}`}>{a.status}</span>
+                  {Array.isArray(a.supporting_documents) && a.supporting_documents.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {a.supporting_documents.map((p: string, i: number) => (
+                        <a key={i} href={`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/uploads/${String(p).replace(/^uploads\//,'')}`} target="_blank" rel="noreferrer" className="text-xs underline text-ocean-700">Document {i+1}</a>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {Array.isArray(a.supporting_documents) && a.supporting_documents.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {a.supporting_documents.map((p: string, i: number) => (
-                      <a key={i} href={`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/uploads/${String(p).replace(/^uploads\//,'')}`} target="_blank" rel="noreferrer" className="text-xs underline text-ocean-700">Document {i+1}</a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </Modal>
       )}
 
       {/* Create Modal */}
       {createOpen && (
-        <Modal open={true} onOpenChange={(o)=>{ if(!o) setCreateOpen(false) }} title="Create Program" className="" >
-          <ProgramForm
-            initial={{ name: '', code: '', description: '', program_type: 'general', duration_days: '' }}
-            requireImage={true}
-            onCancel={closeCreate}
-            onSubmit={async (data, imageFile) => {
-              if (!imageFile) {
-                setError('Program image is required. Please upload an image before saving.')
-                return
-              }
-              await submitCreate({ ...data, imageFile })
-            }}
-            submitting={actionLoading===-1}
-          />
+        <Modal open={true} onOpenChange={(o)=>{ if(!o) setCreateOpen(false) }} title="Create Program" size="md">
+          <div className="max-h-[calc(100vh-320px)] sm:max-h-[calc(100vh-250px)] overflow-y-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-4 sm:pb-0">
+            <ProgramForm
+              initial={{ name: '', code: '', description: '', program_type: 'general', duration_days: '', eligibility: [] }}
+              requireImage={true}
+              onCancel={closeCreate}
+              onSubmit={async (data, imageFile) => {
+                if (!imageFile) {
+                  setError('Program image is required. Please upload an image before saving.')
+                  return
+                }
+                await submitCreate({ ...data, imageFile })
+              }}
+              submitting={actionLoading===-1}
+            />
+          </div>
         </Modal>
       )}
 
@@ -538,6 +589,7 @@ function ProgramForm({
   initial,
   initialImagePath,
   requireImage,
+  isEditing,
   onCancel,
   onSubmit,
   submitting
@@ -545,18 +597,45 @@ function ProgramForm({
   initial: any
   initialImagePath?: string | null
   requireImage?: boolean
+  isEditing?: boolean
   onCancel: ()=>void
   onSubmit: (data:any, imageFile: File | null)=>void
   submitting: boolean
 }) {
   const [form, setForm] = useState<any>(initial)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [eligibilityItems, setEligibilityItems] = useState<string[]>(initial.eligibility || [])
+  const [newEligibilityItem, setNewEligibilityItem] = useState('')
+  
+  // Sync form and eligibility when initial changes
+  useEffect(() => {
+    setForm(initial)
+    setEligibilityItems(initial.eligibility || [])
+    setImageFile(null)
+  }, [initial])
+  
+  const addEligibilityItem = () => {
+    if (newEligibilityItem.trim()) {
+      setEligibilityItems([...eligibilityItems, newEligibilityItem.trim()])
+      setNewEligibilityItem('')
+    }
+  }
+  
+  const removeEligibilityItem = (index: number) => {
+    setEligibilityItems(eligibilityItems.filter((_, i) => i !== index))
+  }
+  
   const disabled = !(form.name && form.code && form.description && (!requireImage || !!imageFile))
   return (
     <form
       aria-label="Program form"
-      onSubmit={(e)=>{ e.preventDefault(); if(!disabled) onSubmit(form, imageFile) }}
-      className="space-y-3"
+      onSubmit={(e)=>{ 
+        e.preventDefault(); 
+        if(!disabled) {
+          onSubmit({ ...form, eligibility: eligibilityItems }, imageFile)
+        }
+      }}
+      className="space-y-4"
     >
       <div className="space-y-2">
         <div className="text-sm font-medium text-neutral-700">Program Image {requireImage ? <span className="text-red-500">*</span> : null}</div>
@@ -588,15 +667,37 @@ function ProgramForm({
       </div>
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1" htmlFor="program-name">Name</label>
-        <input id="program-name" value={form.name} onChange={(e)=> setForm((p:any)=> ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-md" required />
+        <input 
+          id="program-name" 
+          value={form.name} 
+          onChange={(e)=> setForm((p:any)=> ({ ...p, name: e.target.value }))} 
+          className={`w-full px-3 py-2 border border-neutral-300 rounded-md ${isEditing ? 'bg-neutral-100 cursor-not-allowed' : ''}`}
+          required 
+          readOnly={isEditing}
+          disabled={isEditing}
+        />
       </div>
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1" htmlFor="program-code">Code</label>
-        <input id="program-code" value={form.code} onChange={(e)=> setForm((p:any)=> ({ ...p, code: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-md" required />
+        <input 
+          id="program-code" 
+          value={form.code} 
+          onChange={(e)=> setForm((p:any)=> ({ ...p, code: e.target.value }))} 
+          className={`w-full px-3 py-2 border border-neutral-300 rounded-md ${isEditing ? 'bg-neutral-100 cursor-not-allowed' : ''}`}
+          required 
+          readOnly={isEditing}
+          disabled={isEditing}
+        />
       </div>
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1" htmlFor="program-type">Type</label>
-        <select id="program-type" value={form.program_type} onChange={(e)=> setForm((p:any)=> ({ ...p, program_type: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-md">
+        <select 
+          id="program-type" 
+          value={form.program_type} 
+          onChange={(e)=> setForm((p:any)=> ({ ...p, program_type: e.target.value }))} 
+          className={`w-full px-3 py-2 border border-neutral-300 rounded-md ${isEditing ? 'bg-neutral-100 cursor-not-allowed' : ''}`}
+          disabled={isEditing}
+        >
           <option value="general">General</option>
           <option value="financial">Financial</option>
           <option value="educational">Educational</option>
@@ -614,6 +715,46 @@ function ProgramForm({
           onChange={(e)=> setForm((p:any)=> ({ ...p, duration_days: e.target.value === '' ? '' : Number(e.target.value) }))}
           className="w-full px-3 py-2 border border-neutral-300 rounded-md" />
         <p className="text-xs text-neutral-500 mt-1">Leave blank to keep the program active until marked Done.</p>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 mb-1" htmlFor="program-eligibility">Eligibility Criteria</label>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              id="program-eligibility"
+              type="text"
+              value={newEligibilityItem}
+              onChange={(e) => setNewEligibilityItem(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addEligibilityItem()
+                }
+              }}
+              placeholder="Add eligibility requirement..."
+              className="flex-1 px-3 py-2 border border-neutral-300 rounded-md"
+            />
+            <Button type="button" variant="secondary" size="sm" onClick={addEligibilityItem}>Add</Button>
+          </div>
+          {eligibilityItems.length > 0 && (
+            <ul className="space-y-1">
+              {eligibilityItems.map((item, index) => (
+                <li key={index} className="flex items-center justify-between bg-neutral-50 px-3 py-2 rounded-md">
+                  <span className="text-sm text-neutral-700">{item}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeEligibilityItem(index)}
+                    className="text-red-600 hover:text-red-700 text-sm font-medium"
+                    aria-label={`Remove ${item}`}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <p className="text-xs text-neutral-500 mt-1">List the requirements or criteria for program eligibility.</p>
       </div>
       <div className="flex items-center justify-end gap-2 pt-2">
         <Button variant="secondary" size="sm" onClick={onCancel} type="button">Cancel</Button>

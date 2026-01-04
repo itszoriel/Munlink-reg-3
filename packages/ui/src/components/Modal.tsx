@@ -38,7 +38,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onOpenChange, title, childre
   
   return (
     <div
-      className={`fixed inset-0 z-50 flex ${isFullSize ? 'items-stretch' : 'items-end sm:items-center'} justify-center`}
+      className={`fixed inset-0 z-50 flex ${isFullSize ? 'items-stretch' : 'items-end sm:items-center'} justify-center ${isFullSize ? '' : 'pb-20 md:pb-0'}`}
       onClick={() => onOpenChange(false)}
       role="dialog"
       aria-modal="true"
