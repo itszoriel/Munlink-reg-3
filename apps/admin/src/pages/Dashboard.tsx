@@ -1,27 +1,66 @@
-import { useEffect, useState } from 'react'
-import { adminApi, handleApiError, userApi, issueApi, marketplaceApi, announcementApi } from '../lib/api'
+import { adminApi, userApi, issueApi, marketplaceApi, announcementApi } from '../lib/api'
 import UserVerificationList from '../components/UserVerificationList'
 import { useNavigate } from 'react-router-dom'
 import { useAdminStore } from '../lib/store'
+import { useCachedFetch } from '../lib/useCachedFetch'
+import { CACHE_KEYS } from '../lib/dataStore'
 import { StatCard, Card, Button, Select } from '@munlink/ui'
 import { Hand, Users, AlertTriangle, ShoppingBag, Megaphone } from 'lucide-react'
 
 export default function Dashboard() {
   const user = useAdminStore((s) => s.user)
   const navigate = useNavigate()
-  // Track if we've ever loaded data (for first-load-only skeleton)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [dash, setDash] = useState<{ pending_verifications?: number; active_problems?: number; marketplace_items?: number; announcements?: number } | null>(null)
-  const [activity, setActivity] = useState<Array<{ icon: string; text: string; who?: string; ts: number; color: 'ocean'|'forest'|'sunset'|'purple'|'red' }>>([])
-  const [overview, setOverview] = useState<Array<{ label: string; value: number; max: number; color: 'ocean'|'forest'|'sunset'|'red' }>>([
-    { label: 'Verifications', value: 0, max: 50, color: 'ocean' },
-    { label: 'Documents', value: 0, max: 100, color: 'forest' },
-    { label: 'Marketplace', value: 0, max: 50, color: 'sunset' },
-    { label: 'Problems', value: 0, max: 50, color: 'red' },
-  ])
-  const [recentAnnouncements, setRecentAnnouncements] = useState<any[]>([])
+
+  // Use cached fetch for dashboard data
+  const { data: dashData, loading: dashLoading, refetch: refetchDash } = useCachedFetch(
+    CACHE_KEYS.DASHBOARD,
+    () => adminApi.getReports(),
+    { staleTime: 2 * 60 * 1000 } // 2 minutes for dashboard
+  )
+
+  const { data: activityData, loading: activityLoading } = useCachedFetch(
+    CACHE_KEYS.DASHBOARD_ACTIVITY,
+    async () => {
+      const [pendingUsersRes, issuesRes, itemsRes, announcementsRes, marketStatsRes] = await Promise.allSettled([
+        userApi.getPendingUsers(),
+        issueApi.getIssues({ page: 1, per_page: 20 }),
+        marketplaceApi.getPendingItems(),
+        announcementApi.getAnnouncements(),
+        marketplaceApi.getMarketplaceStats(),
+      ])
+      return { pendingUsersRes, issuesRes, itemsRes, announcementsRes, marketStatsRes }
+    },
+    { staleTime: 5 * 60 * 1000 }
+  )
+
+  // Process dashboard data
+  const d = (dashData as any)?.dashboard || dashData
+  const dash = {
+    pending_verifications: d?.pending_verifications ?? 0,
+    active_problems: d?.active_issues ?? d?.active_problems ?? 0,
+    marketplace_items: d?.marketplace_items ?? 0,
+    announcements: d?.announcements ?? 0,
+  }
+
+  // Process activity data
+  const pendingUsers = activityData && (activityData as any).pendingUsersRes?.status === 'fulfilled' 
+    ? (((activityData as any).pendingUsersRes.value as any)?.data?.users || ((activityData as any).pendingUsersRes.value as any)?.users || [])
+    : []
+  const issues = activityData && (activityData as any).issuesRes?.status === 'fulfilled'
+    ? (((activityData as any).issuesRes.value as any)?.data?.data || ((activityData as any).issuesRes.value as any)?.data || ((activityData as any).issuesRes.value as any)?.issues || [])
+    : []
+  const items = activityData && (activityData as any).itemsRes?.status === 'fulfilled'
+    ? ((((activityData as any).itemsRes.value as any)?.data?.data?.items) || ((activityData as any).itemsRes.value as any)?.data?.items || ((activityData as any).itemsRes.value as any)?.items || [])
+    : []
+  const announcements = activityData && (activityData as any).announcementsRes?.status === 'fulfilled'
+    ? ((((activityData as any).announcementsRes.value as any)?.data?.announcements) || ((activityData as any).announcementsRes.value as any)?.announcements || [])
+    : []
+  const recentAnnouncements = announcements.slice(0, 3)
+  const marketStats = activityData && (activityData as any).marketStatsRes?.status === 'fulfilled'
+    ? (((activityData as any).marketStatsRes.value as any)?.data || (activityData as any).marketStatsRes.value)
+    : undefined
+
+  const loading = dashLoading || activityLoading
 
   // Map color token to explicit Tailwind gradient classes so JIT includes them
   const gradientClass = (color: 'ocean'|'forest'|'sunset'|'red') => {
@@ -34,140 +73,72 @@ export default function Dashboard() {
     }
   }
 
-  // Quick actions removed per design update
-
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        setError(null)
-        // Only show loading skeleton on first load
-        if (!hasLoadedOnce) setLoading(true)
-        // Prefer admin reports; fallback to dashboard stats is implemented inside adminApi.getReports
-        const data = await adminApi.getReports()
-        const d = (data?.dashboard || data) as any
-        if (mounted) {
-          setDash({
-            pending_verifications: d?.pending_verifications ?? 0,
-            active_problems: d?.active_issues ?? d?.active_problems ?? 0,
-            marketplace_items: d?.marketplace_items ?? 0,
-            announcements: d?.announcements ?? 0,
-          })
-          setHasLoadedOnce(true)
-        }
-      } catch (e: any) {
-        const msg = handleApiError(e)
-        setError(msg)
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
-    return () => { mounted = false }
-  }, [hasLoadedOnce])
-
   // Refresh stats when a verification action occurs
   const reloadStats = async () => {
-    try {
-      const data = await adminApi.getReports()
-      const d = (data?.dashboard || data) as any
-      setDash({
-        pending_verifications: d?.pending_verifications ?? 0,
-        active_problems: d?.active_issues ?? d?.active_problems ?? 0,
-        marketplace_items: d?.marketplace_items ?? 0,
-        announcements: d?.announcements ?? 0,
-      })
-    } catch {}
+    refetchDash()
   }
 
-  // Load recent activity and overview series
-  const loadActivity = async () => {
-    try {
-      const [pendingUsersRes, issuesRes, itemsRes, announcementsRes, marketStatsRes] = await Promise.allSettled([
-        userApi.getPendingUsers(),
-        issueApi.getIssues({ page: 1, per_page: 20 }),
-        marketplaceApi.getPendingItems(),
-        announcementApi.getAnnouncements(),
-        marketplaceApi.getMarketplaceStats(),
-      ])
+  // Process activity data for overview
+  const totalMarket = marketStats?.total_items ?? marketStats?.approved_items ?? items.length
+  const pendingCount = Array.isArray(pendingUsers) ? pendingUsers.length : 0
+  const activeProblemsCount = Array.isArray(issues)
+    ? issues.filter((it: any) => {
+        const s = String(it.status || it.state || '').toLowerCase()
+        return s.includes('active') || s.includes('in_progress') || s.includes('under') || s === ''
+      }).length
+    : 0
 
-      const pendingUsers = pendingUsersRes.status === 'fulfilled' ? ((pendingUsersRes.value as any)?.data?.users || (pendingUsersRes.value as any)?.users || []) : []
-      const issues = issuesRes.status === 'fulfilled' ? ((issuesRes.value as any)?.data?.data || (issuesRes.value as any)?.data || (issuesRes.value as any)?.issues || []) : []
-      const items = itemsRes.status === 'fulfilled' ? (((itemsRes.value as any)?.data?.data?.items) || (itemsRes.value as any)?.data?.items || (itemsRes.value as any)?.items || []) : []
-      const announcements = announcementsRes.status === 'fulfilled' ? (((announcementsRes.value as any)?.data?.announcements) || (announcementsRes.value as any)?.announcements || []) : []
-      setRecentAnnouncements(announcements.slice(0, 3))
-
-      // Update top-level counts as a fallback if dashboard stats are zero/missing
-      const marketStats = marketStatsRes.status === 'fulfilled' ? ((marketStatsRes.value as any)?.data || marketStatsRes.value) : undefined
-      const totalMarket = marketStats?.total_items ?? marketStats?.approved_items ?? items.length
-      const pendingCount = Array.isArray(pendingUsers) ? pendingUsers.length : 0
-      const activeProblemsCount = Array.isArray(issues)
-        ? issues.filter((it: any) => {
-            const s = String(it.status || it.state || '').toLowerCase()
-            return s.includes('active') || s.includes('in_progress') || s.includes('under') || s === ''
-          }).length
-        : 0
-      setDash((prev) => ({
-        pending_verifications: pendingCount || prev?.pending_verifications || 0,
-        active_problems: activeProblemsCount || prev?.active_problems || 0,
-        marketplace_items: typeof totalMarket === 'number' ? totalMarket : (prev?.marketplace_items ?? 0),
-        announcements: announcements.length || prev?.announcements || 0,
-      }))
-
-      // Build feed
-      const feed: Array<{ icon: string; text: string; who?: string; ts: number; color: 'ocean'|'forest'|'sunset'|'purple'|'red' }> = []
-      for (const u of pendingUsers) {
-        const ts = new Date(u.created_at || u.updated_at || Date.now()).getTime()
-        feed.push({ icon: '👥', text: 'New registration', who: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim(), ts, color: 'ocean' })
-      }
-      for (const i of issues) {
-        const ts = new Date(i.created_at || i.updated_at || Date.now()).getTime()
-        feed.push({ icon: '⚠️', text: `Problem: ${i.title ?? i.category ?? 'New problem'}`, who: i.created_by_name, ts, color: 'red' })
-      }
-      for (const it of items) {
-        const ts = new Date(it.created_at || it.updated_at || Date.now()).getTime()
-        feed.push({ icon: '🛍️', text: `Marketplace: ${it.title ?? 'New item'}`, who: it.seller_name, ts, color: 'sunset' })
-      }
-      for (const a of announcements) {
-        const ts = new Date(a.created_at || a.updated_at || Date.now()).getTime()
-        feed.push({ icon: '📢', text: `Announcement: ${a.title ?? 'New announcement'}`, who: a.created_by_name, ts, color: 'purple' })
-      }
-
-      feed.sort((a, b) => b.ts - a.ts)
-      setActivity(feed.slice(0, 10))
-
-      // Overview for last 7 days
-      const since = Date.now() - 7 * 24 * 60 * 60 * 1000
-      const in7 = (d?: any) => new Date(d || Date.now()).getTime() >= since
-      const verifications7 = pendingUsers.filter((u: any) => in7(u.created_at)).length
-      const documents7 = 0 // Placeholder: no admin documents endpoint; keep 0 for now
-      const marketplace7 = items.filter((it: any) => in7(it.created_at)).length
-      const problems7 = issues.filter((i: any) => in7(i.created_at)).length
-      setOverview([
-        { label: 'Verifications', value: verifications7, max: Math.max(10, verifications7), color: 'ocean' },
-        { label: 'Documents', value: documents7, max: Math.max(10, documents7 || 10), color: 'forest' },
-        { label: 'Marketplace', value: marketplace7, max: Math.max(10, marketplace7), color: 'sunset' },
-        { label: 'Problems', value: problems7, max: Math.max(10, problems7), color: 'red' },
-      ])
-    } catch {
-      setActivity([])
-    }
+  // Merge activity counts with dashboard stats
+  const finalDash = {
+    pending_verifications: pendingCount || dash.pending_verifications || 0,
+    active_problems: activeProblemsCount || dash.active_problems || 0,
+    marketplace_items: typeof totalMarket === 'number' ? totalMarket : (dash.marketplace_items ?? 0),
+    announcements: announcements.length || dash.announcements || 0,
   }
 
-  // Combined reload for polling
-  const reloadAll = async () => {
-    await Promise.allSettled([reloadStats(), loadActivity()])
+  // Build overview stats from cached data
+  const in7 = (dateStr?: string) => {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    const now = Date.now()
+    return (now - d.getTime()) < (7 * 24 * 60 * 60 * 1000)
+  }
+  
+  const verifications7 = pendingUsers.filter((u: any) => in7(u.created_at)).length
+  const documents7 = 0 // Placeholder: no admin documents endpoint; keep 0 for now
+  const marketplace7 = items.filter((it: any) => in7(it.created_at)).length
+  const problems7 = issues.filter((i: any) => in7(i.created_at)).length
+  
+  const overview = [
+    { label: 'Verifications', value: verifications7, max: Math.max(10, verifications7), color: 'ocean' as const },
+    { label: 'Documents', value: documents7, max: Math.max(10, documents7 || 10), color: 'forest' as const },
+    { label: 'Marketplace', value: marketplace7, max: Math.max(10, marketplace7), color: 'sunset' as const },
+    { label: 'Problems', value: problems7, max: Math.max(10, problems7), color: 'red' as const },
+  ]
+
+  // Build activity timeline
+  const activity: Array<{ icon: string; text: string; who?: string; ts: number; color: 'ocean'|'forest'|'sunset'|'purple'|'red' }> = []
+  
+  // Build feed
+  for (const u of pendingUsers) {
+    const ts = new Date(u.created_at || u.updated_at || Date.now()).getTime()
+    activity.push({ icon: '👥', text: 'New registration', who: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim(), ts, color: 'ocean' })
+  }
+  for (const i of issues) {
+    const ts = new Date(i.created_at || i.updated_at || Date.now()).getTime()
+    activity.push({ icon: '⚠️', text: `Problem: ${i.title ?? i.category ?? 'New problem'}`, who: i.created_by_name, ts, color: 'red' })
+  }
+  for (const it of items) {
+    const ts = new Date(it.created_at || it.updated_at || Date.now()).getTime()
+    activity.push({ icon: '🛍️', text: `Marketplace: ${it.title ?? 'New item'}`, who: it.seller_name, ts, color: 'sunset' })
+  }
+  for (const a of announcements) {
+    const ts = new Date(a.created_at || a.updated_at || Date.now()).getTime()
+    activity.push({ icon: '📢', text: `Announcement: ${a.title ?? 'New announcement'}`, who: a.created_by_name, ts, color: 'purple' })
   }
 
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      await loadActivity()
-    })()
-    // Poll every 2 minutes instead of 30 seconds to reduce unnecessary API calls
-    // Admin dashboards don't need real-time updates - 2 min is sufficient
-    const id = window.setInterval(() => { if (mounted) reloadAll() }, 120000)
-    return () => { mounted = false; window.clearInterval(id) }
-  }, [])
+  activity.sort((a, b) => b.ts - a.ts)
+  const recentActivity = activity.slice(0, 10)
 
   // KPI cards rendered via shared StatCard
 
@@ -196,9 +167,6 @@ export default function Dashboard() {
     <div className="min-h-screen">
       <div className="pt-0">
         <div className="">
-          {error && (
-            <div className="mb-4 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>
-          )}
           {/* Welcome Banner */}
           <div className="mb-8 bg-ocean-gradient text-white rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-lg shadow-sky-500/20">
             <div className="absolute top-0 right-0 w-72 h-72 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -216,10 +184,10 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatCard title="Pending Verifications" value={loading ? '…' : (dash?.pending_verifications ?? 0)} />
-            <StatCard title="Active Problems" value={loading ? '…' : (dash?.active_problems ?? 0)} />
-            <StatCard title="Marketplace Items" value={loading ? '…' : (dash?.marketplace_items ?? 0)} />
-            <StatCard title="Announcements" value={loading ? '…' : (dash?.announcements ?? 0)} />
+            <StatCard title="Pending Verifications" value={loading ? '…' : (finalDash?.pending_verifications ?? 0)} />
+            <StatCard title="Active Problems" value={loading ? '…' : (finalDash?.active_problems ?? 0)} />
+            <StatCard title="Marketplace Items" value={loading ? '…' : (finalDash?.marketplace_items ?? 0)} />
+            <StatCard title="Announcements" value={loading ? '…' : (finalDash?.announcements ?? 0)} />
           </div>
 
           {/* Main Content Grid */}
@@ -238,7 +206,7 @@ export default function Dashboard() {
               <Button fullWidth className="mb-6" onClick={() => navigate('/announcements')}>+ Create Announcement</Button>
               {recentAnnouncements.length > 0 ? (
                 <div className="space-y-3">
-                  {recentAnnouncements.map((a, i) => (
+                  {recentAnnouncements.map((a: any, i: number) => (
                     <div key={`${a.id}-${i}`} className="p-3 rounded-xl border bg-white/80 backdrop-blur">
                       <div className="text-sm font-medium truncate">{a.title}</div>
                       <div className="text-xs text-neutral-600 truncate">{(a.content || '').slice(0, 120)}</div>
@@ -264,7 +232,7 @@ export default function Dashboard() {
             {/* Recent Activity */}
             <Card title={<span className="text-xl font-bold">Recent Activity</span>}>
               <div className="space-y-3">
-                {activity.map((a, i) => (
+                {recentActivity.map((a, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 bg-slate-50/80 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-100 hover:border-slate-200">
                     <div className={`w-10 h-10 bg-${a.color}-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0 shadow-sm`}>
                       <IconFromCode code={a.icon} className="w-5 h-5" />
@@ -275,7 +243,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
-                {activity.length === 0 && (
+                {recentActivity.length === 0 && (
                   <div className="text-sm text-slate-500 text-center py-8">No recent activity.</div>
                 )}
               </div>

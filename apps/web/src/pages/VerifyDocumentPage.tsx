@@ -27,7 +27,8 @@ export default function VerifyDocumentPage() {
   const valid = !!data?.valid
 
   return (
-    <div className="container-responsive py-12">
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-12 max-w-4xl">
       {(() => {
         const seal = getBestRegion3Seal({
           municipality: data?.muni_name,
@@ -63,8 +64,16 @@ export default function VerifyDocumentPage() {
               <div className="mt-2"><a className="text-blue-700 underline" href={mediaUrl(data.url)} target="_blank" rel="noreferrer">Open Document</a></div>
             )}
           </div>
+          {valid && (
+            <div className="mt-4 pt-4 border-t border-emerald-200">
+              <div className="text-xs text-emerald-700">
+                This document has been verified. The QR code on the document links to this verification page.
+              </div>
+            </div>
+          )}
         </div>
       )}
+      </div>
     </div>
   )
 }

@@ -114,11 +114,14 @@ export default function Layout() {
               
               <span aria-hidden="true" className="w-px h-5 bg-gray-300 mx-1" />
               
+              {/* Hide location selectors on Dashboard page */}
+              {location.pathname !== '/dashboard' && (
               <div className="flex items-center gap-1 bg-ocean-50/50 rounded-lg px-2 py-1">
                 <ProvinceSelect />
                 <span className="text-gray-300">/</span>
                 <MunicipalitySelect />
               </div>
+              )}
               
               <span aria-hidden="true" className="w-px h-5 bg-gray-300 mx-1" />
               
@@ -174,10 +177,13 @@ export default function Layout() {
             <Link to="/problems" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Problems</Link>
             <Link to="/programs" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Programs</Link>
             <Link to="/about" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">About</Link>
+            {/* Hide location selectors on Dashboard page */}
+            {location.pathname !== '/dashboard' && (
             <div className="px-3 py-2 space-y-2">
               <ProvinceSelect />
               <MunicipalitySelect />
             </div>
+            )}
           </div>
           <div className="mt-auto p-3 border-t border-neutral-200">
             {role === 'public' ? (

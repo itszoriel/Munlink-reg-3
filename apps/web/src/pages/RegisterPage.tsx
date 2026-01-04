@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { authApi, municipalityApi } from '@/lib/api'
-import { getProvinces, getMunicipalities } from '@/lib/locations'
+import { authApi } from '@/lib/api'
+import { getProvinces, getMunicipalities, getBarangaysByMunicipalitySlug } from '@/lib/locations'
 
 // Province seals for visual feedback (use absolute paths from public folder)
 const provinceSealMap: Record<string, string> = {
@@ -36,14 +36,18 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [barangays, setBarangays] = useState<{ id: number; name: string }[]>([])
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false)
 
   // Use static data - instant load, no API call needed!
   const provinces = useMemo(() => getProvinces(), [])
   const municipalities = useMemo(
     () => formData.province ? getMunicipalities(Number(formData.province)) : [],
     [formData.province]
+  )
+  const barangays = useMemo(
+    () => formData.municipality ? getBarangaysByMunicipalitySlug(formData.municipality) : [],
+    [formData.municipality]
   )
 
   // Get the selected province seal
@@ -53,39 +57,20 @@ export default function RegisterPage() {
   // Reset municipality and barangay when province changes
   useEffect(() => {
     setFormData(f => ({ ...f, municipality: '', barangay_id: '' }))
-    setBarangays([])
   }, [formData.province])
 
-  // Load barangays when a municipality is selected
+  // Reset barangay when municipality changes
   useEffect(() => {
-    const loadBarangays = async () => {
-      try {
-        setBarangays([])
-        setFormData((f) => ({ ...f, barangay_id: '' }))
-        const mun = municipalities.find(m => m.slug === formData.municipality)
-        if (!mun) return
-        const res = await municipalityApi.getBarangays(mun.id)
-        const list = Array.isArray(res.data?.barangays) ? res.data.barangays : []
-        setBarangays(list.map((b: any) => ({ id: b.id, name: b.name })))
-      } catch (e) {
-        setBarangays([])
-      }
-    }
-    if (formData.municipality) {
-      loadBarangays()
-    } else {
-      setBarangays([])
-      setFormData((f) => ({ ...f, barangay_id: '' }))
-    }
-  }, [formData.municipality, municipalities])
+    setFormData(f => ({ ...f, barangay_id: '' }))
+  }, [formData.municipality])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setSuccess(null)
     
-    if (!agreedToTerms) {
-      setError('You must agree to the Terms of Service and Privacy Policy to create an account')
+    if (!agreedToTerms || !agreedToPrivacy) {
+      setError('You must agree to both the Terms of Service and Privacy Policy to create an account')
       return
     }
     
@@ -106,7 +91,10 @@ export default function RegisterPage() {
         date_of_birth: formData.dateOfBirth,
         municipality_slug: formData.municipality,
       }
-      if (formData.barangay_id) payload.barangay_id = Number(formData.barangay_id)
+      // Include barangay_id if selected (optional)
+      if (formData.barangay_id) {
+        payload.barangay_id = Number(formData.barangay_id)
+      }
       const res = await authApi.register(payload, {
         profile_picture: uploads.profile_picture || undefined,
         valid_id_front: uploads.valid_id_front || undefined,
@@ -341,7 +329,9 @@ export default function RegisterPage() {
                   onChange={(e) => setFormData({ ...formData, barangay_id: e.target.value })}
                   disabled={!formData.municipality || barangays.length === 0}
                 >
-                  <option value="">Select barangay</option>
+                  <option value="">
+                    {!formData.municipality ? 'Select municipality first' : barangays.length === 0 ? 'No barangays available' : 'Select barangay'}
+                  </option>
                   {barangays.map((b) => (
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
@@ -351,35 +341,63 @@ export default function RegisterPage() {
           </div>
           
           {/* Terms and Privacy Agreement */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 space-y-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Agreement Required</h3>
+            <div className="space-y-3">
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
                 id="agree-terms"
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-1 h-4 w-4 text-ocean-600 border-gray-300 rounded focus:ring-ocean-500"
+                  className="mt-1 h-4 w-4 text-ocean-600 border-gray-300 rounded focus:ring-ocean-500 flex-shrink-0"
                 required
               />
               <label htmlFor="agree-terms" className="text-sm text-gray-700 cursor-pointer">
                 I have read and agree to the{' '}
-                <Link to="/terms-of-service" state={{ from: '/register' }} className="text-ocean-600 hover:text-ocean-700 font-semibold underline">
+                  <Link 
+                    to="/terms-of-service" 
+                    state={{ from: '/register' }} 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-ocean-600 hover:text-ocean-700 font-semibold underline"
+                  >
                   Terms of Service
                 </Link>
-                {' '}and{' '}
-                <Link to="/privacy-policy" state={{ from: '/register' }} className="text-ocean-600 hover:text-ocean-700 font-semibold underline">
+                  . <span className="text-red-500">*</span>
+                </label>
+              </div>
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="agree-privacy"
+                  checked={agreedToPrivacy}
+                  onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+                  className="mt-1 h-4 w-4 text-ocean-600 border-gray-300 rounded focus:ring-ocean-500 flex-shrink-0"
+                  required
+                />
+                <label htmlFor="agree-privacy" className="text-sm text-gray-700 cursor-pointer">
+                  I have read and agree to the{' '}
+                  <Link 
+                    to="/privacy-policy" 
+                    state={{ from: '/register' }} 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-ocean-600 hover:text-ocean-700 font-semibold underline"
+                  >
                   Privacy Policy
                 </Link>
                 . <span className="text-red-500">*</span>
               </label>
             </div>
-            <p className="text-xs text-gray-600 ml-7">
+            </div>
+            <p className="text-xs text-gray-600 ml-7 pt-2 border-t border-blue-200">
               By creating an account, you acknowledge that you understand and accept our Terms of Service and Privacy Policy. 
               Please read them carefully before proceeding.
             </p>
           </div>
           
-          <button type="submit" className="btn-primary w-full disabled:opacity-60" disabled={submitting || !agreedToTerms}>
+          <button type="submit" className="btn-primary w-full disabled:opacity-60" disabled={submitting || !agreedToTerms || !agreedToPrivacy}>
             {submitting ? 'Registering...' : 'Create Account'}
           </button>
         </form>

@@ -12,8 +12,9 @@ class TransferRequest(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     from_municipality_id = db.Column(db.Integer, db.ForeignKey('municipalities.id'), nullable=False)
     to_municipality_id = db.Column(db.Integer, db.ForeignKey('municipalities.id'), nullable=False)
+    to_barangay_id = db.Column(db.Integer, db.ForeignKey('barangays.id'), nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, accepted
-    notes = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     approved_at = db.Column(db.DateTime, nullable=True)
@@ -25,6 +26,7 @@ class TransferRequest(db.Model):
             'user_id': self.user_id,
             'from_municipality_id': self.from_municipality_id,
             'to_municipality_id': self.to_municipality_id,
+            'to_barangay_id': self.to_barangay_id,
             'status': self.status,
             'notes': self.notes,
             'created_at': self.created_at.isoformat() if self.created_at else None,

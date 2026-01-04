@@ -1,12 +1,24 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { documentsAdminApi, handleApiError, showToast } from '../lib/api'
 
 export default function VerifyTicket() {
+  const [searchParams] = useSearchParams()
   const [token, setToken] = useState('')
   const [code, setCode] = useState('')
   const [requestId, setRequestId] = useState('')
   const [result, setResult] = useState<any | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Pre-fill form from URL parameters
+  useEffect(() => {
+    const urlToken = searchParams.get('token')
+    const urlCode = searchParams.get('code')
+    const urlRequestId = searchParams.get('request_id')
+    if (urlToken) setToken(urlToken)
+    if (urlCode) setCode(urlCode)
+    if (urlRequestId) setRequestId(urlRequestId)
+  }, [searchParams])
 
   const verify = async () => {
     try {

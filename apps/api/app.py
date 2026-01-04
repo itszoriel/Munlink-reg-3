@@ -42,17 +42,17 @@ def create_app(config_class=Config):
     
     # CORS configuration - cover all routes including /health and /uploads
     cors_origins = [
-        app.config['WEB_URL'],
-        app.config['ADMIN_URL'],
-        "http://localhost:3000",
-        "http://localhost:3001"
+                app.config['WEB_URL'],
+                app.config['ADMIN_URL'],
+                "http://localhost:3000",
+                "http://localhost:3001"
     ]
     cors_settings = {
         "origins": cors_origins,
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True
-    }
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
+        }
     # Note: Flask-CORS uses regex patterns, so use .* not * for wildcards
     CORS(app, resources={
         r"/api/.*": cors_settings,
@@ -111,6 +111,38 @@ def create_app(config_class=Config):
             'municipalities': 129,
             'docs': '/api/docs'
         }), 200
+    
+    # Public verify route (for QR codes that point directly to backend)
+    # This allows QR codes to work whether they point to frontend or backend
+    @app.route('/verify/<string:request_number>', methods=['GET'])
+    def public_verify_direct(request_number: str):
+        """Handle verify requests directly (for QR codes pointing to backend)."""
+        try:
+            from apps.api.models.document import DocumentRequest
+            r = DocumentRequest.query.filter_by(request_number=request_number).first()
+            if not r:
+                return jsonify({'valid': False, 'reason': 'not_found'}), 200
+            if (r.delivery_method or '').lower() != 'digital':
+                return jsonify({'valid': False, 'reason': 'not_digital'}), 200
+            if not r.document_file:
+                return jsonify({'valid': False, 'reason': 'no_file'}), 200
+            status = (r.status or '').lower()
+            if status not in ('ready', 'completed'):
+                return jsonify({'valid': False, 'reason': f'status_{status}'}), 200
+            muni_name = getattr(getattr(r, 'municipality', None), 'name', None)
+            doc_name = getattr(getattr(r, 'document_type', None), 'name', None)
+            issued_at = r.ready_at.isoformat() if getattr(r, 'ready_at', None) else None
+            return jsonify({
+                'valid': True,
+                'request_number': r.request_number,
+                'status': r.status,
+                'muni_name': muni_name,
+                'doc_name': doc_name,
+                'issued_at': issued_at,
+                'url': f"/uploads/{str(r.document_file).replace('\\', '/')}"
+            }), 200
+        except Exception as e:
+            return jsonify({'valid': False, 'error': str(e)}), 500
     
     # Serve uploaded files
     @app.route('/uploads/<path:filename>')

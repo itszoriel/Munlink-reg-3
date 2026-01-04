@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { authApi, mediaUrl, transferApi, showToast, municipalityApi } from '@/lib/api'
 import { ProfileCard, Form, FormField, Input, Button } from '@munlink/ui'
-import { getProvinces, getMunicipalities } from '@/lib/locations'
+import { getProvinces, getMunicipalities, getMunicipalityById } from '@/lib/locations'
 
 type Profile = {
   first_name?: string
@@ -29,8 +29,8 @@ export default function ProfilePage() {
   const [transferError, setTransferError] = useState<string | null>(null)
   const [transferOk, setTransferOk] = useState<string | null>(null)
   const [showTransferModal, setShowTransferModal] = useState(false)
-  const [transferForm, setTransferForm] = useState({ province_id: '', to_municipality_id: '', notes: '' })
-  const [barangays, setBarangays] = useState<any[]>([])
+  const [transferForm, setTransferForm] = useState({ province_id: '', to_municipality_id: '', to_barangay_id: '', notes: '' })
+  const [transferBarangays, setTransferBarangays] = useState<any[]>([])
 
   // Static province and municipality data
   const provinces = getProvinces()
@@ -51,14 +51,11 @@ export default function ProfilePage() {
       setLoading(true)
       setError(null)
       try {
-        const [profileRes, muniRes] = await Promise.all([
-          authApi.getProfile(),
-          municipalityApi.getAll().then(r => r.data)
-        ])
+        const profileRes = await authApi.getProfile()
         const data = (profileRes as any).data || profileRes
-        // Find province from municipality
-        const userMuni = (muniRes.municipalities || []).find((m: any) => m.id === data.municipality_id)
-        const provinceName = userMuni?.province_name || ''
+        // Find municipality and province from static data (now matches database IDs)
+        const userMuni = data.municipality_id ? getMunicipalityById(data.municipality_id) : null
+        const provinceName = userMuni ? getProvinces().find(p => p.id === userMuni.province_id)?.name || '' : ''
         const provinceId = userMuni?.province_id
         if (!cancelled) {
           setForm({
@@ -75,12 +72,7 @@ export default function ProfilePage() {
             barangay_id: data.barangay_id,
             barangay_name: data.barangay_name,
           })
-          if (data.municipality_id) {
-            try {
-              const resB = await municipalityApi.getBarangays(data.municipality_id)
-              setBarangays(resB.data?.barangays || [])
-            } catch { setBarangays([]) }
-          }
+          // Note: Barangay is now read-only in profile, only editable through transfer request
         }
       } catch (e: any) {
         if (!cancelled) setError('Failed to load profile')
@@ -110,7 +102,7 @@ export default function ProfilePage() {
       if (form.username) payload.username = form.username
       if (form.email) payload.email = form.email
       if (form.phone !== undefined) payload.phone_number = form.phone
-      if (form.barangay_id) payload.barangay_id = form.barangay_id
+      // Barangay is not editable in profile - only through transfer request
       await authApi.updateProfile(payload)
       setOk('Profile updated')
       showToast('Profile updated successfully', 'success')
@@ -122,20 +114,47 @@ export default function ProfilePage() {
     }
   }
 
+  // Load barangays when municipality is selected in transfer form
+  useEffect(() => {
+    const loadTransferBarangays = async () => {
+      if (!transferForm.to_municipality_id) {
+        setTransferBarangays([])
+        setTransferForm(prev => ({ ...prev, to_barangay_id: '' }))
+        return
+      }
+      try {
+        const res = await municipalityApi.getBarangays(Number(transferForm.to_municipality_id))
+        setTransferBarangays(res.data?.barangays || [])
+      } catch {
+        setTransferBarangays([])
+      }
+    }
+    loadTransferBarangays()
+  }, [transferForm.to_municipality_id])
+
   const handleTransferSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!transferForm.to_municipality_id) {
       setTransferError('Please select a municipality')
       return
     }
+    if (!transferForm.to_barangay_id) {
+      setTransferError('Please select a barangay')
+      return
+    }
+    if (!transferForm.notes || !transferForm.notes.trim()) {
+      setTransferError('Please provide a reason for the transfer')
+      return
+    }
     setTransferring(true)
     setTransferError(null)
     setTransferOk(null)
     try {
-      await transferApi.request(Number(transferForm.to_municipality_id), transferForm.notes)
+      await transferApi.request(Number(transferForm.to_municipality_id), transferForm.notes, Number(transferForm.to_barangay_id))
       setTransferOk('Transfer request submitted successfully')
       setShowTransferModal(false)
-      setTransferForm({ province_id: '', to_municipality_id: '', notes: '' })
+      setTransferForm({ province_id: '', to_municipality_id: '', to_barangay_id: '', notes: '' })
+      setTransferBarangays([])
       showToast('Transfer request submitted successfully', 'success')
     } catch (e: any) {
       setTransferError(e?.response?.data?.error || 'Failed to submit transfer request')
@@ -189,59 +208,15 @@ export default function ProfilePage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Barangay</label>
-              <select
-                value={form.barangay_id || ''}
-                onChange={(e) => {
-                  const selectedId = Number(e.target.value || '0') || undefined
-                  const selectedBarangay = barangays.find(b => b.id === selectedId)
-                  setForm((f) => ({ 
-                    ...f, 
-                    barangay_id: selectedId,
-                    barangay_name: selectedBarangay?.name || ''
-                  }))
-                }}
-                disabled={loading || saving || !form.municipality_id}
-                className="input-field"
-              >
-                <option value="">Select barangay</option>
-                {barangays.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-              {!form.barangay_id && (
-                <div className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1 mt-1">
-                  Please select your barangay to request documents.
-                </div>
-              )}
+              <input 
+                type="text" 
+                value={form.barangay_name || ''} 
+                disabled 
+                className="input-field bg-gray-100 cursor-not-allowed"
+              />
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
-            <div>
-              <Button 
-                onClick={async () => {
-                  if (!form.barangay_id) {
-                    showToast('Please select a barangay', 'error')
-                    return
-                  }
-                  setSaving(true)
-                  setError(null)
-                  setOk(null)
-                  try {
-                    await authApi.updateProfile({ barangay_id: form.barangay_id })
-                    setOk('Address updated successfully')
-                    showToast('Address updated successfully', 'success')
-                  } catch (e: any) {
-                    setError('Failed to update address')
-                    showToast('Failed to update address', 'error')
-                  } finally {
-                    setSaving(false)
-                  }
-                }} 
-                disabled={saving || loading || !form.barangay_id}
-              >
-                {saving ? 'Saving...' : 'Save Barangay'}
-              </Button>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 pt-4 border-t">
             <div className="text-sm text-gray-600">
               <span>Need to move to a different municipality or province? </span>
               <button 
@@ -278,70 +253,99 @@ export default function ProfilePage() {
         </Form>
       </div>
 
-      {/* Transfer Modal with Province Selection */}
+      {/* Transfer Modal with Province Selection - Full screen on mobile */}
       {showTransferModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50"
+          onClick={() => setShowTransferModal(false)}
+        >
+          <div 
+            className="bg-white w-full sm:w-[95%] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Request Location Transfer</h3>
-              <button onClick={() => setShowTransferModal(false)} className="text-gray-400 hover:text-gray-600" aria-label="Close">
+              <button onClick={() => setShowTransferModal(false)} className="p-2 -mr-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors" aria-label="Close">
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Select your new province and municipality. This will require approval from your current admin and acceptance by the new municipality.
-            </p>
-            {transferError && <div className="mb-4 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{transferError}</div>}
-            {transferOk && <div className="mb-4 rounded-md border border-green-200 bg-green-50 text-green-700 px-3 py-2 text-sm">{transferOk}</div>}
-            <form onSubmit={handleTransferSubmit}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Target Province</label>
-                <select
-                  value={transferForm.province_id}
-                  onChange={(e) => setTransferForm(prev => ({ ...prev, province_id: e.target.value, to_municipality_id: '' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  required
-                >
-                  <option value="">Select province</option>
-                  {provinces.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Target Municipality</label>
-                <select
-                  value={transferForm.to_municipality_id}
-                  onChange={(e) => setTransferForm(prev => ({ ...prev, to_municipality_id: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  disabled={!transferForm.province_id}
-                  required
-                >
-                  <option value="">{transferForm.province_id ? 'Select municipality' : 'Select province first'}</option>
-                  {transferMunicipalities.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Notes (optional)</label>
-                <textarea
-                  value={transferForm.notes}
-                  onChange={(e) => setTransferForm(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows={3}
-                  placeholder="Reason for transfer..."
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="secondary" onClick={() => setShowTransferModal(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={transferring}>
-                  {transferring ? 'Submitting...' : 'Submit Request'}
-                </Button>
-              </div>
-            </form>
+            
+            {/* Content */}
+            <div className="p-4 sm:p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Select your new province, municipality, and barangay. This will require approval from your current admin and acceptance by the new municipality.
+              </p>
+              {transferError && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 px-3 py-2.5 text-sm">{transferError}</div>}
+              {transferOk && <div className="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-700 px-3 py-2.5 text-sm">{transferOk}</div>}
+              <form onSubmit={handleTransferSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Target Province <span className="text-red-500">*</span></label>
+                  <select
+                    value={transferForm.province_id}
+                    onChange={(e) => setTransferForm(prev => ({ ...prev, province_id: e.target.value, to_municipality_id: '', to_barangay_id: '' }))}
+                    className="input-field"
+                    required
+                  >
+                    <option value="">Select province</option>
+                    {provinces.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Target Municipality <span className="text-red-500">*</span></label>
+                  <select
+                    value={transferForm.to_municipality_id}
+                    onChange={(e) => setTransferForm(prev => ({ ...prev, to_municipality_id: e.target.value, to_barangay_id: '' }))}
+                    className="input-field"
+                    disabled={!transferForm.province_id}
+                    required
+                  >
+                    <option value="">{transferForm.province_id ? 'Select municipality' : 'Select province first'}</option>
+                    {transferMunicipalities.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Target Barangay <span className="text-red-500">*</span></label>
+                  <select
+                    value={transferForm.to_barangay_id}
+                    onChange={(e) => setTransferForm(prev => ({ ...prev, to_barangay_id: e.target.value }))}
+                    className="input-field"
+                    disabled={!transferForm.to_municipality_id || transferBarangays.length === 0}
+                    required
+                  >
+                    <option value="">{!transferForm.to_municipality_id ? 'Select municipality first' : transferBarangays.length === 0 ? 'No barangays available' : 'Select barangay'}</option>
+                    {transferBarangays.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Reason for Transfer <span className="text-red-500">*</span></label>
+                  <textarea
+                    value={transferForm.notes}
+                    onChange={(e) => setTransferForm(prev => ({ ...prev, notes: e.target.value }))}
+                    className="input-field resize-none"
+                    rows={3}
+                    placeholder="Please provide a reason for the transfer..."
+                    required
+                  />
+                </div>
+                
+                {/* Footer buttons */}
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+                  <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setShowTransferModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="w-full sm:w-auto" disabled={transferring}>
+                    {transferring ? 'Submitting...' : 'Submit Request'}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

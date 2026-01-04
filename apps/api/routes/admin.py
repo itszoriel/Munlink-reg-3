@@ -1405,12 +1405,12 @@ def admin_update_transfer(transfer_id: int):
                 return jsonify({'error': 'Only new municipality can accept'}), 403
             if t.status != 'approved':
                 return jsonify({'error': 'Only approved transfers can be accepted'}), 400
-            # Move user to new municipality and reset admin verification (pending acceptance)
+            # Move user to new municipality and barangay, reset admin verification (pending acceptance)
             user = User.query.get(t.user_id)
             if not user:
                 return jsonify({'error': 'User not found'}), 404
             user.municipality_id = t.to_municipality_id
-            user.barangay_id = None
+            user.barangay_id = t.to_barangay_id  # Set to requested barangay if provided
             user.admin_verified = False
             user.updated_at = now
             t.status = 'accepted'
@@ -1756,6 +1756,7 @@ def _parse_range(range_param: str):
 @admin_bp.route('/documents/stats', methods=['GET'])
 @jwt_required()
 def admin_documents_stats():
+    """Get document request statistics including status counts - single optimized endpoint."""
     try:
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
@@ -1764,46 +1765,57 @@ def admin_documents_stats():
         range_param = request.args.get('range', 'last_30_days')
         start, end = _parse_range(range_param)
 
-        total = DocumentRequest.query\
-            .filter(
-                and_(
-                    DocumentRequest.municipality_id == municipality_id,
-                    DocumentRequest.created_at >= start,
-                    DocumentRequest.created_at <= end,
-                )
-            ).count()
+        base_filter = and_(
+            DocumentRequest.municipality_id == municipality_id,
+            DocumentRequest.created_at >= start,
+            DocumentRequest.created_at <= end,
+        )
+
+        # Single query to get all status counts efficiently
+        status_counts = db.session.query(
+            DocumentRequest.status,
+            func.count(DocumentRequest.id)
+        ).filter(base_filter).group_by(DocumentRequest.status).all()
+        
+        # Build status map
+        status_map = {str(s[0]).lower(): int(s[1]) for s in status_counts}
+        total = sum(status_map.values())
+        
+        # Normalize status names
+        pending = status_map.get('pending', 0)
+        processing = status_map.get('processing', 0) + status_map.get('in_progress', 0)
+        ready = status_map.get('ready', 0) + status_map.get('ready_for_pickup', 0)
+        completed = status_map.get('completed', 0) + status_map.get('picked_up', 0) + status_map.get('closed', 0)
+        rejected = status_map.get('rejected', 0)
 
         # Top requested document names if relationship exists; fallback to counts by id
         try:
             from apps.api.models.document import DocumentType
             rows = db.session.query(DocumentType.name, func.count(DocumentRequest.id))\
                 .join(DocumentRequest, DocumentRequest.document_type_id == DocumentType.id)\
-                .filter(
-                    and_(
-                        DocumentRequest.municipality_id == municipality_id,
-                        DocumentRequest.created_at >= start,
-                        DocumentRequest.created_at <= end,
-                    )
-                )\
+                .filter(base_filter)\
                 .group_by(DocumentType.name)\
                 .order_by(func.count(DocumentRequest.id).desc())\
                 .limit(5).all()
             top = [{'name': r[0], 'count': int(r[1])} for r in rows]
         except Exception:
             rows = db.session.query(DocumentRequest.document_type_id, func.count(DocumentRequest.id))\
-                .filter(
-                    and_(
-                        DocumentRequest.municipality_id == municipality_id,
-                        DocumentRequest.created_at >= start,
-                        DocumentRequest.created_at <= end,
-                    )
-                )\
+                .filter(base_filter)\
                 .group_by(DocumentRequest.document_type_id)\
                 .order_by(func.count(DocumentRequest.id).desc())\
                 .limit(5).all()
             top = [{'name': str(r[0]), 'count': int(r[1])} for r in rows]
 
-        return jsonify({'total_requests': total, 'top_requested': top}), 200
+        return jsonify({
+            'total_requests': total,
+            'pending_requests': pending,
+            'processing_requests': processing,
+            'ready_requests': ready,
+            'completed_requests': completed,
+            'rejected_requests': rejected,
+            'top_requested': top,
+            'status_breakdown': status_map
+        }), 200
     except Exception as e:
         return jsonify({'error': 'Failed to get document stats', 'details': str(e)}), 500
 

@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { announcementsApi } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { useCachedFetch } from '@/lib/useCachedFetch'
+import { CACHE_KEYS } from '@/lib/dataStore'
 import AnnouncementCard from '@/components/AnnouncementCard'
 import { getHideRead, isRead, setHideRead } from '@/utils/unread'
 import { EmptyState } from '@munlink/ui'
@@ -19,42 +21,28 @@ type Announcement = {
 export default function AnnouncementsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const [priority, setPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all')
-  const [items, setItems] = useState<Announcement[]>([])
-  // Track if we've ever loaded data (for first-load-only skeleton)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
-  const [loading, setLoading] = useState<boolean>(true)
   const [hideRead, setHideReadState] = useState<boolean>(getHideRead())
 
   const params = useMemo(() => {
     const p: any = { active: true, page: 1, per_page: 20 }
     if (selectedMunicipality?.id) p.municipality_id = selectedMunicipality.id
-    // priority filter is client-side until backend supports param
     return p
   }, [selectedMunicipality?.id])
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      // Only show loading skeleton on first load
-      if (!hasLoadedOnce) setLoading(true)
-      try {
-        const res = await announcementsApi.getAll(params)
-        let list: Announcement[] = res.data?.announcements || []
-        if (priority !== 'all') list = list.filter(a => a.priority === priority)
-        if (hideRead) list = list.filter(a => !isRead(a.id))
-        if (!cancelled) {
-          setItems(list)
-          setHasLoadedOnce(true)
-        }
-      } catch {
-        if (!cancelled) setItems([])
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [params, priority, hideRead, hasLoadedOnce])
+  // Use cached fetch with filter-specific key
+  const { data: announcementsData, loading } = useCachedFetch(
+    CACHE_KEYS.ANNOUNCEMENTS,
+    () => announcementsApi.getAll(params),
+    { dependencies: [selectedMunicipality?.id], staleTime: 5 * 60 * 1000 }
+  )
+
+  // Client-side filtering
+  const items = useMemo(() => {
+    let list: Announcement[] = ((announcementsData as any)?.data?.announcements || [])
+    if (priority !== 'all') list = list.filter(a => a.priority === priority)
+    if (hideRead) list = list.filter(a => !isRead(a.id))
+    return list
+  }, [announcementsData, priority, hideRead])
 
   return (
     <div className="container-responsive py-12">
@@ -88,8 +76,8 @@ export default function AnnouncementsPage() {
         </div>
       </div>
 
-      {/* Only show skeleton on first load */}
-      {loading && !hasLoadedOnce ? (
+      {/* Only show skeleton when loading and no cached data */}
+      {loading && items.length === 0 ? (
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={`ann-skel-${i}`} className="skeleton-card">

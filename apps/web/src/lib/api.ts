@@ -316,7 +316,7 @@ export const benefitsApi = {
 }
 
 export const transferApi = {
-  request: (to_municipality_id: number, notes?: string) => api.post('/api/auth/transfer', { to_municipality_id, notes }),
+  request: (to_municipality_id: number, notes: string, to_barangay_id?: number) => api.post('/api/auth/transfer', { to_municipality_id, notes, to_barangay_id }),
   listAdmin: (): Promise<any> => api.get('/api/admin/transfers'),
   updateAdmin: (id: number, status: 'approved'|'rejected'|'accepted') => api.put(`/api/admin/transfers/${id}/status`, { status }),
 }

@@ -16,10 +16,10 @@ const API_BASE_URL =
   (typeof process !== 'undefined' ? (process as any).env?.NEXT_PUBLIC_API_URL : undefined) ||
   'http://localhost:5000'
 
-// Create axios instance
+// Create axios instance with longer timeout for admin operations
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 30000, // 30 seconds for admin panel (was 10s, causing timeouts)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -406,6 +406,18 @@ export const adminApi = {
       console.error('Failed to fetch document requests:', error)
       throw error
     }
+  },
+  // Document request stats - single optimized endpoint instead of 5 concurrent calls
+  getRequestStats: async (): Promise<{
+    total_requests: number
+    pending_requests: number
+    processing_requests: number
+    ready_requests: number
+    completed_requests: number
+    rejected_requests: number
+  }> => {
+    const res = await apiClient.get('/api/admin/documents/stats')
+    return res.data
   },
   // Marketplace items
   getItems: async (params: Record<string, any> = {}): Promise<{ items: any[]; pagination?: any }> => {

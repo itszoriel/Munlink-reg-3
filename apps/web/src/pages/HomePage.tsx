@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
 import { announcementsApi, marketplaceApi, mediaUrl } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { useCachedFetch } from '@/lib/useCachedFetch'
+import { CACHE_KEYS } from '@/lib/dataStore'
 import { Link } from 'react-router-dom'
 import AnnouncementCard from '@/components/AnnouncementCard'
 import MarketplaceCard from '@/components/MarketplaceCard'
@@ -22,38 +23,34 @@ const provinceSeals = [
 export default function HomePage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const selectedProvince = useAppStore((s) => s.selectedProvince)
+  const user = useAppStore((s) => s.user)
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
-  const [loading, setLoading] = useState(true)
-  const [recentAnnouncements, setRecentAnnouncements] = useState<any[]>([])
-  const [featuredItems, setFeaturedItems] = useState<any[]>([])
-  // Removed mock announcements; show nothing if none.
-  // Keep marketplace fallback minimal to maintain layout without empty collapse.
+  
+  // Use user's registered municipality for hero display, not the selected filter
+  const userMunicipalityName = (user as any)?.municipality_name
+  const userProvinceName = (user as any)?.province_name || (user as any)?.municipality?.province?.name
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      setLoading(true)
-      try {
-        const [a, i] = await Promise.allSettled([
-          announcementsApi.getAll({ active: true, page: 1, per_page: 2, municipality_id: selectedMunicipality?.id }),
-          marketplaceApi.getItems({ status: 'available', page: 1, per_page: 2, municipality_id: selectedMunicipality?.id })
-        ])
-        if (cancelled) return
-        if (a.status === 'fulfilled') setRecentAnnouncements(a.value.data?.announcements || [])
-        else setRecentAnnouncements([])
-        if (i.status === 'fulfilled') setFeaturedItems(i.value.data?.items || [])
-        else setFeaturedItems([])
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [selectedMunicipality?.id])
+  // Use cached fetch hooks with filter-specific keys
+  const { data: announcementsData, loading: announcementsLoading } = useCachedFetch(
+    CACHE_KEYS.HOME_ANNOUNCEMENTS,
+    () => announcementsApi.getAll({ active: true, page: 1, per_page: 2, municipality_id: selectedMunicipality?.id }),
+    { dependencies: [selectedMunicipality?.id], staleTime: 3 * 60 * 1000 }
+  )
+  
+  const { data: marketplaceData, loading: marketplaceLoading } = useCachedFetch(
+    CACHE_KEYS.HOME_MARKETPLACE,
+    () => marketplaceApi.getItems({ status: 'available', page: 1, per_page: 2, municipality_id: selectedMunicipality?.id }),
+    { dependencies: [selectedMunicipality?.id], staleTime: 3 * 60 * 1000 }
+  )
 
-  // Get the selected province seal or show all for Region 3
-  const displaySeal = selectedProvince 
-    ? provinceSeals.find(p => p.name.toLowerCase() === selectedProvince.name?.toLowerCase())
+  const recentAnnouncements = ((announcementsData as any)?.data?.announcements || [])
+  const featuredItems = ((marketplaceData as any)?.data?.items || [])
+  const loading = announcementsLoading || marketplaceLoading
+
+  // Get the province seal - prefer user's registered province, then selected province
+  const provinceForSeal = userProvinceName || selectedProvince?.name
+  const displaySeal = provinceForSeal
+    ? provinceSeals.find(p => p.name.toLowerCase() === provinceForSeal.toLowerCase())
     : null
 
   return (
@@ -125,7 +122,7 @@ export default function HomePage() {
               transition={{ duration: 0.6 }}
               className="text-white leading-tight tracking-tight font-serif font-semibold drop-shadow text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5rem] 2xl:text-[6rem]"
             >
-              {selectedProvince ? `Lalawigan ng ${selectedProvince.name}` : 'Region III — Central Luzon'}
+              {provinceForSeal ? `Lalawigan ng ${provinceForSeal}` : 'Region III — Central Luzon'}
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -133,8 +130,8 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-white/90 mt-3 sm:mt-4 max-w-4xl leading-relaxed text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl xl:text-[1.5rem] 2xl:text-[1.75rem]"
             >
-              {selectedProvince 
-                ? `MunLink: Empowering ${selectedProvince.name} and its local government units with modern digital governance solutions.`
+              {provinceForSeal 
+                ? `MunLink: Empowering ${provinceForSeal} and its local government units with modern digital governance solutions.`
                 : "MunLink: Empowering Central Luzon's 7 provinces and 129 local government units (municipalities and cities) with modern digital governance solutions."}
             </motion.p>
             
@@ -146,13 +143,13 @@ export default function HomePage() {
               className="mt-8 sm:mt-10 md:mt-12 flex flex-col xs:flex-row items-stretch xs:items-center justify-center xs:justify-start gap-3 sm:gap-4"
             >
               <Link
-                to="/register"
+                to={isAuthenticated ? "/dashboard" : "/login"}
                 className="group relative inline-flex items-center justify-center px-5 py-2.5 xs:px-6 sm:px-8 py-3 sm:py-3.5 bg-white text-ocean-600 rounded-xl font-semibold text-xs xs:text-sm sm:text-base shadow-xl shadow-black/20 hover:shadow-2xl hover:shadow-black/30 hover:scale-105 active:scale-100 transition-all duration-300 overflow-hidden w-full xs:w-auto"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-ocean-50 to-sky-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 <span className="relative flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                  <span>Get Started</span>
+                  <span>{isAuthenticated ? "Dashboard" : "Get Started"}</span>
                   <ArrowRight className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform flex-shrink-0" />
                 </span>
               </Link>
@@ -175,10 +172,10 @@ export default function HomePage() {
               className="mt-8 hidden sm:flex items-center gap-3 sm:gap-4"
             >
               {/* Tablet and up: Show province+municipality logos if logged in, or all 7 province logos if guest */}
-              {isAuthenticated && selectedProvince ? (
+              {isAuthenticated && provinceForSeal ? (
                 <>
-                  {selectedMunicipality && (() => {
-                    const seal = getBestRegion3Seal({ municipality: selectedMunicipality.name, province: selectedProvince.name })
+                  {userMunicipalityName && (() => {
+                    const seal = getBestRegion3Seal({ municipality: userMunicipalityName, province: provinceForSeal })
                     return seal ? (
                       <motion.img
                         key="municipality"
@@ -188,7 +185,7 @@ export default function HomePage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4, delay: 0.4 }}
                         className="h-10 md:h-14 lg:h-16 w-auto rounded-full border-2 border-white/30 shadow-lg bg-white/10 backdrop-blur-sm p-1"
-                        title={selectedMunicipality.name}
+                        title={userMunicipalityName}
                       />
                     ) : null
                   })()}
@@ -249,7 +246,7 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 xs:grid-cols-2 gap-5">
-                {(recentAnnouncements).map((a) => (
+                {(recentAnnouncements).map((a: any) => (
                   <AnnouncementCard
                     key={a.id}
                     id={a.id}

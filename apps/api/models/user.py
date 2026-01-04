@@ -114,6 +114,10 @@ class User(db.Model):
         if include_municipality and self.municipality:
             data['municipality_name'] = self.municipality.name
             data['municipality_slug'] = self.municipality.slug
+            # Include province name for easier frontend access
+            if self.municipality.province:
+                data['province_name'] = self.municipality.province.name
+                data['province_slug'] = self.municipality.province.slug
         if include_municipality and self.barangay:
             data['barangay_name'] = self.barangay.name
             data['barangay_slug'] = self.barangay.slug

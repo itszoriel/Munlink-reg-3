@@ -1,9 +1,11 @@
 import { StatusBadge, Card, EmptyState } from '@munlink/ui'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import GatedAction from '@/components/GatedAction'
 import { useAppStore } from '@/lib/store'
+import { useCachedFetch } from '@/lib/useCachedFetch'
+import { CACHE_KEYS } from '@/lib/dataStore'
 import { issuesApi, mediaUrl, showToast } from '@/lib/api'
 import Modal from '@/components/ui/Modal'
 import FileUploader from '@/components/ui/FileUploader'
@@ -30,56 +32,53 @@ const statusLabel: Record<Problem['status'], string> = {
 export default function ProblemsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const user = useAppStore((s) => s.user)
-  const [problems, setProblems] = useState<Problem[]>([])
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  // Track if we've ever loaded data (for first-load-only skeleton)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<any>({ category_id: '', title: '', description: '', specific_location: '', latitude: '', longitude: '' })
   const [createdId, setCreatedId] = useState<number | null>(null)
-  const [categories, setCategories] = useState<any[]>([])
   const [tab, setTab] = useState<'all' | 'mine'>('all')
   const [page, setPage] = useState(1)
-  const [pages, setPages] = useState(1)
   const [openId, setOpenId] = useState<string | number | null>(null)
   const [fabExpanded, setFabExpanded] = useState(false)
   const isMismatch = !!(user as any)?.municipality_id && !!selectedMunicipality?.id && (user as any).municipality_id !== selectedMunicipality.id
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      // Only show loading skeleton on first load
-      if (!hasLoadedOnce) setLoading(true)
-      try {
-        // Load categories once
-        if (categories.length === 0) {
-          try { const c = await issuesApi.getCategories(); if (!cancelled) setCategories(c.data?.categories || []) } catch {}
-        }
+  // Use cached fetch hooks with filter-specific keys
+  const baseCacheKey = tab === 'mine' ? CACHE_KEYS.MY_ISSUES : CACHE_KEYS.ISSUES
+  
+  const { data: categoriesData, loading: categoriesLoading } = useCachedFetch(
+    CACHE_KEYS.ISSUE_CATEGORIES,
+    () => issuesApi.getCategories(),
+    { staleTime: 30 * 60 * 1000 } // Categories rarely change
+  )
+  
+  const { data: problemsData, loading: problemsLoading } = useCachedFetch(
+    baseCacheKey,
+    () => {
         if (tab === 'mine') {
-          const res = await issuesApi.getMine()
-          if (!cancelled) { setProblems(res.data?.issues || []); setPages(1); setPage(1); setHasLoadedOnce(true) }
+        return issuesApi.getMine()
         } else {
           const params: any = { page }
           if (selectedMunicipality?.id) params.municipality_id = selectedMunicipality.id
           if (statusFilter !== 'all') params.status = statusFilter
           if (categoryFilter !== 'all') params.category = categoryFilter
-          const res = await issuesApi.getAll(params)
-          if (!cancelled) {
-            setProblems(res.data?.issues || [])
-            setPages(res.data?.pagination?.pages || 1)
-            setHasLoadedOnce(true)
-          }
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
+        return issuesApi.getAll(params)
       }
+    },
+    { 
+      dependencies: [tab, page, selectedMunicipality?.id, statusFilter, categoryFilter],
+      staleTime: 5 * 60 * 1000
     }
-    load()
-    return () => { cancelled = true }
-  }, [selectedMunicipality?.id, statusFilter, categoryFilter, tab, page, hasLoadedOnce])
+  )
+
+  const categories = ((categoriesData as any)?.data?.categories || [])
+  const problemsRaw = tab === 'mine' 
+    ? ((problemsData as any)?.data?.issues || [])
+    : ((problemsData as any)?.data?.issues || [])
+  const problems = problemsRaw as Problem[]
+  const pages = tab === 'mine' ? 1 : ((problemsData as any)?.data?.pagination?.pages || 1)
+  const loading = (problemsLoading || categoriesLoading) && problems.length === 0
 
   const filtered = useMemo(() => {
     if (statusFilter === 'all') return problems
@@ -119,7 +118,7 @@ export default function ProblemsPage() {
                 <label className="text-sm text-gray-600 whitespace-nowrap">Category</label>
                 <select className="input-field flex-1" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                   <option value="all">All</option>
-                  {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                  {categories.map((c: any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                 </select>
               </div>
             </div>
@@ -151,7 +150,7 @@ export default function ProblemsPage() {
       </Card>
 
       {/* Only show skeleton on first load */}
-      {loading && !hasLoadedOnce ? (
+      {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton-card h-40" />
@@ -189,7 +188,7 @@ export default function ProblemsPage() {
               ))}
             </div>
           )}
-          {tab==='all' && pages>1 && (
+          {tab==='all' && pages > 1 && (
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
               <button className="btn btn-secondary text-sm w-full sm:w-auto" disabled={page<=1} onClick={() => setPage(p => Math.max(1, p-1))}>Prev</button>
               <div className="text-sm">Page {page} / {pages}</div>
@@ -204,7 +203,7 @@ export default function ProblemsPage() {
             <label className="block text-sm font-medium mb-1">Category</label>
             <select className="input-field" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
               <option value="">Select category</option>
-              {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+              {categories.map((c: any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
           </div>
           <div>
@@ -262,7 +261,16 @@ export default function ProblemsPage() {
       </Modal>
 
       {/* Mobile FAB - Floating Action Button - positioned above mobile nav */}
-      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
+      {/* HIDDEN when modal is open */}
+      <AnimatePresence>
+        {!open && (
+          <motion.div 
+            className="fixed bottom-20 right-4 z-50 sm:hidden"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+          >
         <GatedAction
           required="fullyVerified"
           onAllowed={() => {
@@ -319,21 +327,22 @@ export default function ProblemsPage() {
             </AnimatePresence>
           </motion.button>
         </GatedAction>
-        
-      </div>
-
-      {/* Backdrop to close FAB when clicking outside - must be separate from FAB container */}
-      <AnimatePresence>
-        {fabExpanded && (
-          <motion.div
-            className="fixed inset-0 z-40 sm:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setFabExpanded(false)}
-          />
+          </motion.div>
         )}
       </AnimatePresence>
+        
+      {/* Backdrop to close FAB when clicking outside - must be separate from FAB container */}
+        <AnimatePresence>
+        {fabExpanded && !open && (
+            <motion.div
+            className="fixed inset-0 z-40 sm:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFabExpanded(false)}
+            />
+          )}
+        </AnimatePresence>
     </div>
   )
 }

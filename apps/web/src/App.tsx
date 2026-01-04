@@ -63,6 +63,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public verify route - outside Layout to avoid auth redirect */}
+        <Route path="verify/:requestNumber" element={<VerifyDocumentPage />} />
+        
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="announcements" element={<AnnouncementsPage />} />
@@ -87,7 +90,6 @@ function App() {
           {/* Legacy redirects for old routes */}
           <Route path="issues" element={<Navigate to="/problems" replace />} />
           <Route path="benefits" element={<Navigate to="/programs" replace />} />
-          <Route path="verify/:requestNumber" element={<VerifyDocumentPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -1,99 +1,109 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { benefitsApi, benefitsAdminApi, handleApiError, showToast, mediaUrl } from '../lib/api'
 import { useAdminStore } from '../lib/store'
+import { useDataStore, CACHE_KEYS } from '../lib/dataStore'
 import { Modal, Button, FileUpload, EmptyState } from '@munlink/ui'
 import { ClipboardList, Users, Hourglass, CheckCircle, Plus } from 'lucide-react'
 
 export default function Programs() {
   const [activeTab, setActiveTab] = useState<'active' | 'applications' | 'archived'>('active')
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [programs, setPrograms] = useState<any[]>([])
-  const [applications, setApplications] = useState<any[]>([])
-  const [applicationsCount, setApplicationsCount] = useState<number | null>(null)
-  const [activeCount, setActiveCount] = useState<number>(0)
-  const [beneficiariesTotal, setBeneficiariesTotal] = useState<number | null>(null)
   const [viewProgram, setViewProgram] = useState<any | null>(null)
   const [viewApplicants, setViewApplicants] = useState<{ program: any; applications: any[] } | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [fabExpanded, setFabExpanded] = useState(false)
   const adminMunicipalityId = useAdminStore((s) => (s.user as any)?.admin_municipality_id || (s.user as any)?.municipality_id)
+  
+  // Use global data cache for programs
+  const dataStore = useDataStore()
+  const cachedPrograms = dataStore.getCached<any[]>(CACHE_KEYS.PROGRAMS) || []
+  const programsLoading = dataStore.isLoading(CACHE_KEYS.PROGRAMS)
+  const programsFresh = dataStore.isFresh(CACHE_KEYS.PROGRAMS)
+  
+  // Use global data cache for applications
+  const cachedApplications = dataStore.getCached<any[]>(CACHE_KEYS.APPLICATIONS) || []
+  const applicationsLoading = dataStore.isLoading(CACHE_KEYS.APPLICATIONS)
+  const applicationsFresh = dataStore.isFresh(CACHE_KEYS.APPLICATIONS)
 
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        setError(null)
-        setLoading(true)
-        // Prefer admin-scoped list when authenticated
-        let list: any[] = []
-        try {
-          const resAdmin = await benefitsAdminApi.listPrograms()
-          list = ((resAdmin as any)?.programs as any[]) || []
-        } catch {
-          const res = await benefitsApi.getPrograms(adminMunicipalityId)
-          list = ((res as any)?.programs as any[]) || []
-        }
-        const mapped = list.map((p) => ({
-          id: p.id,
-          title: p.title || p.name || 'Program',
-          description: p.description || '—',
-          image_path: p.image_path || p.image || p.image_url || null,
-          beneficiaries: p.current_beneficiaries || p.beneficiaries || 0,
-          duration_days: p.duration_days ?? null,
-          completed_at: p.completed_at || null,
-          is_active: p.is_active !== false,
-          status: (p.is_active === false ? 'archived' : 'active'),
-          icon: '📋',
-          color: 'ocean',
-        }))
-        if (mounted) {
-          setPrograms(mapped)
-          setActiveCount(mapped.filter((x:any)=>x.is_active).length)
-          const total = mapped.reduce((sum: number, it: any) => sum + (Number(it.beneficiaries) || 0), 0)
-          setBeneficiariesTotal(isNaN(total) ? null : total)
-        }
-      } catch (e: any) {
-        // Not fatal if programs aren't available; show empty state and error banner
-        setError(handleApiError(e))
-        if (mounted) setPrograms([])
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
-    return () => { mounted = false }
-  }, [adminMunicipalityId])
+  // Derive computed values from cached programs
+  const programs = cachedPrograms
+  const activeCount = useMemo(() => programs.filter((p: any) => p.is_active).length, [programs])
+  const beneficiariesTotal = useMemo(() => {
+    const total = programs.reduce((sum: number, it: any) => sum + (Number(it.beneficiaries) || 0), 0)
+    return isNaN(total) ? null : total
+  }, [programs])
+  const applications = cachedApplications
+  const applicationsCount = applications.length
+  const loading = activeTab === 'applications' ? applicationsLoading : programsLoading
 
-  // Load applications when Applications tab active
-  useEffect(() => {
-    let mounted = true
-    if (activeTab !== 'applications') return () => { mounted = false }
-    ;(async () => {
+  // Fetch programs (only if not fresh)
+  const fetchPrograms = useCallback(async () => {
+    if (programsFresh && programs.length > 0) return // Already have fresh data
+    if (programsLoading) return // Already fetching
+    
+    dataStore.setLoading(CACHE_KEYS.PROGRAMS, true)
+    try {
+      let list: any[] = []
       try {
-        setError(null)
-        setLoading(true)
-        const res = await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications`, {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data?.error || 'Failed to load applications')
-        if (mounted) {
-          setApplications(data.applications || [])
-          const total = (data && typeof data.pagination?.total === 'number') ? data.pagination.total : (data.applications || []).length
-          setApplicationsCount(total)
-        }
-      } catch (e: any) {
-        setApplications([])
-        setError(e.message || 'Failed to load applications')
-      } finally {
-        if (mounted) setLoading(false)
+        const resAdmin = await benefitsAdminApi.listPrograms()
+        list = ((resAdmin as any)?.programs as any[]) || []
+      } catch {
+        const res = await benefitsApi.getPrograms(adminMunicipalityId)
+        list = ((res as any)?.programs as any[]) || []
       }
-    })()
-    return () => { mounted = false }
-  }, [activeTab])
+      const mapped = list.map((p) => ({
+        id: p.id,
+        title: p.title || p.name || 'Program',
+        description: p.description || '—',
+        image_path: p.image_path || p.image || p.image_url || null,
+        beneficiaries: p.current_beneficiaries || p.beneficiaries || 0,
+        duration_days: p.duration_days ?? null,
+        completed_at: p.completed_at || null,
+        is_active: p.is_active !== false,
+        status: (p.is_active === false ? 'archived' : 'active'),
+        icon: '📋',
+        color: 'ocean',
+      }))
+      dataStore.setData(CACHE_KEYS.PROGRAMS, mapped)
+    } catch (e: any) {
+      setError(handleApiError(e))
+      dataStore.setError(CACHE_KEYS.PROGRAMS, handleApiError(e))
+    }
+  }, [adminMunicipalityId, programsFresh, programs.length, programsLoading, dataStore])
+
+  // Fetch applications (only if not fresh)
+  const fetchApplications = useCallback(async () => {
+    if (applicationsFresh && applications.length > 0) return
+    if (applicationsLoading) return
+    
+    dataStore.setLoading(CACHE_KEYS.APPLICATIONS, true)
+    try {
+      const res = await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications`, {
+        credentials: 'include',
+        headers: { 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to load applications')
+      dataStore.setData(CACHE_KEYS.APPLICATIONS, data.applications || [])
+    } catch (e: any) {
+      setError(e.message || 'Failed to load applications')
+      dataStore.setError(CACHE_KEYS.APPLICATIONS, e.message)
+    }
+  }, [applicationsFresh, applications.length, applicationsLoading, dataStore])
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchPrograms()
+  }, [fetchPrograms])
+
+  // Fetch applications when tab is active
+  useEffect(() => {
+    if (activeTab === 'applications') {
+      fetchApplications()
+    }
+  }, [activeTab, fetchApplications])
 
   const stats = useMemo(() => ([
     { icon: '📋', label: 'Active Programs', value: String(activeCount), color: 'ocean' },
@@ -122,7 +132,8 @@ export default function Programs() {
       const res = await benefitsAdminApi.createProgram(payload)
       const created = (res as any)?.program
       if (created) {
-        setPrograms((prev) => [{
+        // Update cached data instead of local state
+        dataStore.updateCached<any[]>(CACHE_KEYS.PROGRAMS, (prev) => [{
           id: created.id,
           title: created.name,
           description: created.description,
@@ -135,7 +146,6 @@ export default function Programs() {
           icon: '📋',
           color: 'ocean',
         }, ...prev])
-        setActiveCount((c) => c + (created.is_active ? 1 : 0))
       }
       setCreateOpen(false)
     } catch (e: any) {
@@ -143,6 +153,20 @@ export default function Programs() {
     } finally {
       setActionLoading(null)
     }
+  }
+  
+  // Update local program state (for mutations like edit/complete)
+  const updateProgram = (id: number, updates: Partial<any>) => {
+    dataStore.updateCached<any[]>(CACHE_KEYS.PROGRAMS, (prev) => 
+      prev.map((p) => p.id === id ? { ...p, ...updates } : p)
+    )
+  }
+  
+  // Update local application state
+  const updateApplication = (id: number, updates: Partial<any>) => {
+    dataStore.updateCached<any[]>(CACHE_KEYS.APPLICATIONS, (prev) => 
+      prev.map((a) => a.id === id ? { ...a, ...updates } : a)
+    )
   }
 
   function IconFromCode({ code, className }: { code: string; className?: string }) {
@@ -281,7 +305,7 @@ export default function Programs() {
               <div className="relative flex gap-2">
                 <button onClick={async () => { try { const res = await benefitsApi.getProgramById(program.id); setViewProgram((res as any)?.data || res) } catch (e: any) { setError(handleApiError(e)) } }} className="flex-1 py-2 bg-ocean-100 hover:bg-ocean-200 text-ocean-700 rounded-xl text-sm font-medium transition-colors">View Details</button>
                 <button onClick={() => { setViewProgram({ ...program, _edit: true }) }} className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Edit</button>
-                <button onClick={async ()=>{ try { setActionLoading(program.id); await benefitsAdminApi.completeProgram(program.id); setPrograms((prev:any[])=> prev.map((p:any)=> p.id===program.id ? { ...p, is_active:false, status:'archived', completed_at: new Date().toISOString() } : p)); setActiveCount((c)=> Math.max(0, c-1)); showToast('Program marked as completed','success') } catch(e:any){ setError(handleApiError(e)) } finally { setActionLoading(null) } }} className="flex-1 py-2 bg-forest-100 hover:bg-forest-200 text-forest-700 rounded-xl text-sm font-medium transition-colors" disabled={actionLoading===program.id}>Done</button>
+                <button onClick={async ()=>{ try { setActionLoading(program.id); await benefitsAdminApi.completeProgram(program.id); updateProgram(program.id, { is_active: false, status: 'archived', completed_at: new Date().toISOString() }); showToast('Program marked as completed','success') } catch(e:any){ setError(handleApiError(e)) } finally { setActionLoading(null) } }} className="flex-1 py-2 bg-forest-100 hover:bg-forest-200 text-forest-700 rounded-xl text-sm font-medium transition-colors" disabled={actionLoading===program.id}>Done</button>
               </div>
             </div>
           </div>
@@ -309,16 +333,16 @@ export default function Programs() {
             <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:justify-end">
               {app.status !== 'under_review' && app.status !== 'approved' && (
                 <button className="px-3 py-1.5 rounded-lg bg-yellow-100 hover:bg-yellow-200 text-yellow-700 text-sm" onClick={async()=>{
-                  try{ setActionLoading(app.id); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'under_review' }) }); setApplications((prev)=> prev.map((x:any)=> x.id===app.id? { ...x, status:'under_review' }: x)); showToast('Application marked under review', 'success') } catch(e:any){ showToast('Failed to update application', 'error') } finally { setActionLoading(null) }}}>Mark Under Review</button>
+                  try{ setActionLoading(app.id); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'under_review' }) }); updateApplication(app.id, { status: 'under_review' }); showToast('Application marked under review', 'success') } catch(e:any){ showToast('Failed to update application', 'error') } finally { setActionLoading(null) }}}>Mark Under Review</button>
               )}
               {app.status !== 'approved' && (
                 <button className="px-3 py-1.5 rounded-lg bg-forest-100 hover:bg-forest-200 text-forest-700 text-sm" onClick={async()=>{
-                  try{ setActionLoading(app.id); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'approved' }) }); setApplications((prev)=> prev.map((x:any)=> x.id===app.id? { ...x, status:'approved' }: x)); showToast('Application approved', 'success') } catch(e:any){ showToast('Failed to approve application', 'error') } finally { setActionLoading(null) }}}>Approve</button>
+                  try{ setActionLoading(app.id); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'approved' }) }); updateApplication(app.id, { status: 'approved' }); showToast('Application approved', 'success') } catch(e:any){ showToast('Failed to approve application', 'error') } finally { setActionLoading(null) }}}>Approve</button>
               )}
               {app.status !== 'rejected' && (
                 <button className="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-sm" onClick={async()=>{
                   const reason = window.prompt('Enter reason for rejection','Incomplete requirements') || 'Incomplete requirements'
-                  try{ setActionLoading(app.id); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'rejected', rejection_reason: reason }) }); setApplications((prev)=> prev.map((x:any)=> x.id===app.id? { ...x, status:'rejected', rejection_reason: reason }: x)); showToast('Application rejected', 'success') } catch(e:any){ showToast('Failed to reject application', 'error') } finally { setActionLoading(null) }}}>Reject</button>
+                  try{ setActionLoading(app.id); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'rejected', rejection_reason: reason }) }); updateApplication(app.id, { status: 'rejected', rejection_reason: reason }); showToast('Application rejected', 'success') } catch(e:any){ showToast('Failed to reject application', 'error') } finally { setActionLoading(null) }}}>Reject</button>
               )}
             </div>
           </div>
@@ -356,11 +380,11 @@ export default function Programs() {
                     fd.append('file', imageFile)
                     const res = await benefitsAdminApi.updateProgram(viewProgram.id, fd)
                     const updated = (res as any)?.program
-                    setPrograms((prev)=> prev.map((p:any)=> p.id===viewProgram.id ? { ...p, title: updated?.name || data.name || p.title, description: (updated?.description ?? data.description ?? p.description), duration_days: (updated?.duration_days ?? data.duration_days ?? p.duration_days), image_path: updated?.image_path ?? p.image_path } : p))
+                    updateProgram(viewProgram.id, { title: updated?.name || data.name, description: updated?.description ?? data.description, duration_days: updated?.duration_days ?? data.duration_days, image_path: updated?.image_path })
                   } else {
                     const res = await benefitsAdminApi.updateProgram(viewProgram.id, data)
                     const updated = (res as any)?.program
-                    setPrograms((prev)=> prev.map((p:any)=> p.id===viewProgram.id ? { ...p, title: updated?.name || data.name || p.title, description: (updated?.description ?? data.description ?? p.description), duration_days: (updated?.duration_days ?? data.duration_days ?? p.duration_days), image_path: updated?.image_path ?? p.image_path } : p))
+                    updateProgram(viewProgram.id, { title: updated?.name || data.name, description: updated?.description ?? data.description, duration_days: updated?.duration_days ?? data.duration_days, image_path: updated?.image_path })
                   }
                   setViewProgram(null)
                 } catch(e:any){
@@ -430,69 +454,80 @@ export default function Programs() {
       )}
 
       {/* Mobile FAB - Floating Action Button - positioned above mobile nav */}
-      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
-        <motion.button
-          className="relative flex items-center justify-center bg-gradient-to-r from-forest-500 to-forest-600 text-white shadow-lg shadow-forest-500/30 hover:shadow-forest-500/50 transition-shadow"
-          onClick={() => {
-            if (fabExpanded) {
-              setCreateOpen(true)
-              setFabExpanded(false)
-            } else {
-              setFabExpanded(true)
-            }
-          }}
-          animate={{
-            width: fabExpanded ? 180 : 56,
-            height: 56,
-            borderRadius: 28,
-          }}
-          transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 25,
-          }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <AnimatePresence mode="wait">
-            {fabExpanded ? (
-              <motion.div
-                key="expanded"
-                className="flex items-center gap-2 px-4"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.15 }}
-              >
-                <Plus className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm font-medium whitespace-nowrap">New Program</span>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="collapsed"
-                initial={{ opacity: 0, rotate: -90 }}
-                animate={{ opacity: 1, rotate: 0 }}
-                exit={{ opacity: 0, rotate: 90 }}
-                transition={{ duration: 0.15 }}
-              >
-                <Plus className="w-6 h-6" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.button>
-        
-        {/* Backdrop to close FAB when clicking outside */}
-        <AnimatePresence>
-          {fabExpanded && (
-            <motion.div
-              className="fixed inset-0 -z-10"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setFabExpanded(false)}
-            />
-          )}
-        </AnimatePresence>
-      </div>
+      {/* HIDDEN when any modal is open (createOpen, viewProgram, etc.) */}
+      <AnimatePresence>
+        {!createOpen && !viewProgram && !viewApplicants && (
+          <motion.div 
+            className="fixed bottom-20 right-4 z-50 sm:hidden"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.button
+              className="relative flex items-center justify-center bg-gradient-to-r from-forest-500 to-forest-600 text-white shadow-lg shadow-forest-500/30 hover:shadow-forest-500/50 transition-shadow"
+              onClick={() => {
+                if (fabExpanded) {
+                  setCreateOpen(true)
+                  setFabExpanded(false)
+                } else {
+                  setFabExpanded(true)
+                }
+              }}
+              animate={{
+                width: fabExpanded ? 180 : 56,
+                height: 56,
+                borderRadius: 28,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 25,
+              }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <AnimatePresence mode="wait">
+                {fabExpanded ? (
+                  <motion.div
+                    key="expanded"
+                    className="flex items-center gap-2 px-4"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <Plus className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">New Program</span>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="collapsed"
+                    initial={{ opacity: 0, rotate: -90 }}
+                    animate={{ opacity: 1, rotate: 0 }}
+                    exit={{ opacity: 0, rotate: 90 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <Plus className="w-6 h-6" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Backdrop to close FAB when clicking outside - must be separate from FAB container */}
+      <AnimatePresence>
+        {fabExpanded && !createOpen && (
+          <motion.div
+            className="fixed inset-0 z-40 sm:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFabExpanded(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

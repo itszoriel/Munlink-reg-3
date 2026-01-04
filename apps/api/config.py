@@ -133,14 +133,17 @@ class Config:
     FROM_EMAIL = os.getenv('FROM_EMAIL', 'noreply@munlink-region3.gov.ph')
     
     # QR Codes
-    QR_BASE_URL = os.getenv('QR_BASE_URL', 'http://localhost:3000/verify')
+    # Default to WEB_URL + /verify, or use QR_BASE_URL if set
+    QR_BASE_URL = os.getenv('QR_BASE_URL') or None  # Will fallback to WEB_URL + /verify
     QR_EXPIRY_DAYS = int(os.getenv('QR_EXPIRY_DAYS', 30))
     
     # Application
     APP_NAME = os.getenv('APP_NAME', 'MunLink Region III')
     
-    # Frontend URLs (for CORS)
-    WEB_URL = os.getenv('WEB_URL', 'http://localhost:3000')
+    # Frontend URLs (for CORS and QR codes)
+    # Note: WEB_URL is used for email verification links and QR codes
+    # In production, set this to your actual frontend URL
+    WEB_URL = os.getenv('WEB_URL', 'http://localhost:5173')
     ADMIN_URL = os.getenv('ADMIN_URL', 'http://localhost:3001')
     
     # Location Data - use API-local data folder (works on Render)

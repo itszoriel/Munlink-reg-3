@@ -5,6 +5,8 @@ import { X, Plus } from 'lucide-react'
 import GatedAction from '@/components/GatedAction'
 import { marketplaceApi, mediaUrl, showToast } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { useCachedFetch } from '@/lib/useCachedFetch'
+import { CACHE_KEYS } from '@/lib/dataStore'
 import { EmptyState } from '@munlink/ui'
 
 type Item = {
@@ -27,57 +29,51 @@ export default function MarketplacePage() {
   const userMunicipalityId = Number((user as any)?.municipality_id)
   const [category, setCategory] = useState<string>('All')
   const [type, setType] = useState<typeof TYPES[number]>('All')
-  const [items, setItems] = useState<Item[]>([])
-  // Track if we've ever loaded data (for first-load-only skeleton)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
-  const [loading, setLoading] = useState<boolean>(true)
   const [creatingTxId, setCreatingTxId] = useState<number | null>(null)
   const [myPending, setMyPending] = useState<Record<number, string>>({})
   const isViewingMismatch = !!userMunicipalityId && !!selectedMunicipality?.id && userMunicipalityId !== selectedMunicipality.id
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
 
-  const params = useMemo(() => {
-    const p: any = { status: 'available', page: 1, per_page: 24 }
-    if (selectedMunicipality?.id) p.municipality_id = selectedMunicipality.id
-    if (category !== 'All') p.category = category
-    if (type !== 'All') p.transaction_type = type
-    return p
-  }, [selectedMunicipality?.id, category, type])
-
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      // Only show loading skeleton on first load
-      if (!hasLoadedOnce) setLoading(true)
-      try {
-        const res = await marketplaceApi.getItems(params)
-        if (!cancelled) {
-          setItems(res.data?.items || [])
-          setHasLoadedOnce(true)
-        }
-        // Also load my transactions to reflect requested state (only if authenticated)
-        try {
-          if (isAuthenticated) {
-            const tx = await marketplaceApi.getMyTransactions()
-            const asBuyer = (tx as any)?.data?.as_buyer || (tx as any)?.as_buyer || []
-            const pendingMap: Record<number, string> = {}
-            for (const t of asBuyer) {
-              if (t.status === 'pending' && typeof t.item_id === 'number') pendingMap[t.item_id] = 'pending'
-            }
-            if (!cancelled) setMyPending(pendingMap)
-          } else {
-            if (!cancelled) setMyPending({})
-          }
-        } catch {}
-      } catch {
-        if (!cancelled) setItems([])
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+  // Use cached fetch with filter-specific keys
+  const { data: itemsData, loading: itemsLoading, invalidate, refetch } = useCachedFetch(
+    CACHE_KEYS.MARKETPLACE_ITEMS,
+    () => {
+      const params: any = { status: 'available', page: 1, per_page: 24 }
+      if (selectedMunicipality?.id) params.municipality_id = selectedMunicipality.id
+      if (category !== 'All') params.category = category
+      if (type !== 'All') params.transaction_type = type
+      return marketplaceApi.getItems(params)
+    },
+    { 
+      dependencies: [selectedMunicipality?.id, category, type],
+      staleTime: 5 * 60 * 1000
     }
-    load()
-    return () => { cancelled = true }
-  }, [params, hasLoadedOnce])
+  )
+
+  // Load my transactions separately (for pending state)
+  const { data: myTxData } = useCachedFetch(
+    CACHE_KEYS.MY_TRANSACTIONS,
+    () => marketplaceApi.getMyTransactions(),
+    { enabled: isAuthenticated, staleTime: 2 * 60 * 1000 }
+  )
+
+  // Process data
+  const items = ((itemsData as any)?.data?.items || []) as Item[]
+  const loading = itemsLoading && items.length === 0
+
+  // Update pending map from transactions
+  useEffect(() => {
+    if (isAuthenticated && myTxData) {
+      const asBuyer = ((myTxData as any)?.data?.as_buyer || (myTxData as any)?.as_buyer || [])
+      const pendingMap: Record<number, string> = {}
+      for (const t of asBuyer) {
+        if (t.status === 'pending' && typeof t.item_id === 'number') pendingMap[t.item_id] = 'pending'
+      }
+      setMyPending(pendingMap)
+    } else {
+      setMyPending({})
+    }
+  }, [isAuthenticated, myTxData])
 
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -129,7 +125,7 @@ export default function MarketplacePage() {
       </div>
 
       {/* Only show skeleton on first load; keep existing data visible during filter changes */}
-      {loading && !hasLoadedOnce ? (
+      {loading ? (
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="skeleton-card">
@@ -259,72 +255,92 @@ export default function MarketplacePage() {
         </div>
       )}
 
+      {/* Post Item Modal - Full screen on mobile, centered on desktop */}
       {open && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}>
-          <div className="bg-white rounded-lg w-full max-w-2xl p-6" tabIndex={-1} autoFocus>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Post an Item</h2>
-              <button onClick={() => setOpen(false)} className="text-neutral-500 hover:text-neutral-700" aria-label="Close">
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center" 
+          role="dialog" 
+          aria-modal="true" 
+          onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
+          onClick={() => setOpen(false)}
+        >
+          <div 
+            className="bg-white w-full sm:w-[95%] sm:max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl" 
+            tabIndex={-1} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header - sticky on mobile */}
+            <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between">
+              <h2 className="text-lg sm:text-xl font-semibold">Post an Item</h2>
+              <button onClick={() => setOpen(false)} className="p-2 -mr-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-colors" aria-label="Close">
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Title</label>
-                <input className="input-field" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Category</label>
-                <select className="input-field" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                  <option value="">Select category</option>
-                  {UPLOAD_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Condition</label>
-                <select className="input-field" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}>
-                  {['new','like_new','good','fair','poor'].map((c) => (<option key={c} value={c}>{c.replace('_',' ')}</option>))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Type</label>
-                <select className="input-field" value={form.transaction_type} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}>
-                  {['donate','lend','sell'].map((t) => (<option key={t} value={t}>{t}</option>))}
-                </select>
-              </div>
-              {form.transaction_type === 'sell' && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">Price</label>
-                  <input className="input-field" type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+            
+            {/* Form Content */}
+            <div className="p-4 sm:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium mb-1.5">Title <span className="text-red-500">*</span></label>
+                  <input className="input-field" placeholder="What are you posting?" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
                 </div>
-              )}
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1">Description</label>
-                <textarea className="input-field" rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-              </div>
-              <div className="sm:col-span-2">
-                <label htmlFor="post-images" className="block text-sm font-medium mb-1">Images (max 5)</label>
-                <input id="post-images" name="post_images" className="input-field" type="file" accept="image/*" multiple onChange={(e) => setFiles((prev) => {
-                  const next = [...prev, ...Array.from(e.target.files || [])]
-                  return next.slice(0,5)
-                })} />
-                {files.length > 0 && (
-                  <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-2">
-                    {files.map((f, i) => (
-                      <div key={`${f.name}-${i}`} className="relative">
-                        <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-20 object-cover rounded border" />
-                        <button type="button" className="absolute -top-2 -right-2 bg-white border rounded-full p-1 text-xs" aria-label="Remove image" onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}>✕</button>
-                      </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Category <span className="text-red-500">*</span></label>
+                  <select className="input-field" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                    <option value="">Select category</option>
+                    {UPLOAD_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Condition</label>
+                  <select className="input-field" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}>
+                    {['new','like_new','good','fair','poor'].map((c) => (<option key={c} value={c}>{c.replace('_',' ').replace(/^\w/, (m) => m.toUpperCase())}</option>))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Listing Type</label>
+                  <select className="input-field" value={form.transaction_type} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}>
+                    {['donate','lend','sell'].map((t) => (<option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>))}
+                  </select>
+                </div>
+                {form.transaction_type === 'sell' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Price (₱)</label>
+                    <input className="input-field" type="number" min="0" step="0.01" placeholder="0.00" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
                   </div>
                 )}
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium mb-1.5">Description <span className="text-red-500">*</span></label>
+                  <textarea className="input-field resize-none" rows={3} placeholder="Describe your item..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="post-images" className="block text-sm font-medium mb-1.5">Images (max 5)</label>
+                  <input id="post-images" name="post_images" className="input-field text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-ocean-50 file:text-ocean-700 hover:file:bg-ocean-100" type="file" accept="image/*" multiple onChange={(e) => setFiles((prev) => {
+                    const next = [...prev, ...Array.from(e.target.files || [])]
+                    return next.slice(0,5)
+                  })} />
+                  {files.length > 0 && (
+                    <div className="mt-3 grid grid-cols-4 xs:grid-cols-5 gap-2">
+                      {files.map((f, i) => (
+                        <div key={`${f.name}-${i}`} className="relative aspect-square">
+                          <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-full object-cover rounded-lg border" />
+                          <button type="button" className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-red-500 text-white rounded-full text-xs shadow hover:bg-red-600 transition-colors" aria-label="Remove image" onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
-              <button className="btn btn-primary" disabled={creating || !form.title || !form.category || !form.description}
+            
+            {/* Footer - sticky on mobile */}
+            <div className="sticky bottom-0 z-10 bg-white border-t px-4 py-3 sm:px-6 sm:py-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
+              <button className="btn btn-secondary w-full sm:w-auto" onClick={() => setOpen(false)}>Cancel</button>
+              <button 
+                className="btn btn-primary w-full sm:w-auto" 
+                disabled={creating || !form.title || !form.category || !form.description}
                 onClick={async () => {
                   setCreating(true)
                   try {
@@ -345,8 +361,8 @@ export default function MarketplacePage() {
                     }
                     setOpen(false)
                     showToast('Submitted for admin review. Your listing will appear once approved.', 'success')
-                    const fresh = await marketplaceApi.getItems(params)
-                    setItems(fresh.data?.items || [])
+                    invalidate()
+                    refetch()
                     setFiles([])
                     setForm({ title: '', description: '', category: '', condition: 'good', transaction_type: 'sell', price: '' })
                   } finally {
@@ -361,78 +377,88 @@ export default function MarketplacePage() {
       )}
 
       {/* Mobile FAB - Floating Action Button - positioned above mobile nav */}
-      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
-        <GatedAction
-          required="fullyVerified"
-          onAllowed={() => {
-            if (fabExpanded) {
-              if (!userMunicipalityId) {
-                alert('Set your municipality in your profile before posting items')
-                setFabExpanded(false)
-                return
-              }
-              if (isViewingMismatch) {
-                alert('Posting is limited to your registered municipality')
-                setFabExpanded(false)
-                return
-              }
-              setOpen(true)
-              setFabExpanded(false)
-            } else {
-              setFabExpanded(true)
-            }
-          }}
-          featureDescription="Post an item on the marketplace"
-        >
-          <motion.button
-            className="relative flex items-center justify-center bg-gradient-to-r from-ocean-500 to-ocean-600 text-white shadow-lg shadow-ocean-500/30 hover:shadow-ocean-500/50 transition-shadow"
-            disabled={isViewingMismatch}
-            animate={{
-              width: fabExpanded ? 140 : 56,
-              height: 56,
-              borderRadius: 28,
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 25,
-            }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {}}
+      {/* HIDDEN when modal is open */}
+      <AnimatePresence>
+        {!open && (
+          <motion.div 
+            className="fixed bottom-20 right-4 z-50 sm:hidden"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
           >
-            <AnimatePresence mode="wait">
-              {fabExpanded ? (
-                <motion.div
-                  key="expanded"
-                  className="flex items-center gap-2 px-4"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <Plus className="w-5 h-5 flex-shrink-0" />
-                  <span className="text-sm font-medium whitespace-nowrap">Post Item</span>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="collapsed"
-                  initial={{ opacity: 0, rotate: -90 }}
-                  animate={{ opacity: 1, rotate: 0 }}
-                  exit={{ opacity: 0, rotate: 90 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <Plus className="w-6 h-6" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
-        </GatedAction>
-        
-      </div>
+            <GatedAction
+              required="fullyVerified"
+              onAllowed={() => {
+                if (fabExpanded) {
+                  if (!userMunicipalityId) {
+                    alert('Set your municipality in your profile before posting items')
+                    setFabExpanded(false)
+                    return
+                  }
+                  if (isViewingMismatch) {
+                    alert('Posting is limited to your registered municipality')
+                    setFabExpanded(false)
+                    return
+                  }
+                  setOpen(true)
+                  setFabExpanded(false)
+                } else {
+                  setFabExpanded(true)
+                }
+              }}
+              featureDescription="Post an item on the marketplace"
+            >
+              <motion.button
+                className="relative flex items-center justify-center bg-gradient-to-r from-ocean-500 to-ocean-600 text-white shadow-lg shadow-ocean-500/30 hover:shadow-ocean-500/50 transition-shadow"
+                disabled={isViewingMismatch}
+                animate={{
+                  width: fabExpanded ? 140 : 56,
+                  height: 56,
+                  borderRadius: 28,
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 25,
+                }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {}}
+              >
+                <AnimatePresence mode="wait">
+                  {fabExpanded ? (
+                    <motion.div
+                      key="expanded"
+                      className="flex items-center gap-2 px-4"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <Plus className="w-5 h-5 flex-shrink-0" />
+                      <span className="text-sm font-medium whitespace-nowrap">Post Item</span>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="collapsed"
+                      initial={{ opacity: 0, rotate: -90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: 90 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <Plus className="w-6 h-6" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            </GatedAction>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Backdrop to close FAB when clicking outside - must be separate from FAB container */}
       <AnimatePresence>
-        {fabExpanded && (
+        {fabExpanded && !open && (
           <motion.div
             className="fixed inset-0 z-40 sm:hidden"
             initial={{ opacity: 0 }}

@@ -302,7 +302,7 @@ const About: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/register"
+              to="/login"
               className="inline-flex items-center justify-center px-6 py-3 bg-white text-ocean-600 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Get Started
