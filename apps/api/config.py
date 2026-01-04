@@ -26,23 +26,32 @@ def get_database_url():
     
     # For PostgreSQL connections, ensure SSL is configured
     if url.startswith('postgresql://'):
-        parsed = urlparse(url)
-        query_params = parse_qs(parsed.query)
-        
-        # Add sslmode=require if not already set (required for Supabase)
-        if 'sslmode' not in query_params:
-            query_params['sslmode'] = ['require']
-        
-        # Rebuild the URL with updated query params
-        new_query = urlencode(query_params, doseq=True)
-        url = urlunparse((
-            parsed.scheme,
-            parsed.netloc,
-            parsed.path,
-            parsed.params,
-            new_query,
-            parsed.fragment
-        ))
+        try:
+            parsed = urlparse(url)
+            query_params = parse_qs(parsed.query)
+            
+            # Add sslmode=require if not already set (required for Supabase)
+            if 'sslmode' not in query_params:
+                query_params['sslmode'] = ['require']
+            
+            # Rebuild the URL with updated query params
+            new_query = urlencode(query_params, doseq=True)
+            url = urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                new_query,
+                parsed.fragment
+            ))
+        except ValueError as e:
+            # URL parsing failed - likely due to special characters in password
+            # Just append sslmode if not present and return
+            import logging
+            logging.warning(f"Could not parse DATABASE_URL (special chars?): {e}")
+            if 'sslmode=' not in url:
+                separator = '&' if '?' in url else '?'
+                url = f"{url}{separator}sslmode=require"
     
     return url
 
@@ -158,15 +167,12 @@ class Config:
         os.getenv('ALLOWED_EXTENSIONS', 'pdf,jpg,jpeg,png,doc,docx').split(',')
     )
     
-    # Email (SMTP)
+    # Email (SMTP - Gmail)
     SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
     SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
     SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
     SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
-    FROM_EMAIL = os.getenv('FROM_EMAIL', 'noreply@munlink-region3.gov.ph')
-    
-    # Email (Resend API - for production on Render free tier)
-    RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
+    FROM_EMAIL = os.getenv('FROM_EMAIL', '')
     
     # QR Codes
     # Default to WEB_URL + /verify, or use QR_BASE_URL if set

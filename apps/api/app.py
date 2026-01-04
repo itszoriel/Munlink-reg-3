@@ -54,7 +54,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     jwt.init_app(app)
     
-    # CORS configuration - supports Vercel preview deployments
+    # CORS configuration
     cors_origins = [
         app.config.get('WEB_URL', 'http://localhost:5173'),
         app.config.get('ADMIN_URL', 'http://localhost:3001'),
@@ -66,13 +66,7 @@ def create_app(config_class=Config):
         "http://127.0.0.1:3001",
         "http://127.0.0.1:5173",
     ]
-    
-    # Add Vercel preview URLs from environment (comma-separated)
-    vercel_previews = os.getenv('VERCEL_PREVIEW_ORIGINS', '')
-    if vercel_previews:
-        cors_origins.extend([url.strip() for url in vercel_previews.split(',') if url.strip()])
-    
-    # Remove duplicates while preserving order
+    # Remove duplicates
     cors_origins = list(dict.fromkeys(cors_origins))
     
     # Apply CORS globally with Flask-CORS
