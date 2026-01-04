@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { marketplaceApi, documentsApi, benefitsApi } from '@/lib/api'
 import Modal from '@/components/ui/Modal'
 import { StatusBadge } from '@munlink/ui'
-import ClaimTicketModal from '@/components/ClaimTicketModal'
 import { useAppStore } from '@/lib/store'
+import { useCachedFetch } from '@/lib/useCachedFetch'
+import { CACHE_KEYS } from '@/lib/dataStore'
 import { FileText, Package, ShoppingBag, Plus, ArrowRight, User, AlertTriangle } from 'lucide-react'
 
 type MyItem = { id: number, title: string, status: string }
@@ -14,57 +15,46 @@ type MyReq = { id: number, request_number: string, status: string, delivery_meth
 type MyBenefitApp = { id: number, status: string, application_number: string, created_at?: string, supporting_documents?: string[], program?: { name?: string } }
 
 export default function DashboardPage() {
-  // Track if we've ever loaded data (for first-load-only skeleton)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [items, setItems] = useState<MyItem[]>([])
-  const [txs, setTxs] = useState<MyTx[]>([])
-  const [reqs, setReqs] = useState<MyReq[]>([])
-  const [apps, setApps] = useState<MyBenefitApp[]>([])
   const [appModalOpen, setAppModalOpen] = useState(false)
   const [selectedApp, setSelectedApp] = useState<MyBenefitApp | null>(null)
-  const [claimOpen, setClaimOpen] = useState(false)
-  const [claimFor, setClaimFor] = useState<number | null>(null)
   const user = useAppStore((s) => s.user)
   const isAuthBootstrapped = useAppStore((s) => s.isAuthBootstrapped)
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      // Only show loading skeleton on first load, not on subsequent refreshes
-      if (!hasLoadedOnce) setLoading(true)
-      try {
-        if (!isAuthBootstrapped || !isAuthenticated) {
-          if (!cancelled) { setItems([]); setTxs([]); setReqs([]); setApps([]) }
-          return
-        }
-        const [myItemsRes, myTxRes, myReqRes, myAppsRes] = await Promise.all([
-          marketplaceApi.getMyItems(),
-          marketplaceApi.getMyTransactions(),
-          documentsApi.getMyRequests(),
-          benefitsApi.getMyApplications(),
-        ])
-        if (!cancelled) {
-          setItems((myItemsRes.data?.items || []).slice(0, 5))
-          const asBuyer = (myTxRes.data?.as_buyer || []).map((t: any) => ({ ...t, as: 'buyer' }))
-          const asSeller = (myTxRes.data?.as_seller || []).map((t: any) => ({ ...t, as: 'seller' }))
-          setTxs([...(asBuyer as any[]), ...(asSeller as any[])].slice(0, 5))
-          setReqs((myReqRes.data?.requests || []).slice(0, 5))
-          setApps(((myAppsRes.data?.applications || []) as any[]))
-          setHasLoadedOnce(true)
-        }
-      } catch {
-        if (!cancelled) {
-          setItems([]); setTxs([]); setReqs([]); setApps([])
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [isAuthenticated, isAuthBootstrapped, hasLoadedOnce])
+  // Use cached fetch hooks
+  const { data: myItemsData, loading: itemsLoading, update: updateItems } = useCachedFetch(
+    CACHE_KEYS.MY_ITEMS,
+    () => marketplaceApi.getMyItems(),
+    { enabled: isAuthBootstrapped && isAuthenticated, staleTime: 2 * 60 * 1000 }
+  )
+  
+  const { data: myTxData, loading: txLoading } = useCachedFetch(
+    CACHE_KEYS.MY_TRANSACTIONS,
+    () => marketplaceApi.getMyTransactions(),
+    { enabled: isAuthBootstrapped && isAuthenticated, staleTime: 2 * 60 * 1000 }
+  )
+  
+  const { data: myReqData, loading: reqLoading } = useCachedFetch(
+    CACHE_KEYS.DOCUMENT_REQUESTS,
+    () => documentsApi.getMyRequests(),
+    { enabled: isAuthBootstrapped && isAuthenticated, staleTime: 2 * 60 * 1000 }
+  )
+  
+  const { data: myAppsData, loading: appsLoading } = useCachedFetch(
+    CACHE_KEYS.MY_APPLICATIONS,
+    () => benefitsApi.getMyApplications(),
+    { enabled: isAuthBootstrapped && isAuthenticated, staleTime: 2 * 60 * 1000 }
+  )
+
+  // Process data
+  const items = ((myItemsData as any)?.data?.items || []).slice(0, 5) as MyItem[]
+  const asBuyer = ((myTxData as any)?.data?.as_buyer || []).map((t: any) => ({ ...t, as: 'buyer' }))
+  const asSeller = ((myTxData as any)?.data?.as_seller || []).map((t: any) => ({ ...t, as: 'seller' }))
+  const txs = [...(asBuyer as any[]), ...(asSeller as any[])].slice(0, 5) as MyTx[]
+  const reqs = ((myReqData as any)?.data?.requests || []).slice(0, 5) as MyReq[]
+  const apps = ((myAppsData as any)?.data?.applications || []) as MyBenefitApp[]
+  
+  const loading = itemsLoading || txLoading || reqLoading || appsLoading
 
   return (
     <div className="container-responsive py-8 md:py-10">
@@ -119,8 +109,8 @@ export default function DashboardPage() {
         <StatCard icon={<FileText size={16} />} label="Requests" value={reqs.length} hint="in progress" />
       </div>
 
-      {/* Only show skeleton on first load; keep existing data visible during refresh */}
-      {loading && !hasLoadedOnce ? (
+      {/* Only show skeleton when loading and no cached data */}
+      {loading && items.length === 0 && txs.length === 0 && reqs.length === 0 && apps.length === 0 ? (
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton-card p-6">
@@ -147,7 +137,10 @@ export default function DashboardPage() {
                   if (!window.confirm('Delete this item? This cannot be undone.')) return
                   try {
                     await marketplaceApi.deleteItem(Number(e.id))
-                    setItems((prev) => prev.filter((i) => i.id !== e.id))
+                    updateItems((prev: any) => {
+                      const items = (prev?.data?.items || prev || []).filter((i: any) => i.id !== e.id)
+                      return prev?.data ? { ...prev, data: { ...prev.data, items } } : items
+                    })
                   } catch {}
                 }}
               >
@@ -185,10 +178,10 @@ export default function DashboardPage() {
               const isReadyPickup = String(extra.status || '').toLowerCase() === 'ready' && String(extra.delivery_method || '').toLowerCase() !== 'digital'
               if (!isReadyPickup) return null
               return (
-                <button
+                <Link
+                  to={`/dashboard/requests/${extra.id}`}
                   className="text-xs px-2 py-1 rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                  onClick={() => { setClaimFor(Number(extra.id)); setClaimOpen(true) }}
-                >View Claim Ticket</button>
+                >View Claim Ticket</Link>
               )
             }}
           />
@@ -248,9 +241,6 @@ export default function DashboardPage() {
             </div>
           )}
         </Modal>
-
-      {/* Claim Ticket Modal */}
-      <ClaimTicketModal requestId={claimFor} isOpen={claimOpen} onClose={() => { setClaimOpen(false); setClaimFor(null) }} />
     </div>
   )
 }

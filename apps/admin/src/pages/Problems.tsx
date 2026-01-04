@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { issueApi, handleApiError, mediaUrl } from '../lib/api'
+import { useCachedFetch } from '../lib/useCachedFetch'
+import { CACHE_KEYS } from '../lib/dataStore'
 import { EmptyState } from '@munlink/ui'
 
 const STATUS_OPTIONS = [
@@ -25,36 +27,29 @@ type Problem = {
 }
 
 export default function Problems() {
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [items, setItems] = useState<Problem[]>([])
   const [status, setStatus] = useState<string>('all')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        setError(null)
-        setLoading(true)
-        const res = await issueApi.getIssues({ status: status === 'all' ? undefined : status, page: 1, per_page: 50 })
-        const list = ((res as any)?.issues || (res as any)?.data?.issues || []) as Problem[]
-        if (mounted) setItems(list)
-      } catch (e: any) {
-        setError(handleApiError(e))
-        if (mounted) setItems([])
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
-    return () => { mounted = false }
-  }, [status])
+  // Use cached fetch with status filter
+  const { data: issuesData, loading, update: updateItems } = useCachedFetch(
+    CACHE_KEYS.ISSUES,
+    () => issueApi.getIssues({ status: status === 'all' ? undefined : status, page: 1, per_page: 50 }),
+    { dependencies: [status], staleTime: 2 * 60 * 1000 }
+  )
+
+  const items = ((issuesData as any)?.issues || (issuesData as any)?.data?.issues || []) as Problem[]
 
   const updateStatus = async (id: number, next: 'pending' | 'in_progress' | 'resolved' | 'closed') => {
     try {
       setActionLoading(id)
       await issueApi.updateIssueStatus(id, next)
-      setItems((prev) => prev.map((it) => it.id === id ? { ...it, status: next } : it))
+      // Optimistically update the cache
+      updateItems((prev: any) => {
+        const issues = prev?.issues || prev?.data?.issues || []
+        const updated = issues.map((it: Problem) => it.id === id ? { ...it, status: next } : it)
+        return prev?.issues ? { ...prev, issues: updated } : prev?.data ? { ...prev, data: { ...prev.data, issues: updated } } : updated
+      })
     } catch (e: any) {
       alert(handleApiError(e))
     } finally {
@@ -81,7 +76,7 @@ export default function Problems() {
 
         {error && <div className="px-6 py-3 text-sm text-red-700 bg-red-50 border-b border-red-200">{error}</div>}
         <div className="divide-y divide-neutral-200">
-          {loading && (
+          {loading && items.length === 0 && (
             <div className="px-6 py-6">
               <div className="h-6 w-40 skeleton rounded mb-4" />
               <div className="space-y-2">{[...Array(5)].map((_, i) => (<div key={i} className="h-16 skeleton rounded" />))}</div>
@@ -99,7 +94,7 @@ export default function Problems() {
               />
             </div>
           )}
-          {!loading && items.map((it) => (
+          {items.map((it) => (
             <div key={it.id} className="px-6 py-5 hover:bg-ocean-50/30 transition-colors">
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
                 <div className="sm:col-span-5 min-w-0">
@@ -151,4 +146,3 @@ export default function Problems() {
     </div>
   )
 }
-

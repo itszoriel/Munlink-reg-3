@@ -176,22 +176,35 @@ def register():
         verification_token = generate_verification_token(user.id, 'email')
         # Send verification email
         email_sent = False
+        email_error = None
         try:
             from apps.api.utils.email_sender import send_verification_email
-            web_url = current_app.config.get('WEB_URL', 'http://localhost:3000')
+            web_url = current_app.config.get('WEB_URL', 'http://localhost:5173')
             verify_link = f"{web_url}/verify-email?token={verification_token}"
             send_verification_email(user.email, verify_link)
             email_sent = True
-        except Exception:
-            # Non-fatal; registration still succeeds
+        except Exception as e:
+            # Log the error for debugging - this is critical for diagnosing email issues
+            import traceback
+            current_app.logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
+            current_app.logger.error(traceback.format_exc())
+            email_error = str(e)
             email_sent = False
 
         resp = {
             'message': 'Registration successful. Please check your Gmail to verify your account.',
             'user': user.to_dict(),
+            'email_sent': email_sent,  # Always include this for debugging
         }
-        if current_app.config.get('DEBUG'):
-            resp['email_sent'] = email_sent
+        # Include error details in debug mode
+        if current_app.config.get('DEBUG') and email_error:
+            resp['email_error'] = email_error
+        
+        # Warn if email wasn't sent
+        if not email_sent:
+            resp['warning'] = 'Verification email could not be sent. Please use the resend verification option.'
+            current_app.logger.warning(f"Registration completed but email NOT sent for user {user.email}")
+        
         return jsonify(resp), 201
     
     except ValidationError as e:
@@ -480,20 +493,25 @@ def resend_verification_email():
 
         verification_token = generate_verification_token(user.id, 'email')
         email_sent = False
+        email_error = None
         try:
             from apps.api.utils.email_sender import send_verification_email
-            web_url = current_app.config.get('WEB_URL', 'http://localhost:3000')
+            web_url = current_app.config.get('WEB_URL', 'http://localhost:5173')
             verify_link = f"{web_url}/verify-email?token={verification_token}"
             send_verification_email(user.email, verify_link)
             email_sent = True
-        except Exception:
-            # Don't fail hard if email service has issues
+        except Exception as e:
+            import traceback
+            current_app.logger.error(f"Failed to resend verification email to {user.email}: {str(e)}")
+            current_app.logger.error(traceback.format_exc())
+            email_error = str(e)
             email_sent = False
 
-        resp = {'message': 'Verification email sent'}
-        if current_app.config.get('DEBUG'):
-            resp['email_sent'] = email_sent
-        return jsonify(resp), 200
+        resp = {'message': 'Verification email sent' if email_sent else 'Failed to send verification email'}
+        resp['email_sent'] = email_sent
+        if current_app.config.get('DEBUG') and email_error:
+            resp['email_error'] = email_error
+        return jsonify(resp), 200 if email_sent else 500
 
     except Exception as e:
         return jsonify({'error': 'Failed to resend verification email', 'details': str(e)}), 400
@@ -520,18 +538,25 @@ def resend_verification_email_public():
 
         verification_token = generate_verification_token(user.id, 'email')
         email_sent = False
+        email_error = None
         try:
             from apps.api.utils.email_sender import send_verification_email
-            web_url = current_app.config.get('WEB_URL', 'http://localhost:3000')
+            web_url = current_app.config.get('WEB_URL', 'http://localhost:5173')
             verify_link = f"{web_url}/verify-email?token={verification_token}"
             send_verification_email(user.email, verify_link)
             email_sent = True
-        except Exception:
+        except Exception as e:
+            import traceback
+            current_app.logger.error(f"Failed to send verification email (public) to {user.email}: {str(e)}")
+            current_app.logger.error(traceback.format_exc())
+            email_error = str(e)
             email_sent = False
 
         resp = {'message': 'If an account exists, a verification email has been sent'}
         if current_app.config.get('DEBUG'):
             resp['email_sent'] = email_sent
+            if email_error:
+                resp['email_error'] = email_error
         return jsonify(resp), 200
     except Exception as e:
         return jsonify({'error': 'Failed to resend verification email', 'details': str(e)}), 400
@@ -811,8 +836,22 @@ def request_transfer():
             return jsonify({'error': 'Resident access required'}), 403
         data = request.get_json() or {}
         to_municipality_id = int(data.get('to_municipality_id') or 0)
+        to_barangay_id = data.get('to_barangay_id')
+        if to_barangay_id:
+            try:
+                to_barangay_id = int(to_barangay_id)
+            except (ValueError, TypeError):
+                to_barangay_id = None
+        else:
+            to_barangay_id = None
+        notes = (data.get('notes') or '').strip()
+        
         if not to_municipality_id:
             return jsonify({'error': 'to_municipality_id is required'}), 400
+        if not to_barangay_id:
+            return jsonify({'error': 'to_barangay_id is required'}), 400
+        if not notes:
+            return jsonify({'error': 'notes is required'}), 400
         if not user.municipality_id:
             return jsonify({'error': 'Your current municipality is not set'}), 400
         if int(user.municipality_id) == to_municipality_id:
@@ -820,8 +859,17 @@ def request_transfer():
         # Validate both current and target municipalities exist
         if not Municipality.query.get(user.municipality_id):
             return jsonify({'error': 'Your current municipality record no longer exists'}), 400
-        if not Municipality.query.get(to_municipality_id):
+        target_municipality = Municipality.query.get(to_municipality_id)
+        if not target_municipality:
             return jsonify({'error': 'Target municipality not found'}), 404
+        # Validate barangay belongs to target municipality if provided
+        if to_barangay_id:
+            from apps.api.models.municipality import Barangay
+            barangay = Barangay.query.get(to_barangay_id)
+            if not barangay:
+                return jsonify({'error': 'Target barangay not found'}), 404
+            if barangay.municipality_id != to_municipality_id:
+                return jsonify({'error': 'Barangay does not belong to the selected municipality'}), 400
         # Prevent duplicate open requests
         existing = TransferRequest.query.filter(
             TransferRequest.user_id == user.id,
@@ -833,8 +881,9 @@ def request_transfer():
             user_id=user.id,
             from_municipality_id=user.municipality_id,
             to_municipality_id=to_municipality_id,
+            to_barangay_id=to_barangay_id,
             status='pending',
-            notes=data.get('notes'),
+            notes=notes,
         )
         db.session.add(t)
         db.session.commit()
@@ -849,12 +898,22 @@ def request_transfer():
                 user = User.query.get(user_id)
                 data = request.get_json() or {}
                 to_municipality_id = int(data.get('to_municipality_id') or 0)
+                to_barangay_id = data.get('to_barangay_id')
+                if to_barangay_id:
+                    try:
+                        to_barangay_id = int(to_barangay_id)
+                    except (ValueError, TypeError):
+                        to_barangay_id = None
+                else:
+                    to_barangay_id = None
+                notes = (data.get('notes') or '').strip()
                 t = TransferRequest(
                     user_id=user.id,
                     from_municipality_id=user.municipality_id,
                     to_municipality_id=to_municipality_id,
+                    to_barangay_id=to_barangay_id,
                     status='pending',
-                    notes=data.get('notes'),
+                    notes=notes,
                 )
                 db.session.add(t)
                 db.session.commit()

@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { marketplaceApi, mediaUrl, showToast } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { useCachedFetch } from '@/lib/useCachedFetch'
+import { CACHE_KEYS } from '@/lib/dataStore'
 import Modal from '@/components/ui/Modal'
 import { EmptyState } from '@munlink/ui'
 
@@ -31,9 +33,6 @@ export default function MyMarketplacePage() {
   const isAuthBootstrapped = useAppStore((s) => s.isAuthBootstrapped)
   const [tab, setTab] = useState<'items' | 'transactions'>('items')
   const [searchParams] = useSearchParams()
-  const [items, setItems] = useState<MyItem[]>([])
-  const [txs, setTxs] = useState<MyTx[]>([])
-  const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [acceptingId, setAcceptingId] = useState<number | null>(null)
   const [editItem, setEditItem] = useState<MyItem | null>(null)
@@ -56,31 +55,29 @@ export default function MyMarketplacePage() {
     return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      setLoading(true)
-      try {
-        if (!isAuthBootstrapped || !isAuthenticated) { if (!cancelled) { setItems([]); setTxs([]) } return }
-        const [myItemsRes, myTxRes] = await Promise.all([
-          marketplaceApi.getMyItems(),
-          marketplaceApi.getMyTransactions(),
-        ])
-        if (!cancelled) {
-          setItems((myItemsRes.data?.items || []) as MyItem[])
-          const asBuyer = (myTxRes.data?.as_buyer || []).map((t: any) => ({ ...t, as: 'buyer' }))
-          const asSeller = (myTxRes.data?.as_seller || []).map((t: any) => ({ ...t, as: 'seller' }))
-          setTxs([...(asBuyer as any[]), ...(asSeller as any[])])
-        }
-      } catch {
-        if (!cancelled) { setItems([]); setTxs([]) }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [isAuthenticated, isAuthBootstrapped])
+  // Use cached fetch for my items
+  const { data: myItemsData, loading: itemsLoading, update: updateItems, refetch: refetchItems } = useCachedFetch(
+    CACHE_KEYS.MY_ITEMS,
+    () => marketplaceApi.getMyItems(),
+    { enabled: isAuthBootstrapped && isAuthenticated, staleTime: 2 * 60 * 1000 }
+  )
+  const items = ((myItemsData as any)?.data?.items || []) as MyItem[]
+
+  // Use cached fetch for my transactions
+  const { data: myTxData, loading: txLoading, update: updateTxs } = useCachedFetch(
+    CACHE_KEYS.MY_TRANSACTIONS,
+    () => marketplaceApi.getMyTransactions(),
+    { enabled: isAuthBootstrapped && isAuthenticated, staleTime: 2 * 60 * 1000 }
+  )
+  
+  // Process transactions data
+  const txs = useMemo(() => {
+    const asBuyer = ((myTxData as any)?.data?.as_buyer || []).map((t: any) => ({ ...t, as: 'buyer' }))
+    const asSeller = ((myTxData as any)?.data?.as_seller || []).map((t: any) => ({ ...t, as: 'seller' }))
+    return [...(asBuyer as any[]), ...(asSeller as any[])] as MyTx[]
+  }, [myTxData])
+
+  const loading = tab === 'items' ? itemsLoading : txLoading
 
   // Initialize tab from query param (?tab=transactions)
   useEffect(() => {
@@ -89,15 +86,23 @@ export default function MyMarketplacePage() {
     if (t === 'items') setTab('items')
   }, [searchParams])
 
-  const reloadItems = async () => {
-    try {
-      if (!isAuthBootstrapped || !isAuthenticated) { setItems([]); return }
-      const myItemsRes = await marketplaceApi.getMyItems()
-      setItems((myItemsRes.data?.items || []) as MyItem[])
-    } catch {}
+  // Helper to update transaction status in cache
+  const updateTxStatus = (txId: number, newStatus: string, extraFields?: Record<string, any>) => {
+    updateTxs((prev: any) => {
+      const data = prev?.data || prev || {}
+      const updateList = (list: any[]) => list.map((x: any) => 
+        x.id === txId ? { ...x, status: newStatus, ...extraFields } : x
+      )
+      return {
+        ...prev,
+        data: {
+          ...data,
+          as_buyer: updateList(data.as_buyer || []),
+          as_seller: updateList(data.as_seller || []),
+        }
+      }
+    })
   }
-
-  // removed unused sellerPending calculation to satisfy noUnusedLocals
 
   return (
     <div className="container-responsive py-10">
@@ -109,7 +114,7 @@ export default function MyMarketplacePage() {
         </div>
       </div>
 
-      {loading ? (
+      {loading && (tab === 'items' ? items.length === 0 : txs.length === 0) ? (
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton-card">
@@ -160,7 +165,10 @@ export default function MyMarketplacePage() {
                     setDeletingId(it.id)
                     try {
                       await marketplaceApi.deleteItem(it.id)
-                      setItems((prev) => prev.filter((p) => p.id !== it.id))
+                      updateItems((prev: any) => {
+                        const items = (prev?.data?.items || []).filter((p: any) => p.id !== it.id)
+                        return { ...prev, data: { ...prev?.data, items } }
+                      })
                       showToast('Item deleted', 'success')
                     } catch (e: any) {
                       const msg = e?.response?.data?.error || 'Failed to delete item'
@@ -221,7 +229,7 @@ export default function MyMarketplacePage() {
                       onClick={async () => {
                         try {
                           await marketplaceApi.rejectTransaction(t.id)
-                          setTxs((prev) => prev.map((x) => x.id === t.id ? { ...x, status: 'rejected' } : x))
+                          updateTxStatus(t.id, 'rejected')
                           showToast('Transaction rejected. Others can now request this item.', 'success')
                         } catch (e: any) {
                           const msg = e?.response?.data?.error || 'Failed to reject transaction'
@@ -240,7 +248,7 @@ export default function MyMarketplacePage() {
                       onClick={async () => {
                         try {
                           await marketplaceApi.confirmTransaction(t.id)
-                          setTxs((prev) => prev.map((x) => x.id === t.id ? { ...x, status: 'accepted' } : x))
+                          updateTxStatus(t.id, 'accepted')
                           showToast('You confirmed the pickup. Transaction accepted.', 'success')
                         } catch (e: any) {
                           const msg = e?.response?.data?.error || 'Failed to confirm'
@@ -255,7 +263,7 @@ export default function MyMarketplacePage() {
                       onClick={async () => {
                         try {
                           await marketplaceApi.buyerRejectProposal(t.id)
-                          setTxs((prev) => prev.map((x) => x.id === t.id ? { ...x, status: 'rejected' } : x))
+                          updateTxStatus(t.id, 'rejected')
                           showToast('Proposal rejected. The item is available again.', 'success')
                         } catch (e: any) {
                           const msg = e?.response?.data?.error || 'Failed to reject'
@@ -273,7 +281,7 @@ export default function MyMarketplacePage() {
                     onClick={async () => {
                       try {
                         await marketplaceApi.handoverSeller(t.id)
-                        setTxs(prev => prev.map(x => x.id === t.id ? { ...x, status: 'handed_over' } : x))
+                        updateTxStatus(t.id, 'handed_over')
                         showToast('Marked as handed over', 'success')
                       } catch (e: any) {
                         const msg = e?.response?.data?.error || 'Failed'
@@ -290,7 +298,7 @@ export default function MyMarketplacePage() {
                     onClick={async () => {
                       try {
                         await marketplaceApi.handoverBuyer(t.id)
-                        setTxs(prev => prev.map(x => x.id === t.id ? { ...x, status: 'received' } : x))
+                        updateTxStatus(t.id, 'received')
                         showToast('Received confirmed', 'success')
                       } catch (e: any) {
                         const msg = e?.response?.data?.error || 'Failed'
@@ -307,7 +315,7 @@ export default function MyMarketplacePage() {
                     onClick={async () => {
                       try {
                         await marketplaceApi.complete(t.id)
-                        setTxs(prev => prev.map(x => x.id === t.id ? { ...x, status: 'completed' } : x))
+                        updateTxStatus(t.id, 'completed')
                         showToast('Transaction completed', 'success')
                       } catch (e: any) {
                         const msg = e?.response?.data?.error || 'Failed'
@@ -324,7 +332,7 @@ export default function MyMarketplacePage() {
                     onClick={async () => {
                       try {
                         await marketplaceApi.returnBuyer(t.id)
-                        setTxs(prev => prev.map(x => x.id === t.id ? { ...x, status: 'returned' } : x))
+                        updateTxStatus(t.id, 'returned')
                         showToast('Marked as returned', 'success')
                       } catch (e: any) {
                         const msg = e?.response?.data?.error || 'Failed'
@@ -341,7 +349,7 @@ export default function MyMarketplacePage() {
                     onClick={async () => {
                       try {
                         await marketplaceApi.returnSeller(t.id)
-                        setTxs(prev => prev.map(x => x.id === t.id ? { ...x, status: 'completed' } : x))
+                        updateTxStatus(t.id, 'completed')
                         showToast('Return confirmed', 'success')
                       } catch (e: any) {
                         const msg = e?.response?.data?.error || 'Failed'
@@ -372,7 +380,7 @@ export default function MyMarketplacePage() {
                       if (!reason.trim()) return
                       try {
                         await marketplaceApi.dispute(t.id, reason.trim())
-                        setTxs(prev => prev.map(x => x.id === t.id ? { ...x, status: 'disputed' } : x))
+                        updateTxStatus(t.id, 'disputed')
                         showToast('Reported to admin', 'success')
                       } catch (e: any) {
                         const msg = e?.response?.data?.error || 'Failed to report'
@@ -474,7 +482,7 @@ export default function MyMarketplacePage() {
                     if (uploadFiles.length) {
                       await Promise.all(uploadFiles.map((f) => marketplaceApi.uploadItemImage(editItem.id, f)))
                     }
-                    await reloadItems()
+                    await refetchItems()
                     showToast('Item updated', 'success')
                     setEditItem(null)
                   } catch (e: any) {
@@ -506,7 +514,7 @@ export default function MyMarketplacePage() {
           try {
             const isoUtc = new Date(acceptPickupAt || minPickupLocal).toISOString()
             await marketplaceApi.proposeTransaction(acceptingTx.id, { pickup_at: isoUtc, pickup_location: acceptPickupLocation })
-            setTxs((prev) => prev.map((x) => x.id === acceptingTx.id ? { ...x, status: 'awaiting_buyer', pickup_at: isoUtc, pickup_location: acceptPickupLocation } : x))
+            updateTxStatus(acceptingTx.id, 'awaiting_buyer', { pickup_at: isoUtc, pickup_location: acceptPickupLocation })
             showToast('Pickup details proposed. Awaiting buyer confirmation.', 'success')
             setAcceptingTx(null)
             setAcceptingId(null)
@@ -580,5 +588,3 @@ function _AcceptModal({ tx, value, locationValue, min, onChange, onChangeLocatio
     </Modal>
   )
 }
-
-

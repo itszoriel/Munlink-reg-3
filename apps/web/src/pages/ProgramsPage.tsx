@@ -5,6 +5,8 @@ import { useSearchParams } from 'react-router-dom'
 import GatedAction from '@/components/GatedAction'
 import { useAppStore } from '@/lib/store'
 import { benefitsApi, mediaUrl } from '@/lib/api'
+import { useCachedFetch } from '@/lib/useCachedFetch'
+import { CACHE_KEYS } from '@/lib/dataStore'
 import Modal from '@/components/ui/Modal'
 import Stepper from '@/components/ui/Stepper'
 
@@ -23,10 +25,7 @@ type Program = {
 export default function ProgramsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const user = useAppStore((s) => s.user)
-  const [programs, setPrograms] = useState<Program[]>([])
-  // Track if we've ever loaded data (for first-load-only skeleton)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated)
   const [typeFilter, setTypeFilter] = useState('all')
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(1)
@@ -35,41 +34,31 @@ export default function ProgramsPage() {
   const [result, setResult] = useState<any>(null)
   const [tab, setTab] = useState<'programs'|'applications'>('programs')
   const [searchParams] = useSearchParams()
-  const [applications, setApplications] = useState<any[]>([])
   const [openId, setOpenId] = useState<string | number | null>(null)
   const isMismatch = !!(user as any)?.municipality_id && !!selectedMunicipality?.id && (user as any).municipality_id !== selectedMunicipality.id
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      // Only show loading skeleton on first load
-      if (!hasLoadedOnce) setLoading(true)
-      try {
-        if (tab === 'applications') {
-          const isAuthenticated = !!useAppStore.getState().isAuthenticated
-          if (!isAuthenticated) { if (!cancelled) setApplications([]); return }
-          const my = await benefitsApi.getMyApplications()
-          if (!cancelled) {
-            setApplications(my.data?.applications || [])
-            setHasLoadedOnce(true)
-          }
-        } else {
-          const params: any = {}
-          if (selectedMunicipality?.id) params.municipality_id = selectedMunicipality.id
-          if (typeFilter !== 'all') params.type = typeFilter
-          const res = await benefitsApi.getPrograms(params)
-          if (!cancelled) {
-            setPrograms(res.data?.programs || [])
-            setHasLoadedOnce(true)
-          }
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [selectedMunicipality?.id, typeFilter, tab, hasLoadedOnce])
+  // Use cached fetch for programs
+  const { data: programsData, loading: programsLoading } = useCachedFetch(
+    CACHE_KEYS.BENEFITS_PROGRAMS,
+    () => {
+      const params: any = {}
+      if (selectedMunicipality?.id) params.municipality_id = selectedMunicipality.id
+      if (typeFilter !== 'all') params.type = typeFilter
+      return benefitsApi.getPrograms(params)
+    },
+    { dependencies: [selectedMunicipality?.id, typeFilter], staleTime: 5 * 60 * 1000 }
+  )
+  const programs = (programsData as any)?.data?.programs || []
+
+  // Use cached fetch for my applications
+  const { data: applicationsData, loading: applicationsLoading, refetch: refetchApplications } = useCachedFetch(
+    CACHE_KEYS.MY_APPLICATIONS,
+    () => benefitsApi.getMyApplications(),
+    { enabled: isAuthenticated && tab === 'applications', staleTime: 2 * 60 * 1000 }
+  )
+  const applications = (applicationsData as any)?.data?.applications || []
+
+  const loading = tab === 'programs' ? programsLoading : applicationsLoading
 
   // Initialize tab from query param (?tab=applications)
   useEffect(() => {
@@ -115,8 +104,8 @@ export default function ProgramsPage() {
         </div>
       )}
 
-      {/* Only show skeleton on first load */}
-      {loading && !hasLoadedOnce ? (
+      {/* Only show skeleton on first load when no cached data */}
+      {loading && (tab === 'programs' ? programs.length === 0 : applications.length === 0) ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton-card h-40" />
@@ -127,7 +116,7 @@ export default function ProgramsPage() {
           <EmptyState title="Nothing here yet" description="Try a different filter or check back soon." />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {programs.map((p) => {
+            {programs.map((p: Program) => {
               const desc = (p as any).description || p.summary || ''
               const eligibility = (p.eligibility || (p as any).eligibility_criteria || []) as string[]
               const requirements = (p.requirements || (p as any).required_documents || []) as string[]
@@ -210,7 +199,7 @@ export default function ProgramsPage() {
           <EmptyState title="No applications yet" description="Submit an application to see it here." />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {applications.map((a) => (
+            {applications.map((a: any) => (
               <Card key={a.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -278,6 +267,8 @@ export default function ProgramsPage() {
                   const res = await benefitsApi.createApplication({ program_id: selected!.id, application_data: result || {} })
                   const app = res?.data?.application
                   setResult(app)
+                  // Refresh applications list after successful submission
+                  refetchApplications()
                 } finally {
                   setApplying(false)
                 }
@@ -297,4 +288,3 @@ export default function ProgramsPage() {
     </div>
   )
 }
-

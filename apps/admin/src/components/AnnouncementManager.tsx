@@ -2,11 +2,13 @@
  * MunLink Region III - Announcement Manager Component
  * Component for managing municipality announcements
  */
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { announcementApi, handleApiError, mediaUrl } from '../lib/api'
+import { useCachedFetch } from '../lib/useCachedFetch'
+import { CACHE_KEYS } from '../lib/dataStore'
 import { EmptyState } from '@munlink/ui'
 
 interface Announcement {
@@ -27,8 +29,6 @@ interface AnnouncementManagerProps {
 }
 
 export default function AnnouncementManager({ onAnnouncementUpdated }: AnnouncementManagerProps) {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -36,29 +36,45 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [fabExpanded, setFabExpanded] = useState(false)
 
-  // Load announcements
-  const loadAnnouncements = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await announcementApi.getAnnouncements()
-      setAnnouncements((response as any).announcements || [])
-    } catch (err: any) {
-      // Handle 422 errors gracefully - show empty state instead of error
-      if (err.response?.status === 422) {
-        setAnnouncements([])
-        setError(null)
-      } else {
-        setError(handleApiError(err))
+  // Use cached fetch for announcements
+  const { data: announcementsData, loading: announcementsLoading, update: updateCache, refetch } = useCachedFetch(
+    CACHE_KEYS.ANNOUNCEMENTS,
+    async () => {
+      try {
+        const response = await announcementApi.getAnnouncements()
+        return (response as any).announcements || []
+      } catch (err: any) {
+        // Handle 422 errors gracefully - return empty array
+        if (err.response?.status === 422) {
+          return []
+        }
+        throw err
       }
-    } finally {
-      setLoading(false)
-    }
-  }
+    },
+    { staleTime: 2 * 60 * 1000 }
+  )
+  
+  const announcements = (announcementsData || []) as Announcement[]
+  const loading = announcementsLoading && announcements.length === 0
 
-  useEffect(() => {
-    loadAnnouncements()
-  }, [])
+  // Update helpers for optimistic updates
+  const updateAnnouncementInCache = (id: number, updates: Partial<Announcement>) => {
+    updateCache((prev: Announcement[]) => 
+      (prev || []).map((a: Announcement) => a.id === id ? { ...a, ...updates } : a)
+    )
+  }
+  
+  const removeAnnouncementFromCache = (id: number) => {
+    updateCache((prev: Announcement[]) => 
+      (prev || []).filter((a: Announcement) => a.id !== id)
+    )
+  }
+  
+  const addAnnouncementToCache = (announcement: Announcement) => {
+    updateCache((prev: Announcement[]) => 
+      [announcement, ...(prev || [])]
+    )
+  }
 
   // Handle announcement update
   const handleUpdateAnnouncement = async (id: number, data: any) => {
@@ -66,11 +82,7 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
       setActionLoading(id)
       await announcementApi.updateAnnouncement(id, data)
       // Refresh from server to avoid stale image state
-      try {
-        const response = await announcementApi.getAnnouncements()
-        const fresh = (response as any).announcements || []
-        setAnnouncements(fresh)
-      } catch {}
+      await refetch()
 
       onAnnouncementUpdated?.(id)
       
@@ -92,8 +104,8 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
       setActionLoading(id)
       await announcementApi.deleteAnnouncement(id)
       
-      // Remove announcement from list
-      setAnnouncements(prev => prev.filter(announcement => announcement.id !== id))
+      // Remove announcement from cache
+      removeAnnouncementFromCache(id)
       onAnnouncementUpdated?.(id)
       
       // Close modal
@@ -117,19 +129,14 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
         try {
           await announcementApi.uploadImages(id, files.slice(0, 5))
         } catch {}
-        // Fetch fresh announcements so newly uploaded images appear immediately
-        try {
-          const fresh = await announcementApi.getAnnouncements()
-          setAnnouncements((fresh as any).announcements || [])
-        } catch {}
+        // Refresh to get uploaded images
+        await refetch()
+      } else if (created) {
+        // If no files, just add to cache directly
+        addAnnouncementToCache(created)
       }
       
-      // Add new announcement to list
       if (created) {
-        // If we didn't refresh above (no files), insert created directly
-        if (!(files && files.length)) {
-          setAnnouncements(prev => [created, ...prev])
-        }
         onAnnouncementUpdated?.(created.id)
       }
       
@@ -275,72 +282,81 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
         />
       )}
 
-      {/* Mobile FAB - Floating Action Button - positioned above mobile nav, hidden when no announcements */}
-      {announcements.length > 0 && (
-      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
-        <motion.button
-          className="relative flex items-center justify-center bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-600/30 hover:shadow-green-600/50 transition-shadow"
-          onClick={() => {
-            if (fabExpanded) {
-              setShowCreateModal(true)
-              setFabExpanded(false)
-            } else {
-              setFabExpanded(true)
-            }
-          }}
-          animate={{
-            width: fabExpanded ? 180 : 56,
-            height: 56,
-            borderRadius: 28,
-          }}
-          transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 25,
-          }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <AnimatePresence mode="wait">
-            {fabExpanded ? (
-              <motion.div
-                key="expanded"
-                className="flex items-center gap-2 px-4"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.15 }}
-              >
-                <Plus className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm font-medium whitespace-nowrap">New Announcement</span>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="collapsed"
-                initial={{ opacity: 0, rotate: -90 }}
-                animate={{ opacity: 1, rotate: 0 }}
-                exit={{ opacity: 0, rotate: 90 }}
-                transition={{ duration: 0.15 }}
-              >
-                <Plus className="w-6 h-6" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.button>
-        
-        {/* Backdrop to close FAB when clicking outside */}
-        <AnimatePresence>
-          {fabExpanded && (
-            <motion.div
-              className="fixed inset-0 -z-10"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setFabExpanded(false)}
-            />
-          )}
-        </AnimatePresence>
-      </div>
-      )}
+      {/* Mobile FAB - Floating Action Button - positioned above mobile nav */}
+      {/* HIDDEN when any modal is open (showCreateModal, showModal) */}
+      <AnimatePresence>
+        {announcements.length > 0 && !showCreateModal && !showModal && (
+          <motion.div 
+            className="fixed bottom-20 right-4 z-50 sm:hidden"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.button
+              className="relative flex items-center justify-center bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-600/30 hover:shadow-green-600/50 transition-shadow"
+              onClick={() => {
+                if (fabExpanded) {
+                  setShowCreateModal(true)
+                  setFabExpanded(false)
+                } else {
+                  setFabExpanded(true)
+                }
+              }}
+              animate={{
+                width: fabExpanded ? 180 : 56,
+                height: 56,
+                borderRadius: 28,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 25,
+              }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <AnimatePresence mode="wait">
+                {fabExpanded ? (
+                  <motion.div
+                    key="expanded"
+                    className="flex items-center gap-2 px-4"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <Plus className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">New Announcement</span>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="collapsed"
+                    initial={{ opacity: 0, rotate: -90 }}
+                    animate={{ opacity: 1, rotate: 0 }}
+                    exit={{ opacity: 0, rotate: 90 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <Plus className="w-6 h-6" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Backdrop to close FAB when clicking outside - must be separate from FAB container */}
+      <AnimatePresence>
+        {fabExpanded && !showCreateModal && (
+          <motion.div
+            className="fixed inset-0 z-40 sm:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFabExpanded(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 }

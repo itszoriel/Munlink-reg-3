@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { exportAdminApi, mediaUrl, showToast } from '../../lib/api'
 
-export default function ExportArchive({ defaultRange, onRangeChange }: { defaultRange: string; onRangeChange: (r: string)=>void }) {
+export default function ExportData({ defaultRange, onRangeChange }: { defaultRange: string; onRangeChange: (r: string)=>void }) {
   const [working, setWorking] = useState<string>('')
   const [range, setRange] = useState<string>(defaultRange)
-  const [lastArchiveUrl, setLastArchiveUrl] = useState<string>('')
+  
   const entities: Array<{ key: any; label: string; desc: string }> = [
     { key: 'users', label: 'Users', desc: 'All residents in your municipality' },
     { key: 'benefits', label: 'Programs', desc: 'Active programs with benefits' },
@@ -28,33 +28,8 @@ export default function ExportArchive({ defaultRange, onRangeChange }: { default
     }
   }
 
-  const [cleanupEntity, setCleanupEntity] = useState<'announcements'|'requests'|'users'|'benefits'|'issues'|'items'|''>('')
-  const [cleanupBefore, setCleanupBefore] = useState<string>('')
-  const [confirm, setConfirm] = useState<string>('')
-  const [archive, setArchive] = useState<boolean>(true)
-
-  const doCleanup = async () => {
-    if (!cleanupEntity || confirm !== 'DELETE') return
-    setWorking('cleanup')
-    try {
-      const res = await exportAdminApi.cleanup({ entity: cleanupEntity as any, before: cleanupBefore || undefined, confirm: 'DELETE', archive })
-      const archivedUrl = (res as any)?.archived_url
-      const msg = `Deleted ${((res as any)?.deleted_count) ?? 0}${archivedUrl ? ' • Archived' : ''}`
-      showToast(msg, 'success')
-      if (archivedUrl) {
-        setLastArchiveUrl(archivedUrl)
-        try { window.open(mediaUrl(archivedUrl), '_blank') } catch {}
-      }
-    } catch (e: any) {
-      showToast('Cleanup failed', 'error')
-    } finally {
-      setWorking('')
-      setConfirm('')
-    }
-  }
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <select value={range} onChange={(e)=> { setRange(e.target.value); onRangeChange(e.target.value) }} className="px-4 py-2 bg-white border rounded-lg text-sm">
           <option value="last_7_days">Last 7 days</option>
@@ -76,43 +51,6 @@ export default function ExportArchive({ defaultRange, onRangeChange }: { default
           </div>
         ))}
       </div>
-      <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-5 border border-white/50 shadow-lg">
-        <div className="font-semibold mb-1">Archive & Cleanup</div>
-        <div className="text-sm text-neutral-600 mb-4">Clear data after exporting to free up space. Type DELETE to confirm.</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-          <div>
-            <label className="block text-xs font-medium mb-1">Entity</label>
-            <select value={cleanupEntity} onChange={(e)=> setCleanupEntity(e.target.value as any)} className="w-full border rounded px-3 py-2 text-sm">
-              <option value="">Select</option>
-              <option value="announcements">Announcements</option>
-              <option value="requests">Document Requests</option>
-              <option value="users" disabled>Users (disabled)</option>
-              <option value="benefits" disabled>Programs (soon)</option>
-              <option value="issues" disabled>Problems (soon)</option>
-              <option value="items" disabled>Items (soon)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">Delete before (ISO date)</label>
-            <input type="datetime-local" className="w-full border rounded px-3 py-2 text-sm" value={cleanupBefore} onChange={(e)=> setCleanupBefore(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">Confirm</label>
-            <input placeholder="Type DELETE" className="w-full border rounded px-3 py-2 text-sm" value={confirm} onChange={(e)=> setConfirm(e.target.value)} />
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={archive} onChange={(e)=> setArchive(e.target.checked)} /> Archive before delete</label>
-            <button className="ml-auto px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm disabled:opacity-60" disabled={!cleanupEntity || confirm!=='DELETE' || working==='cleanup'} onClick={doCleanup}>{working==='cleanup'?'Cleaning…':'Run Cleanup'}</button>
-          </div>
-          {lastArchiveUrl && (
-            <div className="sm:col-span-2 lg:col-span-4 text-xs text-neutral-600 mt-1">
-              Last archive: <a className="text-ocean-700 hover:underline" href={mediaUrl(lastArchiveUrl)} target="_blank" rel="noreferrer">Open</a>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
-
-

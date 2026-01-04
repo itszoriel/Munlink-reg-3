@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import GatedAction from '@/components/GatedAction'
 import { documentsApi } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { useCachedFetch } from '@/lib/useCachedFetch'
+import { CACHE_KEYS } from '@/lib/dataStore'
 import Stepper from '@/components/ui/Stepper'
 import FileUploader from '@/components/ui/FileUploader'
 import { EmptyState } from '@munlink/ui'
@@ -30,10 +32,6 @@ export default function DocumentsPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
-  const [types, setTypes] = useState<DocType[]>([])
-  // Track if we've ever loaded data (for first-load-only skeleton)
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null)
   const [deliveryMethod, setDeliveryMethod] = useState<'digital' | 'pickup'>('digital')
@@ -48,49 +46,52 @@ export default function DocumentsPage() {
   const userBarangayName = (user as any)?.barangay_name // kept for review display and future use
   const [consent, setConsent] = useState(false)
   const [pickupLocation, setPickupLocation] = useState<'municipal'|'barangay'>('municipal')
-  const [myRequests, setMyRequests] = useState<any[]>([])
-  const [loadingMy, setLoadingMy] = useState(false)
 
+  // Use cached fetch for document types (rarely changes)
+  const { data: typesData, loading } = useCachedFetch(
+    'document_types',
+    () => documentsApi.getTypes(),
+    { staleTime: 30 * 60 * 1000 } // 30 minutes - document types rarely change
+  )
+  const types = (typesData as any)?.data?.types || []
+
+  // Check if tab is requests
+  const isRequestsTab = (searchParams.get('tab') || '').toLowerCase() === 'requests'
+
+  // Use cached fetch for my requests (only when on requests tab)
+  const { data: myRequestsData, loading: loadingMy } = useCachedFetch(
+    CACHE_KEYS.DOCUMENT_REQUESTS,
+    () => documentsApi.getMyRequests(),
+    { enabled: isAuthenticated && isRequestsTab, staleTime: 2 * 60 * 1000 }
+  )
+  const myRequests = (myRequestsData as any)?.data?.requests || (myRequestsData as any)?.requests || []
+
+  // Auto-select user's registered municipality if authenticated and no municipality is selected
   useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      // Only show loading skeleton on first load
-      if (!hasLoadedOnce) setLoading(true)
-      try {
-        const res = await documentsApi.getTypes()
-        if (!cancelled) {
-          setTypes(res.data?.types || [])
-          setHasLoadedOnce(true)
-        }
-      } catch {
-        if (!cancelled) setTypes([])
-      } finally {
-        if (!cancelled) setLoading(false)
+    if (isAuthenticated && user && !selectedMunicipality && (user as any)?.municipality_id && (user as any)?.municipality_name) {
+      // Set municipality from user's registered data
+      const { setMunicipality, setProvince } = useAppStore.getState()
+      const userMunId = (user as any).municipality_id
+      const userMunName = (user as any).municipality_name
+      const userProvName = (user as any).province_name
+      
+      // Create municipality object from user data
+      setMunicipality({
+        id: userMunId,
+        name: userMunName,
+        slug: (user as any).municipality_slug || userMunName.toLowerCase().replace(/\s+/g, '-'),
+      } as any)
+      
+      // Also set province if available
+      if (userProvName && !selectedProvince) {
+        setProvince({
+          id: (user as any).province_id || 0,
+          name: userProvName,
+          slug: (user as any).province_slug || userProvName.toLowerCase().replace(/\s+/g, '-'),
+        } as any)
       }
     }
-    load()
-    return () => { cancelled = true }
-  }, [hasLoadedOnce])
-
-  // Load my requests when tab=requests
-  useEffect(() => {
-    let cancelled = false
-    const tab = (searchParams.get('tab') || '').toLowerCase()
-    if (tab !== 'requests') return
-    ;(async () => {
-      try {
-        setLoadingMy(true)
-        const isAuthenticated = !!useAppStore.getState().isAuthenticated
-        if (!isAuthenticated) { if (!cancelled) setMyRequests([]); return }
-        const res = await documentsApi.getMyRequests()
-        const list = (res as any)?.data?.requests || (res as any)?.requests || []
-        if (!cancelled) setMyRequests(list)
-      } finally {
-        if (!cancelled) setLoadingMy(false)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [searchParams])
+  }, [isAuthenticated, user, selectedMunicipality, selectedProvince])
 
   // Initialize pickup selection from user profile
   useEffect(() => {
@@ -103,7 +104,14 @@ export default function DocumentsPage() {
     const fee = Number(selectedType.fee || 0)
     return !!selectedType.supports_digital && fee <= 0
   }, [selectedType])
-  const isMismatch = useMemo(() => !!(user as any)?.municipality_id && !!selectedMunicipality?.id && (user as any).municipality_id !== selectedMunicipality.id, [user, selectedMunicipality?.id])
+  // Check for mismatch - compare by ID (static data now uses real database IDs)
+  const isMismatch = useMemo(() => {
+    const userMunId = (user as any)?.municipality_id
+    const selectedMunId = selectedMunicipality?.id
+    if (!userMunId || !selectedMunId) return false
+    // Compare as numbers to handle string/number type differences
+    return Number(userMunId) !== Number(selectedMunId)
+  }, [user, selectedMunicipality?.id])
   const userMunicipalityName = (user as any)?.municipality_name
 
   const canSubmit = useMemo(() => {
@@ -186,11 +194,11 @@ export default function DocumentsPage() {
       )}
       {isMismatch && (
         <div className="mb-4 p-3 rounded-lg border border-yellow-300 bg-yellow-50 text-sm text-yellow-900">
-          You are viewing {selectedMunicipality?.name}. Actions are limited to your registered municipality{userMunicipalityName?`: ${userMunicipalityName}`:'.'}
+          You are viewing <strong>{selectedMunicipality?.name}</strong>. Document requests will be submitted to your registered municipality: <strong>{userMunicipalityName || 'Your municipality'}</strong>.
         </div>
       )}
-      {/* Only show skeleton on first load */}
-      {loading && !hasLoadedOnce ? (
+      {/* Only show skeleton on first load when no cached data */}
+      {loading && types.length === 0 ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="skeleton-card">

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { handleApiError, userApi, mediaUrl, transferAdminApi, showToast, municipalitiesApi } from '../lib/api'
 import { useLocation } from 'react-router-dom'
 import { useAdminStore } from '../lib/store'
+import { useCachedFetch } from '../lib/useCachedFetch'
+import { CACHE_KEYS } from '../lib/dataStore'
 import { DataTable, Modal, Button, EmptyState } from '@munlink/ui'
 import { X, Check, RotateCcw, Pause, ExternalLink, Hourglass } from 'lucide-react'
 import TransferRequestCard from '../components/transfers/TransferRequestCard'
@@ -15,71 +17,63 @@ export default function Residents() {
   const [activeTab, setActiveTab] = useState<'residents'|'transfers'>('residents')
   const [filter, setFilter] = useState<'all' | 'verified' | 'pending' | 'suspended'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [rows, setRows] = useState<any[]>([])
   const [selected, setSelected] = useState<any | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const perPage = 10
-  const [transfers, setTransfers] = useState<any[]>([])
-  const [loadingTransfers, setLoadingTransfers] = useState(false)
   const [munMap, setMunMap] = useState<Record<number, string>>({})
 
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        setError(null)
-        setLoading(true)
-        // Load verified and pending users in parallel
-        const [verifiedRes, pendingRes] = await Promise.all([
-          userApi.getVerifiedUsers(1, 100),
-          userApi.getPendingUsers(),
-        ])
+  // Use cached fetch for residents
+  const { data: residentsData, loading, update: updateResidents, refetch: refetchResidents } = useCachedFetch(
+    CACHE_KEYS.RESIDENTS,
+    async () => {
+      const [verifiedRes, pendingRes] = await Promise.all([
+        userApi.getVerifiedUsers(1, 100),
+        userApi.getPendingUsers(),
+      ])
+      return { verified: verifiedRes, pending: pendingRes }
+    },
+    { staleTime: 2 * 60 * 1000 }
+  )
 
-        const verified = (verifiedRes as any)?.data || (verifiedRes as any)?.users || []
-        const pending = (pendingRes as any)?.users || (pendingRes as any)?.data?.users || []
+  // Process residents data
+  const rows = useMemo(() => {
+    if (!residentsData) return []
+    const verified = ((residentsData as any)?.verified?.data || (residentsData as any)?.verified?.users || [])
+    const pending = ((residentsData as any)?.pending?.users || (residentsData as any)?.pending?.data?.users || [])
 
-        let unified = [
-          ...verified.map((u: any) => ({ ...u, __status: 'verified' })),
-          ...pending.map((u: any) => ({ ...u, __status: 'pending' })),
-        ]
+    let unified = [
+      ...verified.map((u: any) => ({ ...u, __status: 'verified' })),
+      ...pending.map((u: any) => ({ ...u, __status: 'pending' })),
+    ]
 
-        // Scope to admin's municipality (prefer numeric id to avoid string mismatches)
-        if (adminMunicipalityId) {
-          unified = unified.filter((u: any) => Number(u.municipality_id) === Number(adminMunicipalityId))
-        } else if (adminMunicipalityName || adminMunicipalitySlug) {
-          unified = unified.filter((u: any) => {
-            const name = (u.municipality_name || '').toLowerCase()
-            const slug = (u.municipality_slug || '').toLowerCase()
-            const wantName = (adminMunicipalityName || '').toLowerCase()
-            const wantSlug = (adminMunicipalitySlug || '').toLowerCase()
-            return (wantName && name === wantName) || (wantSlug && slug === wantSlug)
-          })
-        }
+    // Scope to admin's municipality (prefer numeric id to avoid string mismatches)
+    if (adminMunicipalityId) {
+      unified = unified.filter((u: any) => Number(u.municipality_id) === Number(adminMunicipalityId))
+    } else if (adminMunicipalityName || adminMunicipalitySlug) {
+      unified = unified.filter((u: any) => {
+        const name = (u.municipality_name || '').toLowerCase()
+        const slug = (u.municipality_slug || '').toLowerCase()
+        const wantName = (adminMunicipalityName || '').toLowerCase()
+        const wantSlug = (adminMunicipalitySlug || '').toLowerCase()
+        return (wantName && name === wantName) || (wantSlug && slug === wantSlug)
+      })
+    }
 
-        const mapped = unified.map((u: any) => ({
-          id: u.id ? String(u.id) : u.user_id ? String(u.user_id) : u.username || 'USER',
-          name: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || u.email || 'Unknown',
-          email: u.email || '',
-          phone: u.phone_number || '',
-          municipality: u.municipality_name || '—',
-          status: u.__status || (u.is_active === false ? 'suspended' : (u.admin_verified ? 'verified' : (u.admin_verified === false ? 'pending' : 'pending'))),
-          joined: (u.created_at || '').slice(0, 10),
-          avatar: (u.first_name?.[0] || 'U') + (u.last_name?.[0] || ''),
-          profile_picture: u.profile_picture,
-        }))
-        if (mounted) setRows(mapped)
-      } catch (e: any) {
-        setError(handleApiError(e))
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
-    return () => { mounted = false }
-  }, [])
+    return unified.map((u: any) => ({
+      id: u.id ? String(u.id) : u.user_id ? String(u.user_id) : u.username || 'USER',
+      name: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || u.email || 'Unknown',
+      email: u.email || '',
+      phone: u.phone_number || '',
+      municipality: u.municipality_name || '—',
+      status: u.__status || (u.is_active === false ? 'suspended' : (u.admin_verified ? 'verified' : (u.admin_verified === false ? 'pending' : 'pending'))),
+      joined: (u.created_at || '').slice(0, 10),
+      avatar: (u.first_name?.[0] || 'U') + (u.last_name?.[0] || ''),
+      profile_picture: u.profile_picture,
+    }))
+  }, [residentsData, adminMunicipalityId, adminMunicipalityName, adminMunicipalitySlug])
 
   // Transfers filters & pagination
   const [transferStatus, setTransferStatus] = useState<'all'|'pending'|'approved'|'rejected'|'accepted'>('all')
@@ -89,27 +83,18 @@ export default function Residents() {
   const [transferPage, setTransferPage] = useState(1)
   const transferPerPage = 12
 
-  // Load transfer requests scoped to admin municipality with filters
-  useEffect(() => {
-    let cancelled = false
-    const loadTransfers = async () => {
-      try {
-        setLoadingTransfers(true)
-        const params: any = { page: transferPage, per_page: transferPerPage, sort: transferSort, order: transferOrder }
-        if (transferStatus !== 'all') params.status = transferStatus
-        if (transferQuery) params.q = transferQuery
-        const res = await transferAdminApi.list(params)
-        const data = (res as any)?.data || res
-        if (!cancelled) setTransfers(data?.transfers || [])
-      } catch (e) {
-        if (!cancelled) console.error('Failed to load transfers', e)
-      } finally {
-        if (!cancelled) setLoadingTransfers(false)
-      }
-    }
-    loadTransfers()
-    return () => { cancelled = true }
-  }, [transferStatus, transferQuery, transferSort, transferOrder, transferPage])
+  // Use cached fetch for transfer requests
+  const { data: transfersData, loading: loadingTransfers, update: updateTransfers } = useCachedFetch(
+    CACHE_KEYS.TRANSFERS,
+    () => {
+      const params: any = { page: transferPage, per_page: transferPerPage, sort: transferSort, order: transferOrder }
+      if (transferStatus !== 'all') params.status = transferStatus
+      if (transferQuery) params.q = transferQuery
+      return transferAdminApi.list(params)
+    },
+    { dependencies: [transferStatus, transferQuery, transferSort, transferOrder, transferPage], staleTime: 2 * 60 * 1000 }
+  )
+  const transfers = ((transfersData as any)?.data?.transfers || (transfersData as any)?.transfers || []) as any[]
 
   // Load municipalities map for ID -> name
   useEffect(() => {
@@ -134,7 +119,11 @@ export default function Residents() {
     try {
       setActionLoading(`t-${id}`)
       await transferAdminApi.updateStatus(id, status)
-      setTransfers(prev => prev.map(t => t.id === id ? { ...t, status, updated_at: new Date().toISOString() } : t))
+      updateTransfers((prev: any) => {
+        const transfers = (prev?.data?.transfers || prev?.transfers || [])
+        const updated = transfers.map((t: any) => t.id === id ? { ...t, status, updated_at: new Date().toISOString() } : t)
+        return prev?.data ? { ...prev, data: { ...prev.data, transfers: updated } } : { ...prev, transfers: updated }
+      })
       showToast(`Transfer ${status}`, 'success')
     } catch (e: any) {
       showToast(handleApiError(e), 'error')
@@ -187,7 +176,20 @@ export default function Residents() {
   // openResidentByUserId removed in favor of dedicated transfer modal
 
   const updateRowStatus = (userId: string, status: 'verified' | 'pending' | 'suspended') => {
-    setRows((prev: any[]) => prev.map((r: any) => (String(r.id) === String(userId) ? { ...r, status } : r)))
+    // Update the cache with new status
+    updateResidents((prev: any) => {
+      if (!prev) return prev
+      const updateList = (list: any[]) => list.map((u: any) => 
+        String(u.id) === String(userId) || String(u.user_id) === String(userId) 
+          ? { ...u, __status: status, admin_verified: status === 'verified', is_active: status !== 'suspended' }
+          : u
+      )
+      return {
+        ...prev,
+        verified: { ...prev.verified, data: updateList(prev.verified?.data || prev.verified?.users || []) },
+        pending: { ...prev.pending, users: updateList(prev.pending?.users || prev.pending?.data?.users || []) },
+      }
+    })
     // If details are open for this user, keep basic status in sync
     setSelected((prev: any | null) => (prev && String(prev.id) === String(userId) ? { ...prev, status } : prev))
   }

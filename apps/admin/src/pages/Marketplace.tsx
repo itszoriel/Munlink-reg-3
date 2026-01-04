@@ -1,118 +1,98 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { adminApi, handleApiError, marketplaceApi, mediaUrl, showToast, transactionsAdminApi, userApi } from '../lib/api'
 import { useAdminStore } from '../lib/store'
+import { useCachedFetch } from '../lib/useCachedFetch'
+import { CACHE_KEYS, useDataStore } from '../lib/dataStore'
 import { ShoppingBag, Hourglass, CheckCircle, XCircle, Store, BadgeDollarSign, Handshake, Gift, Check, X } from 'lucide-react'
 import { EmptyState } from '@munlink/ui'
 
 export default function Marketplace() {
   const [tab, setTab] = useState<'items' | 'transactions'>('items')
   const [filter, setFilter] = useState<'all' | 'sell' | 'lend' | 'donate'>('all')
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [rows, setRows] = useState<any[]>([])
-  const [stats, setStats] = useState<{ total_items: number; pending_items: number; approved_items: number; rejected_items: number } | null>(null)
   const userRole = useAdminStore((s)=> s.user?.role)
   const adminMunicipalityName = useAdminStore((s)=> s.user?.admin_municipality_name || s.user?.municipality_name)
   const adminMunicipalityId = useAdminStore((s)=> s.user?.admin_municipality_id)
   const [reviewItem, setReviewItem] = useState<any | null>(null)
   const [decisionLoading, setDecisionLoading] = useState<boolean>(false)
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'pending' | 'rejected'>('pending')
+  const dataStore = useDataStore()
 
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        setError(null)
-        setLoading(true)
-        const promises: any[] = []
-        // Stats always
-        promises.push(marketplaceApi.getMarketplaceStats())
-        // Items based on status filter
-        if (statusFilter === 'pending') {
-          promises.push(adminApi.getItems({ page: 1, per_page: 24 }))
-        } else {
-          promises.push(marketplaceApi.listPublicItems({
-            municipality_id: adminMunicipalityId,
-            status: statusFilter === 'all' ? undefined : statusFilter,
-            page: 1,
-            per_page: 24,
-          }))
-        }
+  // Use cached fetch for stats
+  const { data: statsData, refetch: refetchStats } = useCachedFetch(
+    'marketplace_stats',
+    () => marketplaceApi.getMarketplaceStats(),
+    { staleTime: 2 * 60 * 1000 }
+  )
+  const stats = (statsData as any)?.data || statsData
 
-        const [statsRes, itemsRes] = await Promise.allSettled(promises)
-
-        if (itemsRes.status === 'fulfilled') {
-          // Normalize shape from either endpoint
-          const payload: any = (itemsRes.value as any)?.data || itemsRes.value
-          const items = payload?.items || payload || []
-          const mapped = items.map((it: any) => {
-            const u = it.user || it.seller || {}
-            const displayName = (
-              [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.username || it.owner_name || 'User'
-            )
-            const initial = (displayName || 'U').trim().charAt(0).toUpperCase()
-            return {
-              id: it.id || it.item_id || it.code || 'ITEM',
-              title: it.title || it.name || 'Untitled',
-              user: displayName,
-              userInitial: initial,
-              userPhoto: u.profile_picture || null,
-              type: (it.type || it.transaction_type || 'sell').toLowerCase(),
-              category: it.category || 'General',
-              image: (Array.isArray(it.images) && it.images[0]) || it.image_url || null,
-              views: it.view_count || it.views || 0,
-              inquiries: it.inquiries || 0,
-              posted: (it.created_at || '').slice(0, 10),
-              status: it.status || 'active',
-            }
-          })
-          if (mounted) setRows(mapped)
-        }
-
-        if (statsRes.status === 'fulfilled') {
-          const data = (statsRes.value as any)?.data || statsRes.value
-          if (mounted) setStats(data)
-        }
-      } catch (e: any) {
-        setError(handleApiError(e))
-      } finally {
-        if (mounted) setLoading(false)
+  // Use cached fetch for items with filter-specific keys
+  const { data: itemsData, loading: itemsLoading, update: updateItems } = useCachedFetch(
+    CACHE_KEYS.MARKETPLACE_ITEMS,
+    async () => {
+      if (statusFilter === 'pending') {
+        return adminApi.getItems({ page: 1, per_page: 24 })
+      } else {
+        return marketplaceApi.listPublicItems({
+          municipality_id: adminMunicipalityId,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          page: 1,
+          per_page: 24,
+        })
       }
-    })()
-    return () => { mounted = false }
-  }, [statusFilter, adminMunicipalityId])
+    },
+    { dependencies: [statusFilter, adminMunicipalityId], staleTime: 2 * 60 * 1000 }
+  )
 
-  const filtered = useMemo(() => rows.filter((i) => filter === 'all' || i.type === filter), [rows, filter])
+  // Process items data
+  const rows = useMemo(() => {
+    const payload: any = (itemsData as any)?.data || itemsData
+    const items = payload?.items || payload || []
+    return items.map((it: any) => {
+      const u = it.user || it.seller || {}
+      const displayName = (
+        [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.username || it.owner_name || 'User'
+      )
+      const initial = (displayName || 'U').trim().charAt(0).toUpperCase()
+      return {
+        id: it.id || it.item_id || it.code || 'ITEM',
+        title: it.title || it.name || 'Untitled',
+        user: displayName,
+        userInitial: initial,
+        userPhoto: u.profile_picture || null,
+        type: (it.type || it.transaction_type || 'sell').toLowerCase(),
+        category: it.category || 'General',
+        image: (Array.isArray(it.images) && it.images[0]) || it.image_url || null,
+        views: it.view_count || it.views || 0,
+        inquiries: it.inquiries || 0,
+        posted: (it.created_at || '').slice(0, 10),
+        status: it.status || 'active',
+      }
+    })
+  }, [itemsData])
 
-  const refreshStats = async () => {
-    try {
-      const data = await marketplaceApi.getMarketplaceStats()
-      const payload = (data as any)?.data || data
-      setStats(payload)
-    } catch {}
-  }
+  const filtered = useMemo(() => rows.filter((i: any) => filter === 'all' || i.type === filter), [rows, filter])
 
-  const [txRows, setTxRows] = useState<any[]>([])
-  const [txLoading, setTxLoading] = useState(false)
+  // Transactions tab
   const [txStatus, setTxStatus] = useState<string>('')
   const [selectedTx, setSelectedTx] = useState<{ tx: any, audit: any[] } | null>(null)
 
-  useEffect(() => {
-    let active = true
-    if (tab !== 'transactions') return
-    ;(async () => {
-      setTxLoading(true)
-      try {
-        const res = await transactionsAdminApi.list(txStatus ? { status: txStatus } : {})
-        if (!active) return
-        const list = (res as any).transactions || (res as any)?.data?.transactions || []
-        setTxRows(list)
-      } finally {
-        if (active) setTxLoading(false)
-      }
-    })()
-    return () => { active = false }
-  }, [tab, txStatus])
+  const { data: txData, loading: txLoading } = useCachedFetch(
+    CACHE_KEYS.TRANSACTIONS,
+    () => transactionsAdminApi.list(txStatus ? { status: txStatus } : {}),
+    { enabled: tab === 'transactions', dependencies: [txStatus], staleTime: 2 * 60 * 1000 }
+  )
+  const txRows = (txData as any)?.transactions || (txData as any)?.data?.transactions || []
+
+  // Remove item from local cache after action
+  const removeItemFromCache = (itemId: number) => {
+    updateItems((prev: any) => {
+      const payload = prev?.data || prev
+      const items = payload?.items || payload || []
+      const filtered = items.filter((i: any) => i.id !== itemId)
+      return prev?.data ? { ...prev, data: { ...prev.data, items: filtered } } : filtered
+    })
+  }
 
   return (
     <div className="min-h-screen">
@@ -204,14 +184,14 @@ export default function Marketplace() {
       {tab === 'items' && error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
       {tab === 'items' && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {loading && [...Array(8)].map((_, i) => (
+        {itemsLoading && rows.length === 0 && [...Array(8)].map((_, i) => (
           <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-lg p-4">
             <div className="aspect-square skeleton rounded-xl mb-3" />
             <div className="h-4 w-40 skeleton rounded mb-2" />
             <div className="h-3 w-24 skeleton rounded" />
           </div>
         ))}
-        {!loading && filtered.map((item) => (
+        {filtered.map((item: any) => (
           <div key={item.id} className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <div className="relative aspect-square bg-gradient-to-br from-ocean-200 to-forest-200">
               {item.image && (
@@ -229,7 +209,6 @@ export default function Marketplace() {
                   {item.type === 'donate' && <><Gift className="w-4 h-4" aria-hidden="true" /><span>Free</span></>}
                 </span>
               </div>
-              {/* Removed non-functional eye/menu icons to simplify UI */}
               <div className="absolute bottom-3 left-3"><span className="inline-flex items-center gap-1 px-3 py-1 bg-forest-100 text-forest-700 rounded-full text-xs font-semibold"><Check className="w-4 h-4" aria-hidden="true" /> Active</span></div>
             </div>
             <div className="p-4">
@@ -258,7 +237,7 @@ export default function Marketplace() {
             </div>
           </div>
         ))}
-        {!loading && filtered.length === 0 && (
+        {!itemsLoading && filtered.length === 0 && (
           <div className="col-span-full">
             <EmptyState
               icon="cart"
@@ -290,7 +269,7 @@ export default function Marketplace() {
               <option value="disputed">disputed</option>
             </select>
           </div>
-          {txLoading ? (
+          {txLoading && txRows.length === 0 ? (
             <div>Loading…</div>
           ) : (
             <div className="overflow-auto">
@@ -308,7 +287,7 @@ export default function Marketplace() {
                   </tr>
                 </thead>
                 <tbody>
-                  {txRows.map((r) => (
+                  {txRows.map((r: any) => (
                     <tr key={r.id} className="hover:bg-gray-50">
                       <td className="p-2 border">{r.id}</td>
                       <td className="p-2 border">{r.item_title || r.item_id}</td>
@@ -355,18 +334,21 @@ export default function Marketplace() {
       )}
 
       {reviewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setReviewItem(null) }}>
-          <div className="absolute inset-0 bg-black/40" onClick={() => setReviewItem(null)} />
-          <div className="relative bg-white rounded-2xl w-full max-w-full sm:max-w-2xl xl:max-w-3xl p-4 sm:p-6 pb-24 sm:pb-6 shadow-2xl max-h-[90vh] overflow-y-auto" tabIndex={-1} autoFocus>
-            <div className="flex items-start justify-between mb-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setReviewItem(null) }}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setReviewItem(null)} />
+          <div className="relative bg-white w-full sm:w-[95%] sm:max-w-2xl xl:max-w-3xl max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl" tabIndex={-1} autoFocus>
+            {/* Header - sticky */}
+            <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 sm:px-6 sm:py-4 flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold">Review Listing</h2>
+                <h2 className="text-lg sm:text-xl font-semibold">Review Listing</h2>
                 <p className="text-xs text-neutral-600">Ensure this item complies with community guidelines.</p>
               </div>
-              <button onClick={() => setReviewItem(null)} className="text-neutral-500 hover:text-neutral-700" aria-label="Close">
+              <button onClick={() => setReviewItem(null)} className="p-2 -mr-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-colors" aria-label="Close">
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
+            {/* Content */}
+            <div className="p-4 sm:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="aspect-[4/3] bg-neutral-100 rounded-xl overflow-hidden">
@@ -395,63 +377,69 @@ export default function Marketplace() {
                 <p className="font-medium">{reviewItem.posted}</p>
               </div>
             </div>
-            <div className="mt-6 flex items-center justify-end gap-2">
+            </div>
+            {/* Footer - sticky on mobile */}
+            <div className="sticky bottom-0 z-10 bg-white border-t px-4 py-3 sm:px-6 sm:py-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
               {reviewItem.status === 'pending' ? (
                 <>
                   <button disabled={decisionLoading} onClick={async () => {
                     setDecisionLoading(true)
                     try {
                       await marketplaceApi.rejectItem(reviewItem.id, 'Does not comply')
-                      setRows((prev) => prev.filter((r) => r.id !== reviewItem.id))
+                      removeItemFromCache(reviewItem.id)
                       showToast('Item rejected', 'success')
-                      await refreshStats()
+                      await refetchStats()
                       setReviewItem(null)
                     } catch (e: any) {
                       showToast(handleApiError(e as any), 'error')
                     } finally {
                       setDecisionLoading(false)
                     }
-                  }} className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm">Reject</button>
+                  }} className="w-full sm:w-auto px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors">Reject</button>
                   <button disabled={decisionLoading} onClick={async () => {
                     setDecisionLoading(true)
                     try {
                       await marketplaceApi.approveItem(reviewItem.id)
-                      setRows((prev) => prev.filter((r) => r.id !== reviewItem.id))
+                      removeItemFromCache(reviewItem.id)
                       showToast('Item approved and published', 'success')
-                      await refreshStats()
+                      await refetchStats()
                       setReviewItem(null)
                     } catch (e: any) {
                       showToast(handleApiError(e as any), 'error')
                     } finally {
                       setDecisionLoading(false)
                     }
-                  }} className="px-4 py-2 bg-forest-600 hover:bg-forest-700 text-white rounded-lg text-sm">Approve</button>
+                  }} className="w-full sm:w-auto px-4 py-2.5 bg-forest-600 hover:bg-forest-700 text-white rounded-lg text-sm font-medium transition-colors">Approve</button>
                 </>
               ) : (
-                <button onClick={() => setReviewItem(null)} className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg text-sm">Close</button>
+                <button onClick={() => setReviewItem(null)} className="w-full sm:w-auto px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg text-sm font-medium transition-colors">Close</button>
               )}
             </div>
           </div>
         </div>
       )}
       {selectedTx && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={()=>setSelectedTx(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-5 sm:p-6" onClick={(e)=>e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={()=>setSelectedTx(null)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="relative bg-white w-full sm:w-[95%] sm:max-w-4xl max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col" onClick={(e)=>e.stopPropagation()}>
+            {/* Header - sticky */}
+            <div className="flex-shrink-0 px-4 py-3 sm:px-6 sm:py-4 border-b flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold tracking-tight">Transaction #{selectedTx.tx.id}</h2>
-                <div className="mt-1 inline-flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-semibold tracking-tight">Transaction #{selectedTx.tx.id}</h2>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${selectedTx.tx.status==='completed'?'bg-emerald-100 text-emerald-700': selectedTx.tx.status==='disputed'?'bg-rose-100 text-rose-700': selectedTx.tx.status==='accepted'?'bg-blue-100 text-blue-700':'bg-neutral-100 text-neutral-700'}`}>{selectedTx.tx.status}</span>
                   {selectedTx.tx.transaction_type && (
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-50 border border-neutral-200 capitalize">{selectedTx.tx.transaction_type}</span>
                   )}
                 </div>
               </div>
-              <button className="text-sm px-3 py-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50" onClick={()=>setSelectedTx(null)}>Close</button>
+              <button className="p-2 -mr-2 rounded-full hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors" onClick={()=>setSelectedTx(null)} aria-label="Close">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
+            {/* Content - scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             {/* Parties */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
               {[{label:'Buyer', user:selectedTx.tx.buyer, id:selectedTx.tx.buyer_id, hue:'ocean', fallback:selectedTx.tx.buyer_name, photo:selectedTx.tx.buyer?.profile_picture || selectedTx.tx.buyer_profile_picture},{label:'Seller', user:selectedTx.tx.seller, id:selectedTx.tx.seller_id, hue:'sunset', fallback:selectedTx.tx.seller_name, photo:selectedTx.tx.seller?.profile_picture || selectedTx.tx.seller_profile_picture}].map((u,i)=>{
@@ -474,10 +462,11 @@ export default function Marketplace() {
             </div>
 
             {/* Timeline */}
-            <div className="max-h-[60vh] overflow-auto">
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-neutral-700 mb-3">Timeline</h3>
               <div className="relative pl-4">
                 <div className="absolute left-1 top-0 bottom-0 w-px bg-neutral-200" />
-                {(selectedTx.audit || []).map((a, i) => {
+                {(selectedTx.audit || []).map((a: any, i: number) => {
                   const isDispute = String(a.action||'') === 'dispute'
                   const actorId = a.actor_id
                   const buyerId = selectedTx.tx.buyer_id
@@ -500,8 +489,8 @@ export default function Marketplace() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${chipCls}`}>{String(a.action || '').replace(/_/g,' ')}</span>
                         <span className="text-sm text-neutral-700">{a.from_status} → {a.to_status}</span>
-                        {a.notes && <span className="text-sm text-neutral-800">• {a.notes}</span>}
-                        {isDispute && <span className="text-sm text-rose-700">• Reported by {reporterRole} {reporterName} against {reportedRole} {reportedName}</span>}
+                        {a.notes && <span className="text-sm text-neutral-800 break-words">• {a.notes}</span>}
+                        {isDispute && <span className="text-sm text-rose-700 break-words">• Reported by {reporterRole} {reporterName} against {reportedRole} {reportedName}</span>}
                       </div>
                     </div>
                   )
@@ -509,11 +498,10 @@ export default function Marketplace() {
                 {selectedTx.audit?.length ? null : <div className="text-sm text-gray-600">No audit entries.</div>}
               </div>
             </div>
+            </div>
           </div>
         </div>
       )}
     </div>
   )
 }
-
-

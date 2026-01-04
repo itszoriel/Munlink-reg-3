@@ -1,97 +1,74 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { adminApi, handleApiError, documentsAdminApi, mediaUrl, showToast, auditAdminApi } from '../lib/api'
+import { useCachedFetch } from '../lib/useCachedFetch'
+import { CACHE_KEYS } from '../lib/dataStore'
 import { ClipboardList, Hourglass, Cog, CheckCircle, PartyPopper, Smartphone, Package as PackageIcon, Search } from 'lucide-react'
 import { EmptyState } from '@munlink/ui'
 
 type Status = 'all' | 'pending' | 'processing' | 'ready' | 'completed' | 'picked_up'
 
 export default function Requests() {
+  const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState<Status>('all')
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [rows, setRows] = useState<any[]>([])
-  const [stats, setStats] = useState<{ total_requests: number; pending_requests: number; processing_requests: number; ready_requests: number; completed_requests: number } | null>(null)
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'digital' | 'pickup'>('all')
 
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        setError(null)
-        setLoading(true)
-        const res = await adminApi.getRequests({ page: 1, per_page: 50, status: statusFilter === 'all' ? undefined : statusFilter })
-        const list = (res.requests || []) as any[]
-        const mapped = list.map((r) => {
-          const raw = (r.status || 'pending').toLowerCase()
-          const normalized = raw === 'in_progress' ? 'processing' : raw === 'resolved' ? 'ready' : raw === 'closed' ? 'completed' : raw
-          let extra: any = undefined
-          try {
-            const rawNotes = r.additional_notes
-            if (rawNotes && typeof rawNotes === 'string' && rawNotes.trim().startsWith('{')) {
-              extra = JSON.parse(rawNotes)
-            }
-          } catch {}
-          return {
-            id: r.request_number || r.id || 'REQ',
-            resident: [r.user?.first_name, r.user?.last_name].filter(Boolean).join(' ') || 'Unknown',
-            document: r.document_type?.name || 'Document',
-            purpose: r.purpose || '—',
-            details: extra?.text || '',
-            civil_status: extra?.civil_status || r.civil_status || '',
-            submitted: (r.created_at || '').slice(0, 10),
-            status: normalized,
-            priority: r.priority || 'normal',
-            delivery_method: (r.delivery_method === 'physical' ? 'pickup' : r.delivery_method) || 'digital',
-            delivery_address: r.delivery_address || '',
-            request_id: r.id,
-            document_file: r.document_file,
-            resident_input: (r as any).resident_input,
-            admin_edited_content: (r as any).admin_edited_content,
-            additional_notes: r.additional_notes,
-            has_claim_token: !!(r as any).qr_code,
-          }
-        })
-        if (mounted) setRows(mapped)
-      } catch (e: any) {
-        setError(handleApiError(e))
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
-    return () => { mounted = false }
-  }, [statusFilter])
+  // Use cached fetch for requests with status filter
+  const { data: requestsData, loading, update: updateRows } = useCachedFetch(
+    CACHE_KEYS.DOCUMENT_REQUESTS,
+    () => adminApi.getRequests({ page: 1, per_page: 50, status: statusFilter === 'all' ? undefined : statusFilter }),
+    { dependencies: [statusFilter], staleTime: 2 * 60 * 1000 }
+  )
 
-  // Load header counters from document request stats
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
+  // Process requests data
+  const rows = useMemo(() => {
+    const list = ((requestsData as any)?.requests || []) as any[]
+    return list.map((r: any) => {
+      const raw = (r.status || 'pending').toLowerCase()
+      const normalized = raw === 'in_progress' ? 'processing' : raw === 'resolved' ? 'ready' : raw === 'closed' ? 'completed' : raw
+      let extra: any = undefined
       try {
-        // Fetch stats for each status
-        const [allRes, pendingRes, processingRes, readyRes, completedRes] = await Promise.allSettled([
-          adminApi.getRequests({ page: 1, per_page: 1 }),
-          adminApi.getRequests({ status: 'pending', page: 1, per_page: 1 }),
-          adminApi.getRequests({ status: 'processing', page: 1, per_page: 1 }),
-          adminApi.getRequests({ status: 'ready', page: 1, per_page: 1 }),
-          adminApi.getRequests({ status: 'completed', page: 1, per_page: 1 }),
-        ])
-        
-        const total = allRes.status === 'fulfilled' ? (allRes.value.pagination?.total || 0) : 0
-        const pending = pendingRes.status === 'fulfilled' ? (pendingRes.value.pagination?.total || 0) : 0
-        const processing = processingRes.status === 'fulfilled' ? (processingRes.value.pagination?.total || 0) : 0
-        const ready = readyRes.status === 'fulfilled' ? (readyRes.value.pagination?.total || 0) : 0
-        const completed = completedRes.status === 'fulfilled' ? (completedRes.value.pagination?.total || 0) : 0
-        
-        if (mounted) setStats({ 
-          total_requests: total,
-          pending_requests: pending,
-          processing_requests: processing,
-          ready_requests: ready,
-          completed_requests: completed
-        })
+        const rawNotes = r.additional_notes
+        if (rawNotes && typeof rawNotes === 'string' && rawNotes.trim().startsWith('{')) {
+          extra = JSON.parse(rawNotes)
+        }
       } catch {}
-    })()
-    return () => { mounted = false }
-  }, [])
+      return {
+        id: r.request_number || r.id || 'REQ',
+        resident: [r.user?.first_name, r.user?.last_name].filter(Boolean).join(' ') || 'Unknown',
+        document: r.document_type?.name || 'Document',
+        purpose: r.purpose || '—',
+        details: extra?.text || '',
+        civil_status: extra?.civil_status || r.civil_status || '',
+        submitted: (r.created_at || '').slice(0, 10),
+        status: normalized,
+        priority: r.priority || 'normal',
+        delivery_method: (r.delivery_method === 'physical' ? 'pickup' : r.delivery_method) || 'digital',
+        delivery_address: r.delivery_address || '',
+        request_id: r.id,
+        document_file: r.document_file,
+        resident_input: (r as any).resident_input,
+        admin_edited_content: (r as any).admin_edited_content,
+        additional_notes: r.additional_notes,
+        has_claim_token: !!(r as any).qr_code,
+      }
+    })
+  }, [requestsData])
+
+  // Use cached fetch for request stats
+  const { data: statsData, refetch: refetchStats } = useCachedFetch(
+    'request_stats',
+    () => adminApi.getRequestStats(),
+    { staleTime: 2 * 60 * 1000 }
+  )
+  const stats = statsData ? {
+    total_requests: (statsData as any).total_requests || 0,
+    pending_requests: (statsData as any).pending_requests || 0,
+    processing_requests: (statsData as any).processing_requests || 0,
+    ready_requests: (statsData as any).ready_requests || 0,
+    completed_requests: (statsData as any).completed_requests || 0
+  } : null
 
   // Actions
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -99,12 +76,6 @@ export default function Requests() {
   const [rejectReason, setRejectReason] = useState<string>('')
   const [editFor, setEditFor] = useState<null | { id: number; purpose: string; remarks: string; civil_status: string; age?: string }>(null)
   const [savingEdit, setSavingEdit] = useState(false)
-  const [verifyOpen, setVerifyOpen] = useState(false)
-  const [verifyToken, setVerifyToken] = useState('')
-  const [verifyCode, setVerifyCode] = useState('')
-  const [verifyRequestId, setVerifyRequestId] = useState('')
-  const [verifying, setVerifying] = useState(false)
-  const [verifyResult, setVerifyResult] = useState<any | null>(null)
   const [historyFor, setHistoryFor] = useState<number | null>(null)
   const [historyRows, setHistoryRows] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
@@ -115,42 +86,16 @@ export default function Requests() {
     if (effectiveDelivery !== 'all' && r.delivery_method !== (effectiveDelivery === 'pickup' ? 'pickup' : 'digital')) return false
     return true
   })
+  // Refresh helper - uses the cached fetch refetch
+  const { refetch: refetchRequests } = useCachedFetch(
+    CACHE_KEYS.DOCUMENT_REQUESTS,
+    () => adminApi.getRequests({ page: 1, per_page: 50, status: statusFilter === 'all' ? undefined : statusFilter }),
+    { dependencies: [statusFilter], staleTime: 2 * 60 * 1000, enabled: false }
+  )
   const refresh = async () => {
     try {
-      const delivery = deliveryFilter === 'all' ? undefined : deliveryFilter
-      const res = await adminApi.getRequests({ page: 1, per_page: 50, status: statusFilter === 'all' ? undefined : statusFilter, delivery })
-      const list = (res.requests || []) as any[]
-      const mapped = list.map((r) => {
-        const raw = (r.status || 'pending').toLowerCase()
-        const normalized = raw === 'in_progress' ? 'processing' : raw === 'resolved' ? 'ready' : raw === 'closed' ? 'completed' : raw
-        let extra: any = undefined
-        try {
-          const rawNotes = r.additional_notes
-          if (rawNotes && typeof rawNotes === 'string' && rawNotes.trim().startsWith('{')) {
-            extra = JSON.parse(rawNotes)
-          }
-        } catch {}
-        return {
-          id: r.request_number || r.id || 'REQ',
-          resident: [r.user?.first_name, r.user?.last_name].filter(Boolean).join(' ') || 'Unknown',
-          document: r.document_type?.name || 'Document',
-          purpose: r.purpose || '—',
-          details: extra?.text || '',
-          civil_status: extra?.civil_status || r.civil_status || '',
-          submitted: (r.created_at || '').slice(0, 10),
-          status: normalized,
-          priority: r.priority || 'normal',
-          delivery_method: (r.delivery_method === 'physical' ? 'pickup' : r.delivery_method) || 'digital',
-          delivery_address: r.delivery_address || '',
-          request_id: r.id,
-          document_file: r.document_file,
-          resident_input: (r as any).resident_input,
-          admin_edited_content: (r as any).admin_edited_content,
-          additional_notes: r.additional_notes,
-          has_claim_token: !!(r as any).qr_code,
-        }
-      })
-      setRows(mapped)
+      await refetchRequests()
+      await refetchStats()
     } catch (e: any) {
       setError(handleApiError(e))
     }
@@ -328,7 +273,7 @@ export default function Requests() {
               <option value="digital">Digital</option>
               <option value="pickup">Pickup</option>
             </select>
-            <button className="px-4 py-2 bg-white border border-neutral-200 hover:border-ocean-500 rounded-lg text-sm font-medium transition-all flex items-center gap-2" onClick={()=> setVerifyOpen(true)}>
+            <button className="px-4 py-2 bg-white border border-neutral-200 hover:border-ocean-500 rounded-lg text-sm font-medium transition-all flex items-center gap-2" onClick={()=> navigate('/verify-ticket')}>
               <Search className="w-4 h-4" aria-hidden="true" /> Verify Ticket
             </button>
             <button className="px-4 py-2 bg-white border border-neutral-200 hover:border-ocean-500 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
@@ -535,87 +480,6 @@ export default function Requests() {
           ))}
         </div>
       </div>
-      {/* Verify Ticket Modal */}
-      {verifyOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" onKeyDown={(e)=>{ if (e.key==='Escape') setVerifyOpen(false)}}>
-          <div className="absolute inset-0 bg-black/40" onClick={()=> setVerifyOpen(false)} />
-          <div className="relative bg-white w-[92%] max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5" tabIndex={-1} autoFocus>
-            <h3 className="text-lg font-semibold mb-2">Verify Claim Ticket</h3>
-            <p className="text-sm text-neutral-600 mb-3">Paste the token from the QR, or enter the fallback code and request ID.</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Token (preferred)</label>
-                <input className="w-full border rounded px-3 py-2 text-sm" value={verifyToken} onChange={(e)=> setVerifyToken(e.target.value)} placeholder="Paste token here" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Fallback Code</label>
-                  <input className="w-full border rounded px-3 py-2 text-sm" value={verifyCode} onChange={(e)=> setVerifyCode(e.target.value)} placeholder="XXXX-XXXX" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Request ID</label>
-                  <input className="w-full border rounded px-3 py-2 text-sm" value={verifyRequestId} onChange={(e)=> setVerifyRequestId(e.target.value)} placeholder="e.g., 123" />
-                </div>
-              </div>
-            </div>
-            {verifyResult && (
-              <div className="mt-4 p-3 rounded-lg bg-neutral-50 border text-sm">
-                <div className="font-medium mb-1">Match found</div>
-                <div>Request ID: <span className="font-mono">{verifyResult.id}</span></div>
-                <div>Request No.: <span className="font-mono">{verifyResult.request_number}</span></div>
-                <div>Resident: {verifyResult.resident}</div>
-                <div>Document: {verifyResult.document}</div>
-                <div>Status: <span className="capitalize">{verifyResult.status}</span></div>
-              </div>
-            )}
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm" onClick={()=> setVerifyOpen(false)}>Close</button>
-              <button
-                className="px-4 py-2 rounded-lg bg-ocean-600 hover:bg-ocean-700 text-white text-sm disabled:opacity-60"
-                disabled={verifying || (!verifyToken && (!verifyCode || !verifyRequestId))}
-                onClick={async ()=>{
-                  try {
-                    setVerifying(true)
-                    const payload: any = {}
-                    if (verifyToken) payload.token = verifyToken
-                    if (!verifyToken) { payload.code = verifyCode; payload.request_id = Number(verifyRequestId) }
-                    const res = await documentsAdminApi.verifyClaim(payload)
-                    const ok = (res as any)?.ok || (res as any)?.data?.ok
-                    if (ok) {
-                      const request = (res as any)?.request || (res as any)?.data?.request
-                      setVerifyResult(request)
-                      showToast('Ticket verified', 'success')
-                    } else {
-                      showToast('Verification failed', 'error')
-                    }
-                  } catch (e: any) {
-                    showToast(handleApiError(e), 'error')
-                  } finally {
-                    setVerifying(false)
-                  }
-                }}
-              >{verifying ? 'Verifying…' : 'Verify'}</button>
-              {verifyResult && (
-                <button
-                  className="px-4 py-2 rounded-lg bg-forest-600 hover:bg-forest-700 text-white text-sm"
-                  onClick={() => {
-                    try {
-                      const status = String(verifyResult.status || '').toLowerCase()
-                      const normalized = status === 'in_progress' ? 'processing' : status === 'resolved' ? 'ready' : status === 'closed' ? 'completed' : status
-                      setStatusFilter((normalized === 'pending' || normalized === 'processing' || normalized === 'ready' || normalized === 'completed') ? normalized as any : 'all')
-                      setVerifyOpen(false)
-                      setTimeout(() => {
-                        const el = document.getElementById(`req-${verifyResult.id}`) || document.getElementById(`req-${verifyResult.request_id}`)
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                      }, 350)
-                    } catch {}
-                  }}
-                >Locate in list</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
       {/* Reject Modal */}
       {rejectForId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setRejectForId(null) }}>

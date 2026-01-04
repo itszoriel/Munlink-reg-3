@@ -13,15 +13,47 @@ def generate_qr_code_data(document_request):
     Generate simple verification URL for QR code.
     
     Returns a simple URL string that can be scanned and opened directly.
-    Format: http://localhost:5000/verify/REQ-2024-001
+    Format: https://your-domain.com/verify/REQ-2024-001
+    
+    Priority for base URL:
+    1. VERIFICATION_BASE_URL env var (recommended for production)
+    2. WEB_BASE_URL env var
+    3. WEB_URL from Flask config
+    4. QR_BASE_URL from Flask config  
+    5. Default fallback (localhost for development)
+    
+    Production Setup (.env):
+        VERIFICATION_BASE_URL=https://munlink.vercel.app
+        # or
+        WEB_URL=https://munlink.vercel.app
     """
-    base_url = (
-        os.getenv('VERIFICATION_BASE_URL')
-        or os.getenv('WEB_BASE_URL')
-        or (current_app.config.get('WEB_BASE_URL') if current_app else None)
-        or 'http://localhost:5173'
-    )
-    # Return simple URL string, not JSON object
+    base_url = None
+    
+    # 1. Try environment variables first (highest priority for production)
+    base_url = os.getenv('VERIFICATION_BASE_URL') or os.getenv('WEB_BASE_URL') or os.getenv('WEB_URL')
+    
+    # 2. Then try Flask config (if app context exists)
+    if not base_url and current_app:
+        base_url = (
+            current_app.config.get('VERIFICATION_BASE_URL')
+            or current_app.config.get('WEB_BASE_URL')
+            or current_app.config.get('WEB_URL')
+            or current_app.config.get('QR_BASE_URL')
+        )
+    
+    # Remove /verify suffix if present (we'll add it below)
+    if base_url and base_url.endswith('/verify'):
+        base_url = base_url[:-7]
+    
+    # 3. Default fallback for local development only
+    if not base_url:
+        base_url = 'http://localhost:5173'
+        if current_app:
+            current_app.logger.warning(
+                "QR code using default localhost URL. "
+                "Set VERIFICATION_BASE_URL or WEB_URL in .env for production."
+            )
+    
     return f"{base_url}/verify/{document_request.request_number}"
 
 
