@@ -243,4 +243,3 @@ config_by_name = {
     'testing': TestingConfig,
     'default': DevelopmentConfig
 }
-

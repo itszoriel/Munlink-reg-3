@@ -66,6 +66,14 @@ export default function ProgramsPage() {
     if (t === 'applications') setTab('applications')
   }, [searchParams])
 
+  // Helper function to safely get eligibility array
+  const getEligibilityArray = (program: Program | null): string[] => {
+    if (!program) return []
+    const eligibility = (program as any).eligibility || (program as any).eligibility_criteria
+    if (Array.isArray(eligibility)) return eligibility
+    return []
+  }
+
   return (
     <div className="container-responsive py-12">
       <div className="mb-3">
@@ -221,8 +229,11 @@ export default function ProgramsPage() {
           <div className="space-y-3">
             <div className="text-sm">Please confirm you meet the eligibility:</div>
             <ul className="list-disc list-inside text-sm text-gray-700">
-              {(((selected as any)?.eligibility) || ((selected as any)?.eligibility_criteria) || []).map((e: string, i: number) => (<li key={i}>{e}</li>))}
+              {getEligibilityArray(selected).map((e: string, i: number) => (<li key={i}>{e}</li>))}
             </ul>
+            {getEligibilityArray(selected).length === 0 && (
+              <div className="text-sm text-gray-600">No eligibility criteria specified.</div>
+            )}
             <div className="flex justify-end">
               <button className="btn btn-primary inline-flex items-center gap-2" onClick={() => setStep(2)}>
                 <span>Continue</span>
