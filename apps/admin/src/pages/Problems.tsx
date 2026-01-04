@@ -27,12 +27,11 @@ type Problem = {
 }
 
 export default function Problems() {
-  const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string>('all')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
   // Use cached fetch with status filter
-  const { data: issuesData, loading, update: updateItems } = useCachedFetch(
+  const { data: issuesData, loading, error, update: updateItems } = useCachedFetch(
     CACHE_KEYS.ISSUES,
     () => issueApi.getIssues({ status: status === 'all' ? undefined : status, page: 1, per_page: 50 }),
     { dependencies: [status], staleTime: 2 * 60 * 1000 }

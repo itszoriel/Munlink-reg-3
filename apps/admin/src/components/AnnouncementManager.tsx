@@ -2,7 +2,7 @@
  * MunLink Region III - Announcement Manager Component
  * Component for managing municipality announcements
  */
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
@@ -58,12 +58,6 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
   const loading = announcementsLoading && announcements.length === 0
 
   // Update helpers for optimistic updates
-  const updateAnnouncementInCache = (id: number, updates: Partial<Announcement>) => {
-    updateCache((prev: Announcement[]) => 
-      (prev || []).map((a: Announcement) => a.id === id ? { ...a, ...updates } : a)
-    )
-  }
-  
   const removeAnnouncementFromCache = (id: number) => {
     updateCache((prev: Announcement[]) => 
       (prev || []).filter((a: Announcement) => a.id !== id)

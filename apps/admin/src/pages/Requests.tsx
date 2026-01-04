@@ -15,7 +15,7 @@ export default function Requests() {
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'digital' | 'pickup'>('all')
 
   // Use cached fetch for requests with status filter
-  const { data: requestsData, loading, update: updateRows } = useCachedFetch(
+  const { data: requestsData, loading } = useCachedFetch(
     CACHE_KEYS.DOCUMENT_REQUESTS,
     () => adminApi.getRequests({ page: 1, per_page: 50, status: statusFilter === 'all' ? undefined : statusFilter }),
     { dependencies: [statusFilter], staleTime: 2 * 60 * 1000 }

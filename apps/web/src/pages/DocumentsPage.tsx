@@ -14,16 +14,6 @@ import ProvinceSelect from '@/components/ProvinceSelect'
 import MunicipalitySelect from '@/components/MunicipalitySelect'
 // pickup location is tied to resident profile; no remote fetch needed
 
-type DocType = {
-  id: number
-  name: string
-  code: string
-  fee: number
-  processing_days: number
-  supports_digital: boolean
-  requirements?: any
-}
-
 export default function DocumentsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const selectedProvince = useAppStore((s) => s.selectedProvince)
@@ -53,7 +43,7 @@ export default function DocumentsPage() {
     () => documentsApi.getTypes(),
     { staleTime: 30 * 60 * 1000 } // 30 minutes - document types rarely change
   )
-  const types = (typesData as any)?.data?.types || []
+  const types: Array<{ id: number; name: string; code: string; fee: number; processing_days: number; supports_digital: boolean }> = (typesData as any)?.data?.types || []
 
   // Check if tab is requests
   const isRequestsTab = (searchParams.get('tab') || '').toLowerCase() === 'requests'
@@ -98,7 +88,7 @@ export default function DocumentsPage() {
     setPickupLocation(((user as any)?.barangay_id ? 'barangay' : 'municipal'))
   }, [(user as any)?.municipality_id, (user as any)?.barangay_id])
 
-  const selectedType = useMemo(() => types.find(t => t.id === selectedTypeId) || null, [types, selectedTypeId])
+  const selectedType = useMemo(() => types.find((t) => t.id === selectedTypeId) || null, [types, selectedTypeId])
   const digitalAllowed = useMemo(() => {
     if (!selectedType) return false
     const fee = Number(selectedType.fee || 0)

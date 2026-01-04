@@ -26,7 +26,7 @@ export default function Residents() {
   const [munMap, setMunMap] = useState<Record<number, string>>({})
 
   // Use cached fetch for residents
-  const { data: residentsData, loading, update: updateResidents, refetch: refetchResidents } = useCachedFetch(
+  const { data: residentsData, loading, update: updateResidents } = useCachedFetch(
     CACHE_KEYS.RESIDENTS,
     async () => {
       const [verifiedRes, pendingRes] = await Promise.all([
@@ -469,7 +469,7 @@ export default function Residents() {
 // Detail modal embedded for simplicity
 function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userId: number; basic: any; onClose: () => void; onStatusChange: (id: number, status: 'verified' | 'pending' | 'suspended') => void }) {
   const [data, setData] = useState<any>(basic)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Always start with loading to prevent premature actions
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<boolean>(false)
 
@@ -484,21 +484,31 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
 
   useEffect(() => {
     let mounted = true
+    // Always fetch full data, even if we have basic data
     ;(async () => {
       try {
         setLoading(true)
         setError(null)
         const res = await userApi.getUserById(userId)
         const u = (res as any)?.data || res
-        if (mounted && u) setData(u)
+        if (mounted && u) {
+          setData(u)
+        } else if (mounted && basic) {
+          // Fallback to basic data if fetch fails but we have basic
+          setData(basic)
+        }
       } catch (e: any) {
-        setError(handleApiError(e))
+        if (mounted) {
+          setError(handleApiError(e))
+          // Fallback to basic data on error
+          if (basic) setData(basic)
+        }
       } finally {
         if (mounted) setLoading(false)
       }
     })()
     return () => { mounted = false }
-  }, [userId])
+  }, [userId, basic])
 
   const approveFromModal = async () => {
     try {
@@ -531,6 +541,9 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
     }
   }
 
+  const isLoading = loading || actionLoading
+  const hasData = !loading && data
+
   return (
     <Modal
       open={true}
@@ -538,73 +551,95 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
       title="Resident Details"
       footer={(
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
-          {status === 'pending' ? (
+          {hasData && status === 'pending' && (
             <>
-              <Button variant="danger" size="sm" onClick={rejectFromModal} disabled={actionLoading}>
+              <Button variant="danger" size="sm" onClick={rejectFromModal} disabled={isLoading}>
                 {actionLoading ? 'Processing…' : 'Reject'}
               </Button>
-              <Button size="sm" onClick={approveFromModal} disabled={actionLoading}>
+              <Button size="sm" onClick={approveFromModal} disabled={isLoading}>
                 {actionLoading ? 'Processing…' : 'Approve'}
               </Button>
             </>
-          ) : null}
+          )}
           <div className="flex-1" />
-          <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isLoading}>Close</Button>
         </div>
       )}
     >
-      {loading && <div className="text-sm text-neutral-600">Loading...</div>}
-      {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3">{error}</div>}
-      <div className="flex items-start gap-4">
-        {data?.profile_picture ? (
-          <img src={mediaUrl(data.profile_picture)} alt={data?.name || ''} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover" />
-        ) : (
-          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-ocean-gradient rounded-xl flex items-center justify-center text-white font-bold">{(data?.first_name?.[0]||'U')+(data?.last_name?.[0]||'')}</div>
-        )}
-        <div>
-          <h3 className="text-lg font-semibold">{[data?.first_name, data?.last_name].filter(Boolean).join(' ')}</h3>
-          <p className="text-sm text-neutral-600">@{data?.username} • {data?.email}</p>
-          {data?.municipality_name && (<p className="text-sm text-neutral-600">{data.municipality_name}</p>)}
-          <div className="mt-2">
-            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${status === 'verified' ? 'bg-forest-100 text-forest-700' : status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-              {status === 'verified' ? (
-                <>
-                  <Check className="w-4 h-4" aria-hidden="true" />
-                  <span>Verified</span>
-                </>
-              ) : status === 'pending' ? (
-                <>
-                  <Hourglass className="w-4 h-4" aria-hidden="true" />
-                  <span>Pending</span>
-                </>
-              ) : (
-                <span>Suspended</span>
-              )}
-            </span>
+      {loading && !data && (
+        <div className="space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-neutral-200 rounded-xl animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-5 w-32 bg-neutral-200 rounded animate-pulse" />
+              <div className="h-4 w-48 bg-neutral-200 rounded animate-pulse" />
+              <div className="h-4 w-24 bg-neutral-200 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="h-4 w-32 bg-neutral-200 rounded animate-pulse" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="h-44 sm:h-48 bg-neutral-200 rounded border animate-pulse" />
+              <div className="h-44 sm:h-48 bg-neutral-200 rounded border animate-pulse" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
+      {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3 mb-4">{error}</div>}
+      {hasData && (
+        <>
+          <div className="flex items-start gap-4">
+            {data?.profile_picture ? (
+              <img src={mediaUrl(data.profile_picture)} alt={data?.name || ''} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover" />
+            ) : (
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-ocean-gradient rounded-xl flex items-center justify-center text-white font-bold">{(data?.first_name?.[0]||'U')+(data?.last_name?.[0]||'')}</div>
+            )}
+            <div>
+              <h3 className="text-lg font-semibold">{[data?.first_name, data?.last_name].filter(Boolean).join(' ') || 'Unknown'}</h3>
+              <p className="text-sm text-neutral-600">@{data?.username || '—'} • {data?.email || '—'}</p>
+              {data?.municipality_name && (<p className="text-sm text-neutral-600">{data.municipality_name}</p>)}
+              <div className="mt-2">
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${status === 'verified' ? 'bg-forest-100 text-forest-700' : status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                  {status === 'verified' ? (
+                    <>
+                      <Check className="w-4 h-4" aria-hidden="true" />
+                      <span>Verified</span>
+                    </>
+                  ) : status === 'pending' ? (
+                    <>
+                      <Hourglass className="w-4 h-4" aria-hidden="true" />
+                      <span>Pending</span>
+                    </>
+                  ) : (
+                    <span>Suspended</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
 
-      <div className="mt-6">
-        <h4 className="text-sm font-semibold mb-3">ID Verification</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {data?.valid_id_front && (
-            <div>
-              <p className="text-xs text-neutral-500 mb-2">Front</p>
-              <img src={mediaUrl(data.valid_id_front)} alt="ID Front" className="w-full h-44 sm:h-48 object-cover rounded border" />
+          <div className="mt-6">
+            <h4 className="text-sm font-semibold mb-3">ID Verification</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {data?.valid_id_front && (
+                <div>
+                  <p className="text-xs text-neutral-500 mb-2">Front</p>
+                  <img src={mediaUrl(data.valid_id_front)} alt="ID Front" className="w-full h-44 sm:h-48 object-cover rounded border" />
+                </div>
+              )}
+              {data?.valid_id_back && (
+                <div>
+                  <p className="text-xs text-neutral-500 mb-2">Back</p>
+                  <img src={mediaUrl(data.valid_id_back)} alt="ID Back" className="w-full h-44 sm:h-48 object-cover rounded border" />
+                </div>
+              )}
+              {!data?.valid_id_front && !data?.valid_id_back && (
+                <p className="text-sm text-neutral-500">No ID documents uploaded.</p>
+              )}
             </div>
-          )}
-          {data?.valid_id_back && (
-            <div>
-              <p className="text-xs text-neutral-500 mb-2">Back</p>
-              <img src={mediaUrl(data.valid_id_back)} alt="ID Back" className="w-full h-44 sm:h-48 object-cover rounded border" />
-            </div>
-          )}
-          {!data?.valid_id_front && !data?.valid_id_back && (
-            <p className="text-sm text-neutral-500">No ID documents uploaded.</p>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </Modal>
   )
 }

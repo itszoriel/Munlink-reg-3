@@ -2,21 +2,19 @@ import { useMemo, useState } from 'react'
 import { adminApi, handleApiError, marketplaceApi, mediaUrl, showToast, transactionsAdminApi, userApi } from '../lib/api'
 import { useAdminStore } from '../lib/store'
 import { useCachedFetch } from '../lib/useCachedFetch'
-import { CACHE_KEYS, useDataStore } from '../lib/dataStore'
+import { CACHE_KEYS } from '../lib/dataStore'
 import { ShoppingBag, Hourglass, CheckCircle, XCircle, Store, BadgeDollarSign, Handshake, Gift, Check, X } from 'lucide-react'
 import { EmptyState } from '@munlink/ui'
 
 export default function Marketplace() {
   const [tab, setTab] = useState<'items' | 'transactions'>('items')
   const [filter, setFilter] = useState<'all' | 'sell' | 'lend' | 'donate'>('all')
-  const [error, setError] = useState<string | null>(null)
   const userRole = useAdminStore((s)=> s.user?.role)
   const adminMunicipalityName = useAdminStore((s)=> s.user?.admin_municipality_name || s.user?.municipality_name)
   const adminMunicipalityId = useAdminStore((s)=> s.user?.admin_municipality_id)
   const [reviewItem, setReviewItem] = useState<any | null>(null)
   const [decisionLoading, setDecisionLoading] = useState<boolean>(false)
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'pending' | 'rejected'>('pending')
-  const dataStore = useDataStore()
 
   // Use cached fetch for stats
   const { data: statsData, refetch: refetchStats } = useCachedFetch(
@@ -27,7 +25,7 @@ export default function Marketplace() {
   const stats = (statsData as any)?.data || statsData
 
   // Use cached fetch for items with filter-specific keys
-  const { data: itemsData, loading: itemsLoading, update: updateItems } = useCachedFetch(
+  const { data: itemsData, loading: itemsLoading, error: itemsError, update: updateItems } = useCachedFetch(
     CACHE_KEYS.MARKETPLACE_ITEMS,
     async () => {
       if (statusFilter === 'pending') {
@@ -181,7 +179,7 @@ export default function Marketplace() {
       </div>
       )}
 
-      {tab === 'items' && error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
+      {tab === 'items' && itemsError && <div className="mb-4 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{itemsError}</div>}
       {tab === 'items' && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {itemsLoading && rows.length === 0 && [...Array(8)].map((_, i) => (
