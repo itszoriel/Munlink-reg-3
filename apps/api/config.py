@@ -3,12 +3,52 @@ MunLink Region 3 - Configuration
 Application configuration management
 """
 import os
+import logging
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 # Get project root (2 levels up from this file)
 BASE_DIR = Path(__file__).parent.parent.parent.resolve()
+
+
+def _require_env(name: str, default: str = None, allow_default_in_dev: bool = True) -> str:
+    """
+    Get environment variable, failing loudly in production if not set.
+    
+    Args:
+        name: Environment variable name
+        default: Default value (only used in development)
+        allow_default_in_dev: Whether to allow default in development mode
+    
+    Returns:
+        The environment variable value
+        
+    Raises:
+        RuntimeError: If variable is not set in production
+    """
+    value = os.getenv(name)
+    is_production = os.getenv('FLASK_ENV', 'development') == 'production'
+    
+    if value:
+        return value
+    
+    if is_production:
+        # In production, critical secrets MUST be set
+        if default is None or name in ('SECRET_KEY', 'JWT_SECRET_KEY', 'ADMIN_SECRET_KEY'):
+            raise RuntimeError(
+                f"SECURITY ERROR: {name} environment variable is required in production. "
+                f"Set it in your deployment environment (Render Dashboard, etc.)"
+            )
+        logging.warning(f"Using default value for {name} in production - consider setting explicitly")
+        return default
+    
+    # Development mode - allow defaults
+    if default is not None and allow_default_in_dev:
+        logging.debug(f"Using default value for {name} in development")
+        return default
+    
+    raise RuntimeError(f"{name} environment variable is required")
 
 
 def get_database_url():
@@ -122,8 +162,8 @@ def get_engine_options():
 class Config:
     """Base configuration"""
     
-    # Flask
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    # Flask - SECRET_KEY is REQUIRED in production
+    SECRET_KEY = _require_env('SECRET_KEY', 'dev-secret-key-for-local-development-only')
     DEBUG = os.getenv('DEBUG', 'False') == 'True'
     FLASK_ENV = os.getenv('FLASK_ENV', 'development')
     
@@ -140,8 +180,8 @@ class Config:
     SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
     SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', '')
     
-    # JWT
-    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
+    # JWT - JWT_SECRET_KEY is REQUIRED in production
+    JWT_SECRET_KEY = _require_env('JWT_SECRET_KEY', 'jwt-dev-secret-for-local-development-only')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(
         seconds=int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 86400))
     )
@@ -154,11 +194,17 @@ class Config:
     JWT_COOKIE_DOMAIN = os.getenv('COOKIE_DOMAIN')  # e.g., .munlink.example.com
     JWT_ACCESS_COOKIE_PATH = '/'
     JWT_REFRESH_COOKIE_PATH = '/'
-    # CSRF can be enabled later if we migrate access to cookies
+    # CSRF protection for cookie-based auth (recommended: True in production)
     JWT_COOKIE_CSRF_PROTECT = (os.getenv('JWT_COOKIE_CSRF_PROTECT', 'False') == 'True')
     
-    # Admin Security
-    ADMIN_SECRET_KEY = os.getenv('ADMIN_SECRET_KEY', 'admin-secret-key')
+    # Admin Security - ADMIN_SECRET_KEY is REQUIRED in production
+    ADMIN_SECRET_KEY = _require_env('ADMIN_SECRET_KEY', 'admin-dev-secret-for-local-development-only')
+    
+    # Rate Limiting Configuration
+    RATELIMIT_ENABLED = os.getenv('RATELIMIT_ENABLED', 'True') == 'True'
+    RATELIMIT_STORAGE_URI = os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
+    RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '200 per day, 50 per hour')
+    RATELIMIT_HEADERS_ENABLED = True
     
     # File Uploads
     MAX_CONTENT_LENGTH = int(os.getenv('MAX_FILE_SIZE', 10 * 1024 * 1024))  # 10MB

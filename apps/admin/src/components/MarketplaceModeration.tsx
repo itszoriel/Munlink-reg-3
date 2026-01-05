@@ -33,7 +33,7 @@ export default function MarketplaceModeration({ onItemProcessed }: MarketplaceMo
   const [error, setError] = useState<string | null>(null)
   const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null)
   const [showModal, setShowModal] = useState(false)
-  const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [actionLoading, setActionLoading] = useState<{ itemId: number; action: 'approve' | 'reject' } | null>(null)
 
   // Load pending items
   const loadPendingItems = async () => {
@@ -62,7 +62,7 @@ export default function MarketplaceModeration({ onItemProcessed }: MarketplaceMo
   // Handle item approval
   const handleApproveItem = async (itemId: number) => {
     try {
-      setActionLoading(itemId)
+      setActionLoading({ itemId, action: 'approve' })
       await marketplaceApi.approveItem(itemId)
       
       // Remove item from list
@@ -84,7 +84,7 @@ export default function MarketplaceModeration({ onItemProcessed }: MarketplaceMo
   // Handle item rejection
   const handleRejectItem = async (itemId: number, reason: string) => {
     try {
-      setActionLoading(itemId)
+      setActionLoading({ itemId, action: 'reject' })
       await marketplaceApi.rejectItem(itemId, reason)
       
       // Remove item from list
@@ -207,17 +207,17 @@ export default function MarketplaceModeration({ onItemProcessed }: MarketplaceMo
                 </button>
                 <button
                   onClick={() => handleApproveItem(item.id)}
-                  disabled={actionLoading === item.id}
+                  disabled={actionLoading !== null}
                   className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
-                  {actionLoading === item.id ? 'Approving...' : 'Approve'}
+                  {actionLoading?.itemId === item.id && actionLoading?.action === 'approve' ? 'Approving...' : 'Approve'}
                 </button>
                 <button
                   onClick={() => handleRejectItem(item.id, 'Item rejected by admin')}
-                  disabled={actionLoading === item.id}
+                  disabled={actionLoading !== null}
                   className="px-3 py-1 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
-                  {actionLoading === item.id ? 'Rejecting...' : 'Reject'}
+                  {actionLoading?.itemId === item.id && actionLoading?.action === 'reject' ? 'Rejecting...' : 'Reject'}
                 </button>
               </div>
             </div>
@@ -235,7 +235,7 @@ export default function MarketplaceModeration({ onItemProcessed }: MarketplaceMo
           }}
           onApprove={handleApproveItem}
           onReject={handleRejectItem}
-          loading={actionLoading === selectedItem.id}
+          loading={actionLoading?.itemId === selectedItem.id ? actionLoading.action : null}
         />
       )}
     </>
@@ -248,7 +248,7 @@ interface ItemDetailModalProps {
   onClose: () => void
   onApprove: (itemId: number) => void
   onReject: (itemId: number, reason: string) => void
-  loading: boolean
+  loading: 'approve' | 'reject' | null
 }
 
 function ItemDetailModal({ item, onClose, onApprove, onReject, loading }: ItemDetailModalProps) {
@@ -366,10 +366,10 @@ function ItemDetailModal({ item, onClose, onApprove, onReject, loading }: ItemDe
                 </button>
                 <button
                   onClick={() => onApprove(item.id)}
-                  disabled={loading}
+                  disabled={loading !== null}
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
-                  {loading ? 'Approving...' : 'Approve Item'}
+                  {loading === 'approve' ? 'Approving...' : 'Approve Item'}
                 </button>
               </>
             ) : (
@@ -391,10 +391,10 @@ function ItemDetailModal({ item, onClose, onApprove, onReject, loading }: ItemDe
                 </button>
                 <button
                   onClick={handleReject}
-                  disabled={loading || !rejectReason.trim()}
+                  disabled={loading !== null || !rejectReason.trim()}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
-                  {loading ? 'Rejecting...' : 'Confirm Reject'}
+                  {loading === 'reject' ? 'Rejecting...' : 'Confirm Reject'}
                 </button>
               </>
             )}

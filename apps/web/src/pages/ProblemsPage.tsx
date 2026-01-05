@@ -31,7 +31,9 @@ const statusLabel: Record<Problem['status'], string> = {
 
 export default function ProblemsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
+  const selectedProvince = useAppStore((s) => s.selectedProvince)
   const user = useAppStore((s) => s.user)
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [open, setOpen] = useState(false)
@@ -42,7 +44,15 @@ export default function ProblemsPage() {
   const [page, setPage] = useState(1)
   const [openId, setOpenId] = useState<string | number | null>(null)
   const [fabExpanded, setFabExpanded] = useState(false)
-  const isMismatch = !!(user as any)?.municipality_id && !!selectedMunicipality?.id && (user as any).municipality_id !== selectedMunicipality.id
+  
+  // Municipality scoping
+  const userMunicipalityId = (user as any)?.municipality_id
+  const effectiveMunicipalityId = isAuthenticated && userMunicipalityId 
+    ? (selectedMunicipality?.id || userMunicipalityId)  // Allow browsing, default to user's
+    : selectedMunicipality?.id
+  const guestLocationComplete = !isAuthenticated && !!selectedProvince?.id && !!selectedMunicipality?.id
+  const shouldFetchIssues = (tab === 'mine' && isAuthenticated) || isAuthenticated || guestLocationComplete
+  const isMismatch = !!userMunicipalityId && !!selectedMunicipality?.id && userMunicipalityId !== selectedMunicipality.id
 
   // Use cached fetch hooks with filter-specific keys
   const baseCacheKey = tab === 'mine' ? CACHE_KEYS.MY_ISSUES : CACHE_KEYS.ISSUES
@@ -60,15 +70,16 @@ export default function ProblemsPage() {
         return issuesApi.getMine()
         } else {
           const params: any = { page }
-          if (selectedMunicipality?.id) params.municipality_id = selectedMunicipality.id
+          if (effectiveMunicipalityId) params.municipality_id = effectiveMunicipalityId
           if (statusFilter !== 'all') params.status = statusFilter
           if (categoryFilter !== 'all') params.category = categoryFilter
         return issuesApi.getAll(params)
       }
     },
     { 
-      dependencies: [tab, page, selectedMunicipality?.id, statusFilter, categoryFilter],
-      staleTime: 5 * 60 * 1000
+      dependencies: [tab, page, effectiveMunicipalityId, statusFilter, categoryFilter],
+      staleTime: 5 * 60 * 1000,
+      enabled: shouldFetchIssues  // Only fetch when location context is ready
     }
   )
 
@@ -93,7 +104,14 @@ export default function ProblemsPage() {
 
       {isMismatch && (
         <div className="mb-4 p-3 rounded-lg border border-yellow-300 bg-yellow-50 text-sm text-yellow-900">
-          You are viewing {selectedMunicipality?.name}. Reporting is limited to your registered municipality.
+          <strong>Viewing {selectedMunicipality?.name}</strong>. You can only submit, edit, or update issues in your registered municipality.
+        </div>
+      )}
+
+      {/* Guest Location Required Message */}
+      {!isAuthenticated && !guestLocationComplete && (
+        <div className="mb-4 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
+          <p><strong>Select your location</strong> to view reported problems. Use the location selector above to choose your province and municipality.</p>
         </div>
       )}
 

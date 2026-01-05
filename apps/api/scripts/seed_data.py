@@ -402,8 +402,13 @@ ISSUE_CATEGORIES = [
 
 
 def get_slug(name: str) -> str:
-    """Convert name to URL-friendly slug."""
-    return name.lower().replace(' ', '-').replace("'", '').replace('(', '').replace(')', '').replace('.', '').replace(',', '')
+    """Convert name to ASCII-safe URL-friendly slug."""
+    import unicodedata
+    # Normalize unicode characters (ñ -> n, etc.)
+    normalized = unicodedata.normalize('NFKD', name)
+    ascii_name = normalized.encode('ASCII', 'ignore').decode('ASCII')
+    # Convert to slug
+    return ascii_name.lower().replace(' ', '-').replace("'", '').replace('(', '').replace(')', '').replace('.', '').replace(',', '')
 
 
 def seed_provinces():

@@ -28,9 +28,9 @@ export default function Admins() {
             email: u.email || '',
             role: u.role === 'municipal_admin' ? 'Municipality Admin' : (u.role || 'Admin')
               .split('_').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
-            municipality: u.admin_municipality_name || u.municipality_name || '—',
+            municipality: u.admin_municipality_name || u.municipality_name || 'Not assigned',
             status: u.is_active === false ? 'inactive' : 'active',
-            lastActive: (u.last_login || u.updated_at || '').slice(0, 10) || '—',
+            lastActive: (u.last_login || u.updated_at || '').slice(0, 10) || 'Never',
             permissions: u.permissions || ['User Management'],
             avatar: (u.first_name?.[0] || 'A') + (u.last_name?.[0] || ''),
           }))

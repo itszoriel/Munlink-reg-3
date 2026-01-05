@@ -21,6 +21,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Import config - try absolute first, then relative
 try:
@@ -29,6 +31,14 @@ try:
 except ImportError:
     from config import Config
     from __init__ import db, migrate, jwt
+
+# Initialize rate limiter (will be configured with app later)
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+    strategy="fixed-window"
+)
 
 
 def create_app(config_class=Config):
@@ -53,6 +63,53 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+    
+    # Initialize rate limiter
+    if app.config.get('RATELIMIT_ENABLED', True):
+        limiter.init_app(app)
+        app.logger.info("Rate limiting enabled")
+    else:
+        app.logger.warning("Rate limiting is DISABLED - not recommended for production")
+    
+    # Security Headers Middleware
+    @app.after_request
+    def add_security_headers(response):
+        """Add security headers to all responses."""
+        # Prevent MIME type sniffing
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        
+        # Prevent clickjacking
+        response.headers['X-Frame-Options'] = 'DENY'
+        
+        # XSS protection (legacy, but still useful for older browsers)
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        
+        # Referrer policy
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        
+        # Permissions policy (disable unnecessary browser features)
+        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+        
+        # HSTS - only in production (when not localhost)
+        if not app.config.get('DEBUG'):
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        
+        # Content Security Policy - allow self and required external resources
+        # Adjust based on your frontend requirements
+        csp_directives = [
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.gstatic.com",
+            "img-src 'self' data: blob: https:",
+            "connect-src 'self' https://api.sendgrid.com",
+            "frame-ancestors 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+        ]
+        response.headers['Content-Security-Policy'] = '; '.join(csp_directives)
+        
+        return response
     
     # CORS configuration
     cors_origins = [

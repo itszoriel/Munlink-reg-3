@@ -42,7 +42,13 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 def enforce_admin_role():
     """Middleware: require JWT and admin role for all /api/admin routes.
     Skips OPTIONS preflight requests to allow CORS to work properly.
+    
+    Security: This middleware MUST return an error response if authentication
+    fails. Silently passing would allow unauthenticated access.
     """
+    from flask_jwt_extended.exceptions import NoAuthorizationError, InvalidHeaderError
+    from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
+    
     # Skip JWT verification for OPTIONS requests (CORS preflight)
     if request.method == 'OPTIONS':
         return None
@@ -52,10 +58,26 @@ def enforce_admin_role():
         claims = get_jwt() or {}
         role = claims.get('role')
         if role not in ('admin', 'municipal_admin'):
+            current_app.logger.warning(f"Admin access denied: role={role}")
             return jsonify({'error': 'Forbidden', 'code': 'ROLE_MISMATCH'}), 403
-    except Exception:
-        # If token missing/invalid, let route-level @jwt_required handle auth errors
-        pass
+    except NoAuthorizationError:
+        # No token provided
+        return jsonify({'error': 'Authorization required', 'code': 'NO_AUTH'}), 401
+    except InvalidHeaderError as e:
+        # Invalid Authorization header format
+        current_app.logger.warning(f"Invalid auth header: {e}")
+        return jsonify({'error': 'Invalid authorization header', 'code': 'INVALID_HEADER'}), 401
+    except ExpiredSignatureError:
+        # Token has expired
+        return jsonify({'error': 'Token has expired', 'code': 'TOKEN_EXPIRED'}), 401
+    except InvalidTokenError as e:
+        # Token is invalid (malformed, wrong signature, etc.)
+        current_app.logger.warning(f"Invalid token: {e}")
+        return jsonify({'error': 'Invalid token', 'code': 'INVALID_TOKEN'}), 401
+    except Exception as e:
+        # Catch-all for any other auth errors - DO NOT silently pass
+        current_app.logger.error(f"Unexpected auth error in admin middleware: {type(e).__name__}: {e}")
+        return jsonify({'error': 'Authentication failed', 'code': 'AUTH_ERROR'}), 401
 
 def get_admin_municipality_id():
     """Get the municipality ID for the current admin user."""
@@ -1478,7 +1500,21 @@ def admin_update_benefit_application_status(application_id: int):
         if program.municipality_id and program.municipality_id != municipality_id:
             return jsonify({'error': 'Application not in your municipality'}), 403
 
+        # Prevent status changes after approval or rejection (status is final)
         prev = (app.status or 'pending').lower()
+        if prev == 'approved' and new_status != 'approved':
+            return jsonify({'error': 'Cannot change status from approved. Approval is final.'}), 400
+        if prev == 'rejected' and new_status != 'rejected':
+            return jsonify({'error': 'Cannot change status from rejected. Rejection is final.'}), 400
+        
+        # Check for required documents before approval
+        if new_status == 'approved':
+            required_docs = program.required_documents or []
+            if isinstance(required_docs, list) and len(required_docs) > 0:
+                app_docs = app.supporting_documents or []
+                if not app_docs or len(app_docs) == 0:
+                    return jsonify({'error': 'Cannot approve application without required documents. Please ensure applicant has uploaded all required documents.'}), 400
+
         app.status = new_status
         if notes is not None:
             app.admin_notes = notes
@@ -1574,7 +1610,14 @@ def admin_create_benefit_program():
         code = data.get('code')
         description = data.get('description') or ''
         program_type = data.get('program_type') or 'general'
-        program_municipality_id = int(data.get('municipality_id') or municipality_id)
+        
+        # SECURITY: Always use the admin's municipality - cannot be overridden
+        # This ensures admins can only create programs for their own jurisdiction
+        program_municipality_id = municipality_id
+        
+        # Reject any attempt to specify a different municipality
+        if data.get('municipality_id') and int(data.get('municipality_id')) != municipality_id:
+            return jsonify({'error': 'Cannot create programs for other municipalities'}), 403
 
         if not name or not code:
             return jsonify({'error': 'name and code are required'}), 400

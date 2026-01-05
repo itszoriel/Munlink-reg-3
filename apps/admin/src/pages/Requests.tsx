@@ -38,7 +38,7 @@ export default function Requests() {
         id: r.request_number || r.id || 'REQ',
         resident: [r.user?.first_name, r.user?.last_name].filter(Boolean).join(' ') || 'Unknown',
         document: r.document_type?.name || 'Document',
-        purpose: r.purpose || '—',
+        purpose: r.purpose || '',
         details: extra?.text || '',
         civil_status: extra?.civil_status || r.civil_status || '',
         submitted: (r.created_at || '').slice(0, 10),
@@ -231,11 +231,11 @@ export default function Requests() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
         {[
-          { status: 'all', label: 'All Requests', count: stats?.total_requests ?? '—', icon: '📋', color: 'neutral' },
-          { status: 'pending', label: 'Pending Review', count: stats?.pending_requests ?? '—', icon: '⏳', color: 'yellow' },
-          { status: 'processing', label: 'Processing', count: stats?.processing_requests ?? '—', icon: '⚙️', color: 'ocean' },
-          { status: 'ready', label: 'Ready for Pickup', count: stats?.ready_requests ?? '—', icon: '✅', color: 'forest' },
-          { status: 'completed', label: 'Completed', count: stats?.completed_requests ?? '—', icon: '🎉', color: 'purple' },
+          { status: 'all', label: 'All Requests', count: stats?.total_requests ?? 0, icon: '📋', color: 'neutral' },
+          { status: 'pending', label: 'Pending Review', count: stats?.pending_requests ?? 0, icon: '⏳', color: 'yellow' },
+          { status: 'processing', label: 'Processing', count: stats?.processing_requests ?? 0, icon: '⚙️', color: 'ocean' },
+          { status: 'ready', label: 'Ready for Pickup', count: stats?.ready_requests ?? 0, icon: '✅', color: 'forest' },
+          { status: 'completed', label: 'Completed', count: stats?.completed_requests ?? 0, icon: '🎉', color: 'purple' },
         ].map((item) => (
           <button key={item.status} onClick={() => setStatusFilter(item.status as Status)} className={`text-left p-4 rounded-2xl transition-all ${statusFilter === item.status ? 'bg-white/90 backdrop-blur-xl shadow-xl scale-105 border-2 border-ocean-500' : 'bg-white/70 backdrop-blur-xl border border-white/50 hover:scale-105'}`}>
             <div className="flex items-center justify-between mb-2">

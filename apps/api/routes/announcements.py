@@ -17,14 +17,21 @@ announcements_bp = Blueprint('announcements', __name__, url_prefix='/api/announc
 
 @announcements_bp.route('', methods=['GET'])
 def list_announcements():
-    """List active announcements with optional filters and pagination.
+    """List active announcements with municipality scoping.
 
     Query params:
-      - municipality_id: int (optional)
+      - municipality_id: int (REQUIRED for guests; authenticated users auto-scoped)
       - active: bool (default true)
       - page: int (default 1)
       - per_page: int (default 20)
+    
+    Municipality Scoping Rules:
+      - Guest users: MUST provide municipality_id; returns empty if not provided
+      - Logged-in users: Can browse other municipalities (discovery mode)
+      - No global/unscoped data loads by default
     """
+    from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+    
     try:
         municipality_id = request.args.get('municipality_id', type=int)
         active_param = request.args.get('active', 'true').lower()
@@ -32,17 +39,53 @@ def list_announcements():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
 
-        # Build filters
-        filters = []
-        if municipality_id:
-            filters.append(Announcement.municipality_id == municipality_id)
+        # Check if user is authenticated
+        is_authenticated = False
+        user_municipality_id = None
+        try:
+            verify_jwt_in_request(optional=True)
+            user_id = get_jwt_identity()
+            if user_id:
+                is_authenticated = True
+                # Get user's registered municipality for potential default scoping
+                try:
+                    from apps.api.models.user import User
+                except ImportError:
+                    from models.user import User
+                user = User.query.get(user_id)
+                if user:
+                    user_municipality_id = user.municipality_id
+        except Exception:
+            pass
+
+        # Municipality Scoping Enforcement:
+        # - Guests without municipality_id get empty results (no global data)
+        # - Logged-in users default to their municipality if no filter provided
+        effective_municipality_id = municipality_id
+        if not effective_municipality_id:
+            if is_authenticated and user_municipality_id:
+                # Default to user's registered municipality
+                effective_municipality_id = user_municipality_id
+            else:
+                # Guest without location context: return empty per scoping rules
+                return jsonify({
+                    'announcements': [],
+                    'count': 0,
+                    'pagination': {
+                        'page': page,
+                        'per_page': per_page,
+                        'total': 0,
+                        'pages': 0,
+                    },
+                    'message': 'Please select a municipality to view announcements'
+                }), 200
+
+        # Build filters with enforced municipality scoping
+        filters = [Announcement.municipality_id == effective_municipality_id]
         if is_active is not None:
             filters.append(Announcement.is_active == is_active)
 
-        query = Announcement.query
-        if filters:
-            query = query.filter(and_(*filters))
-
+        query = Announcement.query.filter(and_(*filters))
         query = query.order_by(Announcement.created_at.desc())
         paginated = query.paginate(page=page, per_page=per_page, error_out=False)
 

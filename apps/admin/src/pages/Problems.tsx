@@ -114,7 +114,7 @@ export default function Problems() {
                 </div>
                 <div className="sm:col-span-2">
                   <p className="text-sm text-neutral-700">{[it.user?.first_name, it.user?.last_name].filter(Boolean).join(' ') || 'Resident'}</p>
-                  <p className="text-xs text-neutral-600">{it.municipality_name || '—'}</p>
+                  <p className="text-xs text-neutral-600">{it.municipality_name || <span className="italic text-neutral-400">Unknown</span>}</p>
                 </div>
                 <div className="sm:col-span-2">
                   <p className="text-sm text-neutral-700">{(it.created_at || '').slice(0,10)}</p>

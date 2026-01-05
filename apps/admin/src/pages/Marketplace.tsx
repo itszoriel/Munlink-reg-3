@@ -13,7 +13,7 @@ export default function Marketplace() {
   const adminMunicipalityName = useAdminStore((s)=> s.user?.admin_municipality_name || s.user?.municipality_name)
   const adminMunicipalityId = useAdminStore((s)=> s.user?.admin_municipality_id)
   const [reviewItem, setReviewItem] = useState<any | null>(null)
-  const [decisionLoading, setDecisionLoading] = useState<boolean>(false)
+  const [decisionLoading, setDecisionLoading] = useState<'approve' | 'reject' | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'pending' | 'rejected'>('pending')
 
   // Use cached fetch for stats
@@ -108,10 +108,10 @@ export default function Marketplace() {
       {tab === 'items' && (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
         {[
-          { icon: 'total', label: 'Total Items', value: String(stats?.total_items ?? '—'), color: 'ocean' },
-          { icon: 'pending', label: 'Pending Review', value: String(stats?.pending_items ?? '—'), color: 'sunset' },
-          { icon: 'approved', label: 'Approved', value: String(stats?.approved_items ?? '—'), color: 'forest' },
-          { icon: 'rejected', label: 'Rejected', value: String(stats?.rejected_items ?? '—'), color: 'purple' },
+          { icon: 'total', label: 'Total Items', value: String(stats?.total_items ?? 0), color: 'ocean' },
+          { icon: 'pending', label: 'Pending Review', value: String(stats?.pending_items ?? 0), color: 'sunset' },
+          { icon: 'approved', label: 'Approved', value: String(stats?.approved_items ?? 0), color: 'forest' },
+          { icon: 'rejected', label: 'Rejected', value: String(stats?.rejected_items ?? 0), color: 'purple' },
         ].map((stat, i) => (
           <div key={i} className="bg-white/70 backdrop-blur-xl rounded-2xl p-6 border border-white/50 shadow-lg hover:scale-105 transition-transform">
             <div className={`inline-flex w-12 h-12 bg-${stat.color}-100 rounded-xl items-center justify-center mb-3`}>
@@ -380,8 +380,8 @@ export default function Marketplace() {
             <div className="sticky bottom-0 z-10 bg-white border-t px-4 py-3 sm:px-6 sm:py-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
               {reviewItem.status === 'pending' ? (
                 <>
-                  <button disabled={decisionLoading} onClick={async () => {
-                    setDecisionLoading(true)
+                  <button disabled={decisionLoading !== null} onClick={async () => {
+                    setDecisionLoading('reject')
                     try {
                       await marketplaceApi.rejectItem(reviewItem.id, 'Does not comply')
                       removeItemFromCache(reviewItem.id)
@@ -391,11 +391,11 @@ export default function Marketplace() {
                     } catch (e: any) {
                       showToast(handleApiError(e as any), 'error')
                     } finally {
-                      setDecisionLoading(false)
+                      setDecisionLoading(null)
                     }
-                  }} className="w-full sm:w-auto px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors">Reject</button>
-                  <button disabled={decisionLoading} onClick={async () => {
-                    setDecisionLoading(true)
+                  }} className="w-full sm:w-auto px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors">{decisionLoading === 'reject' ? 'Rejecting...' : 'Reject'}</button>
+                  <button disabled={decisionLoading !== null} onClick={async () => {
+                    setDecisionLoading('approve')
                     try {
                       await marketplaceApi.approveItem(reviewItem.id)
                       removeItemFromCache(reviewItem.id)
@@ -405,9 +405,9 @@ export default function Marketplace() {
                     } catch (e: any) {
                       showToast(handleApiError(e as any), 'error')
                     } finally {
-                      setDecisionLoading(false)
+                      setDecisionLoading(null)
                     }
-                  }} className="w-full sm:w-auto px-4 py-2.5 bg-forest-600 hover:bg-forest-700 text-white rounded-lg text-sm font-medium transition-colors">Approve</button>
+                  }} className="w-full sm:w-auto px-4 py-2.5 bg-forest-600 hover:bg-forest-700 text-white rounded-lg text-sm font-medium transition-colors">{decisionLoading === 'approve' ? 'Approving...' : 'Approve'}</button>
                 </>
               ) : (
                 <button onClick={() => setReviewItem(null)} className="w-full sm:w-auto px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg text-sm font-medium transition-colors">Close</button>

@@ -29,7 +29,24 @@ marketplace_bp = Blueprint('marketplace', __name__, url_prefix='/api/marketplace
 
 @marketplace_bp.route('/items', methods=['GET'])
 def list_items():
-    """Get list of marketplace items with optional filters."""
+    """Get list of marketplace items with municipality scoping.
+    
+    Query params:
+      - municipality_id: int (REQUIRED for guests; authenticated users auto-scoped)
+      - category: string (optional filter)
+      - transaction_type: string (optional filter)
+      - status: string (default 'available')
+      - page: int (default 1)
+      - per_page: int (default 20)
+    
+    Municipality Scoping Rules:
+      - Guest users: MUST provide municipality_id; returns empty if not provided
+      - Logged-in users: Can browse items from other municipalities (discovery mode)
+      - Transactions are limited to user's registered municipality (enforced separately)
+      - No global/unscoped data loads by default
+    """
+    from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+    
     try:
         # Get query parameters
         municipality_id = request.args.get('municipality_id', type=int)
@@ -39,11 +56,41 @@ def list_items():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         
-        # Build query
-        query = Item.query.filter_by(is_active=True)
+        # Check if user is authenticated
+        is_authenticated = False
+        user_municipality_id = None
+        try:
+            verify_jwt_in_request(optional=True)
+            user_id = get_jwt_identity()
+            if user_id:
+                is_authenticated = True
+                user = User.query.get(user_id)
+                if user:
+                    user_municipality_id = user.municipality_id
+        except Exception:
+            pass
+
+        # Municipality Scoping Enforcement:
+        # - Guests without municipality_id get empty results (no global data)
+        # - Logged-in users default to their municipality if no filter provided
+        effective_municipality_id = municipality_id
+        if not effective_municipality_id:
+            if is_authenticated and user_municipality_id:
+                # Default to user's registered municipality
+                effective_municipality_id = user_municipality_id
+            else:
+                # Guest without location context: return empty per scoping rules
+                return jsonify({
+                    'items': [],
+                    'total': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'pages': 0,
+                    'message': 'Please select a municipality to view marketplace items'
+                }), 200
         
-        if municipality_id:
-            query = query.filter_by(municipality_id=municipality_id)
+        # Build query with enforced municipality scoping
+        query = Item.query.filter_by(is_active=True, municipality_id=effective_municipality_id)
         
         if category:
             query = query.filter_by(category=category)

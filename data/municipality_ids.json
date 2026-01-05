@@ -456,313 +456,313 @@
     "province_id": 4
   },
   "apalit": {
-    "id": 77,
+    "id": 96,
     "name": "Apalit",
     "slug": "apalit",
     "province_id": 5
   },
   "arayat": {
-    "id": 78,
+    "id": 97,
     "name": "Arayat",
     "slug": "arayat",
     "province_id": 5
   },
   "bacolor": {
-    "id": 79,
+    "id": 98,
     "name": "Bacolor",
     "slug": "bacolor",
     "province_id": 5
   },
   "candaba": {
-    "id": 80,
+    "id": 99,
     "name": "Candaba",
     "slug": "candaba",
     "province_id": 5
   },
   "city-of-angeles": {
-    "id": 97,
+    "id": 116,
     "name": "City of Angeles",
     "slug": "city-of-angeles",
     "province_id": 5
   },
   "city-of-san-fernando": {
-    "id": 91,
+    "id": 110,
     "name": "City of San Fernando",
     "slug": "city-of-san-fernando",
     "province_id": 5
   },
   "floridablanca": {
-    "id": 81,
+    "id": 100,
     "name": "Floridablanca",
     "slug": "floridablanca",
     "province_id": 5
   },
   "guagua": {
-    "id": 82,
+    "id": 101,
     "name": "Guagua",
     "slug": "guagua",
     "province_id": 5
   },
   "lubao": {
-    "id": 83,
+    "id": 102,
     "name": "Lubao",
     "slug": "lubao",
     "province_id": 5
   },
   "mabalacat-city": {
-    "id": 84,
+    "id": 103,
     "name": "Mabalacat City",
     "slug": "mabalacat-city",
     "province_id": 5
   },
   "macabebe": {
-    "id": 85,
+    "id": 104,
     "name": "Macabebe",
     "slug": "macabebe",
     "province_id": 5
   },
   "magalang": {
-    "id": 86,
+    "id": 105,
     "name": "Magalang",
     "slug": "magalang",
     "province_id": 5
   },
   "masantol": {
-    "id": 87,
+    "id": 106,
     "name": "Masantol",
     "slug": "masantol",
     "province_id": 5
   },
   "mexico": {
-    "id": 88,
+    "id": 107,
     "name": "Mexico",
     "slug": "mexico",
     "province_id": 5
   },
   "minalin": {
-    "id": 89,
+    "id": 108,
     "name": "Minalin",
     "slug": "minalin",
     "province_id": 5
   },
   "porac": {
-    "id": 90,
+    "id": 109,
     "name": "Porac",
     "slug": "porac",
     "province_id": 5
   },
   "san-simon": {
-    "id": 92,
+    "id": 111,
     "name": "San Simon",
     "slug": "san-simon",
     "province_id": 5
   },
   "santa-ana": {
-    "id": 93,
+    "id": 112,
     "name": "Santa Ana",
     "slug": "santa-ana",
     "province_id": 5
   },
   "santa-rita": {
-    "id": 94,
+    "id": 113,
     "name": "Santa Rita",
     "slug": "santa-rita",
     "province_id": 5
   },
   "sasmuan": {
-    "id": 96,
+    "id": 115,
     "name": "Sasmuan",
     "slug": "sasmuan",
     "province_id": 5
   },
   "sto-tomas": {
-    "id": 95,
+    "id": 114,
     "name": "Sto. Tomas",
     "slug": "sto-tomas",
     "province_id": 5
   },
   "anao": {
-    "id": 98,
+    "id": 117,
     "name": "Anao",
     "slug": "anao",
     "province_id": 6
   },
   "bamban": {
-    "id": 99,
+    "id": 118,
     "name": "Bamban",
     "slug": "bamban",
     "province_id": 6
   },
   "camiling": {
-    "id": 100,
+    "id": 119,
     "name": "Camiling",
     "slug": "camiling",
     "province_id": 6
   },
   "capas": {
-    "id": 101,
+    "id": 120,
     "name": "Capas",
     "slug": "capas",
     "province_id": 6
   },
   "city-of-tarlac": {
-    "id": 113,
+    "id": 132,
     "name": "City of Tarlac",
     "slug": "city-of-tarlac",
     "province_id": 6
   },
   "concepcion": {
-    "id": 102,
+    "id": 121,
     "name": "Concepcion",
     "slug": "concepcion",
     "province_id": 6
   },
   "gerona": {
-    "id": 103,
+    "id": 122,
     "name": "Gerona",
     "slug": "gerona",
     "province_id": 6
   },
   "la-paz": {
-    "id": 104,
+    "id": 123,
     "name": "La Paz",
     "slug": "la-paz",
     "province_id": 6
   },
   "mayantoc": {
-    "id": 105,
+    "id": 124,
     "name": "Mayantoc",
     "slug": "mayantoc",
     "province_id": 6
   },
   "moncada": {
-    "id": 106,
+    "id": 125,
     "name": "Moncada",
     "slug": "moncada",
     "province_id": 6
   },
   "paniqui": {
-    "id": 107,
+    "id": 126,
     "name": "Paniqui",
     "slug": "paniqui",
     "province_id": 6
   },
   "pura": {
-    "id": 108,
+    "id": 127,
     "name": "Pura",
     "slug": "pura",
     "province_id": 6
   },
   "ramos": {
-    "id": 109,
+    "id": 128,
     "name": "Ramos",
     "slug": "ramos",
     "province_id": 6
   },
   "san-clemente": {
-    "id": 110,
+    "id": 129,
     "name": "San Clemente",
     "slug": "san-clemente",
     "province_id": 6
   },
   "san-jose": {
-    "id": 115,
+    "id": 134,
     "name": "San Jose",
     "slug": "san-jose",
     "province_id": 6
   },
   "san-manuel": {
-    "id": 111,
+    "id": 130,
     "name": "San Manuel",
     "slug": "san-manuel",
     "province_id": 6
   },
   "santa-ignacia": {
-    "id": 112,
+    "id": 131,
     "name": "Santa Ignacia",
     "slug": "santa-ignacia",
     "province_id": 6
   },
   "victoria": {
-    "id": 114,
+    "id": 133,
     "name": "Victoria",
     "slug": "victoria",
     "province_id": 6
   },
   "botolan": {
-    "id": 116,
+    "id": 135,
     "name": "Botolan",
     "slug": "botolan",
     "province_id": 7
   },
   "cabangan": {
-    "id": 117,
+    "id": 136,
     "name": "Cabangan",
     "slug": "cabangan",
     "province_id": 7
   },
   "candelaria": {
-    "id": 118,
+    "id": 137,
     "name": "Candelaria",
     "slug": "candelaria",
     "province_id": 7
   },
   "castillejos": {
-    "id": 119,
+    "id": 138,
     "name": "Castillejos",
     "slug": "castillejos",
     "province_id": 7
   },
   "city-of-olongapo": {
-    "id": 128,
+    "id": 147,
     "name": "City of Olongapo",
     "slug": "city-of-olongapo",
     "province_id": 7
   },
   "iba": {
-    "id": 120,
+    "id": 139,
     "name": "Iba",
     "slug": "iba",
     "province_id": 7
   },
   "masinloc": {
-    "id": 121,
+    "id": 140,
     "name": "Masinloc",
     "slug": "masinloc",
     "province_id": 7
   },
   "palauig": {
-    "id": 122,
+    "id": 141,
     "name": "Palauig",
     "slug": "palauig",
     "province_id": 7
   },
   "san-felipe": {
-    "id": 123,
+    "id": 142,
     "name": "San Felipe",
     "slug": "san-felipe",
     "province_id": 7
   },
   "san-marcelino": {
-    "id": 124,
+    "id": 143,
     "name": "San Marcelino",
     "slug": "san-marcelino",
     "province_id": 7
   },
   "san-narciso": {
-    "id": 125,
+    "id": 144,
     "name": "San Narciso",
     "slug": "san-narciso",
     "province_id": 7
   },
   "santa-cruz": {
-    "id": 126,
+    "id": 145,
     "name": "Santa Cruz",
     "slug": "santa-cruz",
     "province_id": 7
   },
   "subic": {
-    "id": 127,
+    "id": 146,
     "name": "Subic",
     "slug": "subic",
     "province_id": 7

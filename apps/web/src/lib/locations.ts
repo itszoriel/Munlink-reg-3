@@ -47,148 +47,149 @@ export const PROVINCES: Province[] = [
  */
 const DB_MUNICIPALITY_IDS: Record<string, number> = {
   // Aurora (8 municipalities)
-  "baler": 1,
-  "casiguran": 2,
-  "dilasag": 3,
-  "dinalungan": 4,
-  "dingalan": 5,
-  "dipaculao": 6,
-  "maria-aurora": 7,
-  "san-luis-aurora": 8, // Aurora's San Luis
+  "baler": 391, // Baler
+  "casiguran": 392, // Casiguran
+  "dilasag": 393, // Dilasag
+  "dinalungan": 394, // Dinalungan
+  "dingalan": 395, // Dingalan
+  "dipaculao": 396, // Dipaculao
+  "maria-aurora": 397, // Maria Aurora
+  "san-luis": 398, // San Luis
 
   // Bataan (12 municipalities)
-  "abucay": 9,
-  "bagac": 10,
-  "city-of-balanga": 11,
-  "dinalupihan": 12,
-  "hermosa": 13,
-  "limay": 14,
-  "mariveles": 15,
-  "morong": 16,
-  "orani": 17,
-  "orion": 18,
-  "pilar": 19,
-  "samal": 20,
+  "abucay": 399, // Abucay
+  "bagac": 400, // Bagac
+  "city-of-balanga": 401, // City of Balanga
+  "dinalupihan": 402, // Dinalupihan
+  "hermosa": 403, // Hermosa
+  "limay": 404, // Limay
+  "mariveles": 405, // Mariveles
+  "morong": 406, // Morong
+  "orani": 407, // Orani
+  "orion": 408, // Orion
+  "pilar": 409, // Pilar
+  "samal": 410, // Samal
 
   // Bulacan (24 municipalities)
-  "angat": 21,
-  "balagtas": 22,
-  "city-of-baliwag": 23,
-  "bocaue": 24,
-  "bulacan": 25,
-  "bustos": 26,
-  "calumpit": 27,
-  "guiguinto": 28,
-  "hagonoy": 29,
-  "city-of-malolos": 30,
-  "marilao": 31,
-  "city-of-meycauayan": 32,
-  "norzagaray": 33,
-  "obando": 34,
-  "pandi": 35,
-  "paombong": 36,
-  "plaridel": 37,
-  "pulilan": 38,
-  "san-ildefonso": 39,
-  "city-of-san-jose-del-monte": 40,
-  "san-miguel": 41,
-  "san-rafael": 42,
-  "santa-maria": 43,
-  "dona-remedios-trinidad": 44, // ASCII slug for Doña Remedios Trinidad
+  "angat": 411, // Angat
+  "balagtas": 412, // Balagtas
+  "bocaue": 414, // Bocaue
+  "bulacan": 415, // Bulacan
+  "bustos": 416, // Bustos
+  "calumpit": 417, // Calumpit
+  "city-of-baliwag": 413, // City of Baliwag
+  "city-of-malolos": 420, // City of Malolos
+  "city-of-meycauayan": 422, // City of Meycauayan
+  "city-of-san-jose-del-monte": 430, // City of San Jose Del Monte
+  "dona-remedios-trinidad": 434, // Doña Remedios Trinidad
+  "guiguinto": 418, // Guiguinto
+  "hagonoy": 419, // Hagonoy
+  "marilao": 421, // Marilao
+  "norzagaray": 423, // Norzagaray
+  "obando": 424, // Obando
+  "pandi": 425, // Pandi
+  "paombong": 426, // Paombong
+  "plaridel": 427, // Plaridel
+  "pulilan": 428, // Pulilan
+  "san-ildefonso": 429, // San Ildefonso
+  "san-miguel": 431, // San Miguel
+  "san-rafael": 432, // San Rafael
+  "santa-maria": 433, // Santa Maria
 
   // Nueva Ecija (32 municipalities)
-  "aliaga": 45,
-  "bongabon": 46,
-  "city-of-cabanatuan": 47,
-  "cabiao": 48,
-  "carranglan": 49,
-  "cuyapo": 50,
-  "gabaldon": 51,
-  "city-of-gapan": 52,
-  "general-mamerto-natividad": 53,
-  "general-tinio": 54,
-  "guimba": 55,
-  "jaen": 56,
-  "laur": 57,
-  "licab": 58,
-  "llanera": 59,
-  "lupao": 60,
-  "science-city-of-munoz": 61, // ASCII slug for Muñoz
-  "nampicuan": 62,
-  "city-of-palayan": 63,
-  "pantabangan": 64,
-  "penaranda": 65, // ASCII slug for Peñaranda
-  "quezon": 66,
-  "rizal": 67,
-  "san-antonio-nueva-ecija": 68, // Nueva Ecija's San Antonio
-  "san-isidro": 69,
-  "san-jose-city": 70,
-  "san-leonardo": 71,
-  "santa-rosa": 72,
-  "santo-domingo": 73,
-  "talavera": 74,
-  "talugtug": 75,
-  "zaragoza": 76,
+  "aliaga": 435, // Aliaga
+  "bongabon": 436, // Bongabon
+  "cabiao": 438, // Cabiao
+  "carranglan": 439, // Carranglan
+  "city-of-cabanatuan": 437, // City of Cabanatuan
+  "city-of-gapan": 442, // City of Gapan
+  "city-of-palayan": 453, // City of Palayan
+  "cuyapo": 440, // Cuyapo
+  "gabaldon": 441, // Gabaldon
+  "general-mamerto-natividad": 443, // General Mamerto Natividad
+  "general-tinio": 444, // General Tinio
+  "guimba": 445, // Guimba
+  "jaen": 446, // Jaen
+  "laur": 447, // Laur
+  "licab": 448, // Licab
+  "llanera": 449, // Llanera
+  "lupao": 450, // Lupao
+  "nampicuan": 452, // Nampicuan
+  "pantabangan": 454, // Pantabangan
+  "penaranda": 455, // Peñaranda
+  "quezon": 456, // Quezon
+  "rizal": 457, // Rizal
+  "san-antonio-nueva-ecija": 458, // San Antonio (Nueva Ecija)
+  "san-isidro": 459, // San Isidro
+  "san-jose-city": 460, // San Jose City
+  "san-leonardo": 461, // San Leonardo
+  "santa-rosa": 462, // Santa Rosa
+  "santo-domingo": 463, // Santo Domingo
+  "science-city-of-munoz": 451, // Science City of Muñoz
+  "talavera": 464, // Talavera
+  "talugtug": 465, // Talugtug
+  "zaragoza": 466, // Zaragoza
 
-  // Pampanga (21 municipalities - San Luis NOT in DB yet)
-  "apalit": 77,
-  "arayat": 78,
-  "bacolor": 79,
-  "candaba": 80,
-  "floridablanca": 81,
-  "guagua": 82,
-  "lubao": 83,
-  "mabalacat-city": 84,
-  "macabebe": 85,
-  "magalang": 86,
-  "masantol": 87,
-  "mexico": 88,
-  "minalin": 89,
-  "porac": 90,
-  "city-of-san-fernando": 91,
-  "san-simon": 92,
-  "santa-ana": 93,
-  "santa-rita": 94,
-  "sto-tomas": 95,
-  "sasmuan": 96,
-  "city-of-angeles": 97,
-  "san-luis-pampanga": 133, // San Luis (Pampanga)
+  // Pampanga (22 municipalities)
+  "apalit": 467, // Apalit
+  "arayat": 468, // Arayat
+  "bacolor": 469, // Bacolor
+  "candaba": 470, // Candaba
+  "city-of-angeles": 487, // City of Angeles
+  "city-of-san-fernando": 481, // City of San Fernando
+  "floridablanca": 471, // Floridablanca
+  "guagua": 472, // Guagua
+  "lubao": 473, // Lubao
+  "mabalacat-city": 474, // Mabalacat City
+  "macabebe": 475, // Macabebe
+  "magalang": 476, // Magalang
+  "masantol": 477, // Masantol
+  "mexico": 478, // Mexico
+  "minalin": 479, // Minalin
+  "porac": 480, // Porac
+  "san-luis-pampanga": 523, // San Luis
+  "san-simon": 482, // San Simon
+  "santa-ana": 483, // Santa Ana
+  "santa-rita": 484, // Santa Rita
+  "sasmuan": 486, // Sasmuan
+  "sto-tomas": 485, // Sto. Tomas
 
   // Tarlac (18 municipalities)
-  "anao": 98,
-  "bamban": 99,
-  "camiling": 100,
-  "capas": 101,
-  "concepcion": 102,
-  "gerona": 103,
-  "la-paz": 104,
-  "mayantoc": 105,
-  "moncada": 106,
-  "paniqui": 107,
-  "pura": 108,
-  "ramos": 109,
-  "san-clemente": 110,
-  "san-manuel": 111,
-  "santa-ignacia": 112,
-  "city-of-tarlac": 113,
-  "victoria": 114,
-  "san-jose": 115,
+  "anao": 488, // Anao
+  "bamban": 489, // Bamban
+  "camiling": 490, // Camiling
+  "capas": 491, // Capas
+  "city-of-tarlac": 503, // City of Tarlac
+  "concepcion": 492, // Concepcion
+  "gerona": 493, // Gerona
+  "la-paz": 494, // La Paz
+  "mayantoc": 495, // Mayantoc
+  "moncada": 496, // Moncada
+  "paniqui": 497, // Paniqui
+  "pura": 498, // Pura
+  "ramos": 499, // Ramos
+  "san-clemente": 500, // San Clemente
+  "san-jose": 505, // San Jose
+  "san-manuel": 501, // San Manuel
+  "santa-ignacia": 502, // Santa Ignacia
+  "victoria": 504, // Victoria
 
-  // Zambales (13 municipalities - San Antonio NOT in DB yet)
-  "botolan": 116,
-  "cabangan": 117,
-  "candelaria": 118,
-  "castillejos": 119,
-  "iba": 120,
-  "masinloc": 121,
-  "palauig": 122,
-  "san-felipe": 123,
-  "san-marcelino": 124,
-  "san-narciso": 125,
-  "santa-cruz": 126,
-  "subic": 127,
-  "city-of-olongapo": 128,
-  "san-antonio-zambales": 134, // San Antonio (Zambales) - newly added
+  // Zambales (14 municipalities)
+  "botolan": 506, // Botolan
+  "cabangan": 507, // Cabangan
+  "candelaria": 508, // Candelaria
+  "castillejos": 509, // Castillejos
+  "city-of-olongapo": 518, // City of Olongapo
+  "iba": 510, // Iba
+  "masinloc": 511, // Masinloc
+  "palauig": 512, // Palauig
+  "san-antonio-zambales": 522, // San Antonio (Zambales)
+  "san-felipe": 513, // San Felipe
+  "san-marcelino": 514, // San Marcelino
+  "san-narciso": 515, // San Narciso
+  "santa-cruz": 516, // Santa Cruz
+  "subic": 517, // Subic
+
 }
 
 // Municipality data organized by province ID
@@ -203,7 +204,7 @@ const MUNICIPALITIES_DATA: Record<number, Omit<Municipality, 'id'>[]> = {
     { name: 'Dingalan', slug: 'dingalan', province_id: 1 },
     { name: 'Dipaculao', slug: 'dipaculao', province_id: 1 },
     { name: 'Maria Aurora', slug: 'maria-aurora', province_id: 1 },
-    { name: 'San Luis', slug: 'san-luis-aurora', province_id: 1 },
+    { name: 'San Luis', slug: 'san-luis', province_id: 1 },
   ],
   // Bataan (province_id: 2) - 12 municipalities
   2: [

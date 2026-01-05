@@ -34,7 +34,7 @@ export default function UserVerificationList({
   const [error, setError] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showModal, setShowModal] = useState(false)
-  const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [actionLoading, setActionLoading] = useState<{ userId: number; action: 'approve' | 'reject' } | null>(null)
 
   // Load pending users
   const loadPendingUsers = async () => {
@@ -63,7 +63,7 @@ export default function UserVerificationList({
   // Handle user verification
   const handleVerifyUser = async (userId: number) => {
     try {
-      setActionLoading(userId)
+      setActionLoading({ userId, action: 'approve' })
       await userApi.verifyUser(userId)
       
       // Remove user from list
@@ -85,7 +85,7 @@ export default function UserVerificationList({
   // Handle user rejection
   const handleRejectUser = async (userId: number, reason: string) => {
     try {
-      setActionLoading(userId)
+      setActionLoading({ userId, action: 'reject' })
       await userApi.rejectUser(userId, reason)
       
       // Remove user from list
@@ -203,17 +203,17 @@ export default function UserVerificationList({
                 </button>
                 <button
                   onClick={() => handleVerifyUser(user.id)}
-                  disabled={actionLoading === user.id}
+                  disabled={actionLoading !== null}
                   className="px-3 py-1 text-xs whitespace-nowrap font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
-                  {actionLoading === user.id ? 'Verifying...' : 'Approve'}
+                  {actionLoading?.userId === user.id && actionLoading?.action === 'approve' ? 'Verifying...' : 'Approve'}
                 </button>
                 <button
                   onClick={() => handleRejectUser(user.id, 'Verification rejected by admin')}
-                  disabled={actionLoading === user.id}
+                  disabled={actionLoading !== null}
                   className="px-3 py-1 text-xs whitespace-nowrap font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
-                  {actionLoading === user.id ? 'Rejecting...' : 'Reject'}
+                  {actionLoading?.userId === user.id && actionLoading?.action === 'reject' ? 'Rejecting...' : 'Reject'}
                 </button>
               </div>
             </div>
@@ -231,7 +231,7 @@ export default function UserVerificationList({
           }}
           onVerify={handleVerifyUser}
           onReject={handleRejectUser}
-          loading={actionLoading === selectedUser.id}
+          loading={actionLoading?.userId === selectedUser.id ? actionLoading.action : null}
         />
       )}
     </>
@@ -244,7 +244,7 @@ interface UserDetailModalProps {
   onClose: () => void
   onVerify: (userId: number) => void
   onReject: (userId: number, reason: string) => void
-  loading: boolean
+  loading: 'approve' | 'reject' | null
 }
 
 function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDetailModalProps) {
@@ -361,10 +361,10 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
                 </button>
                 <button
                   onClick={() => onVerify(user.id)}
-                  disabled={loading}
+                  disabled={loading !== null}
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
-                  {loading ? 'Verifying...' : 'Approve'}
+                  {loading === 'approve' ? 'Verifying...' : 'Approve'}
                 </button>
               </>
             ) : (
@@ -386,10 +386,10 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
                 </button>
                 <button
                   onClick={handleReject}
-                  disabled={loading || !rejectReason.trim()}
+                  disabled={loading !== null || !rejectReason.trim()}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
-                  {loading ? 'Rejecting...' : 'Confirm Reject'}
+                  {loading === 'reject' ? 'Rejecting...' : 'Confirm Reject'}
                 </button>
               </>
             )}

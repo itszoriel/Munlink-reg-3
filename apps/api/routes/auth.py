@@ -1,6 +1,12 @@
 """
 MunLink Region 3 - Authentication Routes
 User registration, login, email verification
+
+Security: Critical endpoints have rate limiting applied to prevent:
+- Brute force attacks on login
+- Credential stuffing
+- Spam account creation
+- Email verification abuse
 """
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
@@ -21,6 +27,13 @@ try:
     from apps.api import db
 except ImportError:
     from __init__ import db
+try:
+    from apps.api.app import limiter
+except ImportError:
+    try:
+        from app import limiter
+    except ImportError:
+        limiter = None
 import bcrypt
 try:
     from apps.api.models.user import User
@@ -68,7 +81,18 @@ except ImportError:
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 
+# Rate limiting helper - applies limiter if available
+def _limit(limit_string):
+    """Apply rate limit if limiter is available."""
+    def decorator(f):
+        if limiter:
+            return limiter.limit(limit_string)(f)
+        return f
+    return decorator
+
+
 @auth_bp.route('/register', methods=['POST'])
+@_limit("5 per hour")  # Prevent spam account creation
 def register():
     """Register a new resident account (Gmail-only, email verification required)."""
     try:
@@ -215,8 +239,9 @@ def register():
 
 
 @auth_bp.route('/login', methods=['POST'])
+@_limit("10 per minute")  # Critical: prevent brute force attacks
 def login():
-    """Login and get access tokens."""
+    """Login and get access tokens with token family tracking for rotation."""
     try:
         data = request.get_json()
         
@@ -247,17 +272,60 @@ def login():
         
         # Update last login
         user.last_login = datetime.utcnow()
+        
+        # Create refresh token (token rotation is optional - gracefully degrade if tables don't exist)
+        refresh_token = None
+        try:
+            from apps.api.models.refresh_token import RefreshTokenFamily, RefreshToken
+            
+            # Create token family for this session (for token rotation tracking)
+            family = RefreshTokenFamily.create_family(
+                user_id=user.id,
+                user_agent=request.headers.get('User-Agent'),
+                ip_address=request.remote_addr,
+            )
+            db.session.flush()  # Get family ID
+            
+            # Create refresh token with family_id in claims
+            refresh_expires = timedelta(days=30)
+            refresh_token = create_refresh_token(
+                identity=str(user.id),
+                expires_delta=refresh_expires,
+                additional_claims={
+                    "role": user.role,
+                    "family_id": family.family_id,
+                }
+            )
+            
+            # Track the refresh token JTI
+            refresh_jti = decode_token(refresh_token)['jti']
+            RefreshToken.create_token(
+                jti=refresh_jti,
+                family=family,
+                expires_at=datetime.utcnow() + refresh_expires,
+            )
+        except ImportError:
+            # Token rotation models not available, fall back to simple refresh token
+            current_app.logger.debug("Token rotation not available (ImportError)")
+        except Exception as e:
+            # Token rotation failed (likely table doesn't exist), fall back to simple refresh token
+            db.session.rollback()
+            current_app.logger.warning(f"Token rotation setup failed (falling back to simple token): {e}")
+        
+        # If token rotation failed or wasn't available, create simple refresh token
+        if refresh_token is None:
+            refresh_token = create_refresh_token(
+                identity=str(user.id),
+                expires_delta=timedelta(days=30),
+                additional_claims={"role": user.role}
+            )
+        
         db.session.commit()
         
-        # Create access and refresh tokens (subject must be a string) with role claim
+        # Create access token (subject must be a string) with role claim
         access_token = create_access_token(
             identity=str(user.id),
             expires_delta=timedelta(hours=1),
-            additional_claims={"role": user.role}
-        )
-        refresh_token = create_refresh_token(
-            identity=str(user.id),
-            expires_delta=timedelta(days=30),
             additional_claims={"role": user.role}
         )
         
@@ -272,6 +340,7 @@ def login():
         return resp, 200
     
     except Exception as e:
+        db.session.rollback()
         # Log the error for debugging
         import traceback
         try:
@@ -293,11 +362,13 @@ def login():
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
-    """Logout and blacklist the current token."""
+    """Logout and blacklist the current token, invalidating the session family."""
     try:
-        jti = get_jwt()['jti']
+        jwt_data = get_jwt()
+        jti = jwt_data.get('jti')
         user_id = get_jwt_identity()
-        token_type = get_jwt().get('type', 'access')
+        token_type = jwt_data.get('type', 'access')
+        family_id = jwt_data.get('family_id')
         
         # Calculate expiration time
         expires_delta = timedelta(hours=1) if token_type == 'access' else timedelta(days=30)
@@ -305,6 +376,20 @@ def logout():
         
         # Add token to blacklist
         TokenBlacklist.add_token_to_blacklist(jti, token_type, user_id, expires_at)
+        
+        # Invalidate the entire token family if present (prevents any refresh tokens in this session)
+        try:
+            from apps.api.models.refresh_token import RefreshTokenFamily
+            
+            if family_id:
+                family = RefreshTokenFamily.query.filter_by(family_id=family_id, is_active=True).first()
+                if family:
+                    family.invalidate('logout')
+                    db.session.commit()
+        except ImportError:
+            pass
+        except Exception as e:
+            current_app.logger.warning(f"Failed to invalidate token family on logout: {e}")
         
         resp = jsonify({'message': 'Logout successful'})
         # Clear JWT cookies (access/refresh) if present
@@ -318,9 +403,18 @@ def logout():
 @auth_bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
-    """Refresh access token using refresh token."""
+    """Refresh access token using refresh token with rotation.
+    
+    Security: Implements token rotation to detect and prevent token theft.
+    - Each refresh token can only be used once
+    - Reusing an old token invalidates the entire session family
+    - A new refresh token is issued with each refresh
+    """
     try:
         user_id = get_jwt_identity()
+        jwt_data = get_jwt()
+        old_jti = jwt_data.get('jti')
+        family_id = jwt_data.get('family_id')
         
         # Include current role in refreshed token
         try:
@@ -328,7 +422,81 @@ def refresh():
         except Exception:
             uid = user_id
         user = User.query.get(uid)
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        if not user.is_active:
+            return jsonify({'error': 'Account is deactivated'}), 403
+        
         role = getattr(user, 'role', None) or 'public'
+        
+        # Token rotation with theft detection
+        new_refresh_token = None
+        try:
+            from apps.api.models.refresh_token import RefreshTokenFamily, RefreshToken
+            
+            if old_jti:
+                # Validate the old token and check for reuse
+                is_valid, error_reason, old_token = RefreshToken.is_token_valid(old_jti)
+                
+                if not is_valid:
+                    if error_reason == 'reuse_detected':
+                        # SECURITY: Token reuse detected! Session compromised.
+                        current_app.logger.warning(
+                            f"Token reuse detected for user {uid}. "
+                            f"Family invalidated. Possible token theft."
+                        )
+                        return jsonify({
+                            'error': 'Session invalidated for security',
+                            'code': 'TOKEN_REUSE_DETECTED'
+                        }), 401
+                    elif error_reason == 'family_invalid':
+                        return jsonify({
+                            'error': 'Session expired. Please login again.',
+                            'code': 'SESSION_EXPIRED'
+                        }), 401
+                    else:
+                        return jsonify({
+                            'error': 'Invalid refresh token',
+                            'code': 'INVALID_TOKEN'
+                        }), 401
+                
+                # Mark old token as used
+                old_token.mark_used()
+                
+                # Create new refresh token in the same family
+                family = old_token.family
+                refresh_expires = timedelta(days=30)
+                new_refresh_token = create_refresh_token(
+                    identity=str(user_id),
+                    expires_delta=refresh_expires,
+                    additional_claims={
+                        "role": role,
+                        "family_id": family.family_id,
+                    }
+                )
+                
+                # Track the new refresh token
+                new_jti = decode_token(new_refresh_token)['jti']
+                RefreshToken.create_token(
+                    jti=new_jti,
+                    family=family,
+                    expires_at=datetime.utcnow() + refresh_expires,
+                )
+                
+                db.session.commit()
+            else:
+                # No JTI - legacy token without rotation, just create access token
+                pass
+                
+        except ImportError:
+            # Token rotation models not available
+            pass
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.warning(f"Token rotation error: {e}")
+            # Continue without rotation - better UX than failing
 
         # Create new access token (subject must be a string)
         access_token = create_access_token(
@@ -337,13 +505,147 @@ def refresh():
             additional_claims={"role": role}
         )
         
-        return jsonify({'access_token': access_token}), 200
+        response_data = {'access_token': access_token}
+        resp = jsonify(response_data)
+        
+        # Set new refresh token cookie if rotation occurred
+        if new_refresh_token:
+            set_refresh_cookies(resp, new_refresh_token)
+        
+        return resp, 200
     
     except Exception as e:
-        return jsonify({'error': 'Token refresh failed', 'details': str(e)}), 500
+        db.session.rollback()
+        current_app.logger.error(f"Token refresh failed: {e}")
+        return jsonify({
+            'error': 'Token refresh failed',
+            'details': str(e) if current_app.config.get('DEBUG') else None
+        }), 500
+
+
+@auth_bp.route('/admin/login', methods=['POST'])
+@_limit("10 per minute")  # Rate limit admin login attempts
+def admin_login():
+    """Admin login - same as regular login but validates admin role.
+    
+    This is a convenience endpoint for the admin panel.
+    Returns 403 if user is not an admin.
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'Request body is required'}), 400
+        
+        username_or_email = data.get('username') or data.get('email')
+        password = data.get('password')
+        
+        if not username_or_email or not password:
+            return jsonify({'error': 'Username/email and password are required'}), 400
+        
+        # Find user by username or email (case-insensitive)
+        user = User.query.filter(
+            db.or_(
+                db.func.lower(User.username) == username_or_email.lower(),
+                db.func.lower(User.email) == username_or_email.lower()
+            )
+        ).first()
+        
+        if not user:
+            return jsonify({'error': 'Invalid credentials'}), 401
+        
+        # Check password
+        if not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
+            return jsonify({'error': 'Invalid credentials'}), 401
+        
+        # ADMIN CHECK: Verify user has admin role
+        if user.role not in ('admin', 'superadmin'):
+            return jsonify({'error': 'Access denied. Admin privileges required.'}), 403
+        
+        # Check if account is active
+        if not user.is_active:
+            return jsonify({'error': 'Account is deactivated'}), 403
+        
+        # Update last login
+        user.last_login = datetime.utcnow()
+        
+        # Create refresh token (token rotation is optional)
+        refresh_token = None
+        try:
+            from apps.api.models.refresh_token import RefreshTokenFamily, RefreshToken
+            
+            family = RefreshTokenFamily.create_family(
+                user_id=user.id,
+                user_agent=request.headers.get('User-Agent'),
+                ip_address=request.remote_addr,
+            )
+            db.session.flush()
+            
+            refresh_expires = timedelta(days=30)
+            refresh_token = create_refresh_token(
+                identity=str(user.id),
+                expires_delta=refresh_expires,
+                additional_claims={
+                    "role": user.role,
+                    "family_id": family.family_id,
+                }
+            )
+            
+            refresh_jti = decode_token(refresh_token)['jti']
+            RefreshToken.create_token(
+                jti=refresh_jti,
+                family=family,
+                expires_at=datetime.utcnow() + refresh_expires,
+            )
+        except ImportError:
+            current_app.logger.debug("Token rotation not available")
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.warning(f"Token rotation failed: {e}")
+        
+        if refresh_token is None:
+            refresh_token = create_refresh_token(
+                identity=str(user.id),
+                expires_delta=timedelta(days=30),
+                additional_claims={"role": user.role}
+            )
+        
+        db.session.commit()
+        
+        # Create access token
+        access_token = create_access_token(
+            identity=str(user.id),
+            expires_delta=timedelta(hours=1),
+            additional_claims={"role": user.role}
+        )
+        
+        resp = jsonify({
+            'message': 'Admin login successful',
+            'access_token': access_token,
+            'user': user.to_dict(include_sensitive=True, include_municipality=True)
+        })
+        set_refresh_cookies(resp, refresh_token)
+        return resp, 200
+    
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        current_app.logger.error(f"Admin login error: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
+        
+        response = jsonify({
+            'error': 'Login failed',
+            'details': str(e) if current_app.config.get('DEBUG') else None
+        })
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response, 500
 
 
 @auth_bp.route('/admin/register', methods=['POST'])
+@_limit("3 per hour")  # Strict limit on admin account creation
 def admin_register():
     """Create a municipal admin account (separate admin site).
     Requires ADMIN_SECRET_KEY to be provided in the request body as 'admin_secret'.
@@ -532,6 +834,7 @@ def resend_verification_email():
 
 
 @auth_bp.route('/resend-verification-public', methods=['POST'])
+@_limit("3 per hour")  # Prevent email spam/enumeration attacks
 def resend_verification_email_public():
     """Public endpoint to resend email verification link by email address.
     Always returns 200 to avoid account enumeration.
@@ -796,6 +1099,7 @@ def upload_verification_docs():
 
 @auth_bp.route('/change-password', methods=['POST'])
 @jwt_required()
+@_limit("5 per hour")  # Limit password change attempts
 def change_password():
     """Change user password."""
     try:

@@ -20,20 +20,36 @@ type Announcement = {
 
 export default function AnnouncementsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
+  const selectedProvince = useAppStore((s) => s.selectedProvince)
+  const user = useAppStore((s) => s.user)
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated)
   const [priority, setPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all')
   const [hideRead, setHideReadState] = useState<boolean>(getHideRead())
 
+  // Municipality scoping
+  const userMunicipalityId = (user as any)?.municipality_id
+  const effectiveMunicipalityId = isAuthenticated && userMunicipalityId 
+    ? (selectedMunicipality?.id || userMunicipalityId)  // Allow browsing, default to user's
+    : selectedMunicipality?.id
+  const guestLocationComplete = !isAuthenticated && !!selectedProvince?.id && !!selectedMunicipality?.id
+  const shouldFetch = isAuthenticated || guestLocationComplete
+  const isViewingMismatch = !!userMunicipalityId && !!selectedMunicipality?.id && userMunicipalityId !== selectedMunicipality.id
+
   const params = useMemo(() => {
     const p: any = { active: true, page: 1, per_page: 20 }
-    if (selectedMunicipality?.id) p.municipality_id = selectedMunicipality.id
+    if (effectiveMunicipalityId) p.municipality_id = effectiveMunicipalityId
     return p
-  }, [selectedMunicipality?.id])
+  }, [effectiveMunicipalityId])
 
   // Use cached fetch with filter-specific key
   const { data: announcementsData, loading } = useCachedFetch(
     CACHE_KEYS.ANNOUNCEMENTS,
     () => announcementsApi.getAll(params),
-    { dependencies: [selectedMunicipality?.id], staleTime: 5 * 60 * 1000 }
+    { 
+      dependencies: [effectiveMunicipalityId], 
+      staleTime: 5 * 60 * 1000,
+      enabled: shouldFetch  // Only fetch when location context is ready
+    }
   )
 
   // Client-side filtering
@@ -75,6 +91,20 @@ export default function AnnouncementsPage() {
           </label>
         </div>
       </div>
+
+      {/* Cross-Municipality Discovery Notice */}
+      {isViewingMismatch && (
+        <div className="mb-4 p-3 rounded-lg border border-yellow-300 bg-yellow-50 text-sm text-yellow-900">
+          <strong>Viewing {selectedMunicipality?.name}</strong>. Announcements are shown for this municipality.
+        </div>
+      )}
+
+      {/* Guest Location Required Message */}
+      {!isAuthenticated && !guestLocationComplete && (
+        <div className="mb-4 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
+          <p><strong>Select your location</strong> to view announcements. Use the location selector above to choose your province and municipality.</p>
+        </div>
+      )}
 
       {/* Only show skeleton when loading and no cached data */}
       {loading && items.length === 0 ? (

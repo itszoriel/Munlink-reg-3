@@ -50,10 +50,10 @@ export default function Reports() {
   }, [range, hasLoadedOnce])
 
   const metrics = useMemo(() => ([
-    { label: 'Total Users', value: String(report?.users?.total_users ?? '—'), change: '+0%', trend: 'up', icon: '👥', color: 'ocean' },
-    { label: 'Active Listings', value: String(report?.marketplace?.total_items ?? '—'), change: '+0%', trend: 'up', icon: '🛍️', color: 'forest' },
-    { label: 'Documents Issued', value: String((report?.documents?.total_requests ?? report?.documents?.issued_total) ?? '—'), change: '+0%', trend: 'up', icon: '📄', color: 'purple' },
-    { label: 'Active Announcements', value: String(report?.announcements?.active_announcements ?? '—'), change: '+0%', trend: 'up', icon: '📢', color: 'sunset' },
+    { label: 'Total Users', value: String(report?.users?.total_users ?? 0), change: '+0%', trend: 'up', icon: '👥', color: 'ocean' },
+    { label: 'Active Listings', value: String(report?.marketplace?.total_items ?? 0), change: '+0%', trend: 'up', icon: '🛍️', color: 'forest' },
+    { label: 'Documents Issued', value: String((report?.documents?.total_requests ?? report?.documents?.issued_total) ?? 0), change: '+0%', trend: 'up', icon: '📄', color: 'purple' },
+    { label: 'Active Announcements', value: String(report?.announcements?.active_announcements ?? 0), change: '+0%', trend: 'up', icon: '📢', color: 'sunset' },
   ] as const), [report])
 
   const documents = (report?.documents?.top_requested as any[]) || []

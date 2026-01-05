@@ -21,6 +21,7 @@ try:
     from apps.api.models.benefit import BenefitProgram, BenefitApplication
     from apps.api.models.token_blacklist import TokenBlacklist
     from apps.api.models.audit import AuditLog
+    from apps.api.models.refresh_token import RefreshTokenFamily, RefreshToken
 except ImportError:
     from .user import User
     from .province import Province
@@ -31,6 +32,7 @@ except ImportError:
     from .benefit import BenefitProgram, BenefitApplication
     from .token_blacklist import TokenBlacklist
     from .audit import AuditLog
+    from .refresh_token import RefreshTokenFamily, RefreshToken
 
 __all__ = [
     'User',
@@ -49,5 +51,7 @@ __all__ = [
     'BenefitApplication',
     'TokenBlacklist',
     'AuditLog',
+    'RefreshTokenFamily',
+    'RefreshToken',
 ]
 

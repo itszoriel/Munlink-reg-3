@@ -12,7 +12,7 @@ export default function Programs() {
   const [viewProgram, setViewProgram] = useState<any | null>(null)
   const [viewApplicants, setViewApplicants] = useState<{ program: any; applications: any[] } | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [actionLoading, setActionLoading] = useState<{ appId: number; action: 'review' | 'approve' | 'reject' } | number | null>(null)
   const [fabExpanded, setFabExpanded] = useState(false)
   const adminMunicipalityId = useAdminStore((s) => (s.user as any)?.admin_municipality_id || (s.user as any)?.municipality_id)
   
@@ -38,9 +38,13 @@ export default function Programs() {
   const applicationsCount = applications.length
   const loading = activeTab === 'applications' ? applicationsLoading : programsLoading
 
-  // Fetch programs (only if not fresh)
+  // Track if we've already attempted to fetch (prevents infinite loops with empty data)
+  const [hasFetchedPrograms, setHasFetchedPrograms] = useState(false)
+  const [hasFetchedApplications, setHasFetchedApplications] = useState(false)
+
+  // Fetch programs (only once per mount, or if stale)
   const fetchPrograms = useCallback(async () => {
-    if (programsFresh && programs.length > 0) return // Already have fresh data
+    if (programsFresh) return // Already have fresh data (even if empty)
     if (programsLoading) return // Already fetching
     
     dataStore.setLoading(CACHE_KEYS.PROGRAMS, true)
@@ -59,14 +63,15 @@ export default function Programs() {
         name: p.name || p.title || 'Program',
         code: p.code || '',
         program_type: p.program_type || 'general',
-        description: p.description || '—',
+        description: p.description || 'No description provided',
         image_path: p.image_path || p.image || p.image_url || null,
         beneficiaries: p.current_beneficiaries || p.beneficiaries || 0,
         duration_days: p.duration_days ?? null,
         completed_at: p.completed_at || null,
         is_active: p.is_active !== false,
         status: (p.is_active === false ? 'archived' : 'active'),
-        eligibility: p.eligibility || p.eligibility_criteria || [],
+        eligibility_criteria: p.eligibility_criteria || null,
+        requirements: p.requirements || p.required_documents || [],
         icon: '📋',
         color: 'ocean',
       }))
@@ -75,12 +80,12 @@ export default function Programs() {
       setError(handleApiError(e))
       dataStore.setError(CACHE_KEYS.PROGRAMS, handleApiError(e))
     }
-  }, [adminMunicipalityId, programsFresh, programs.length, programsLoading, dataStore])
+  }, [adminMunicipalityId, programsFresh, programsLoading, dataStore])
 
-  // Fetch applications (only if not fresh)
+  // Fetch applications (only once per tab visit, or if stale)
   const fetchApplications = useCallback(async () => {
-    if (applicationsFresh && applications.length > 0) return
-    if (applicationsLoading) return
+    if (applicationsFresh) return // Already have fresh data (even if empty)
+    if (applicationsLoading) return // Already fetching
     
     dataStore.setLoading(CACHE_KEYS.APPLICATIONS, true)
     try {
@@ -95,26 +100,37 @@ export default function Programs() {
       setError(e.message || 'Failed to load applications')
       dataStore.setError(CACHE_KEYS.APPLICATIONS, e.message)
     }
-  }, [applicationsFresh, applications.length, applicationsLoading, dataStore])
+  }, [applicationsFresh, applicationsLoading, dataStore])
 
-  // Initial data fetch
+  // Initial data fetch - only once
   useEffect(() => {
-    fetchPrograms()
-  }, [fetchPrograms])
+    if (!hasFetchedPrograms && !programsFresh) {
+      setHasFetchedPrograms(true)
+      fetchPrograms()
+    }
+  }, [hasFetchedPrograms, programsFresh, fetchPrograms])
 
-  // Fetch applications when tab is active
+  // Fetch applications when tab is active - only once per tab visit
   useEffect(() => {
-    if (activeTab === 'applications') {
+    if (activeTab === 'applications' && !hasFetchedApplications && !applicationsFresh) {
+      setHasFetchedApplications(true)
       fetchApplications()
     }
-  }, [activeTab, fetchApplications])
+  }, [activeTab, hasFetchedApplications, applicationsFresh, fetchApplications])
 
+  const pendingApplicationsCount = useMemo(() => applications.filter((a: any) => a.status === 'pending' || a.status === 'under_review').length, [applications])
+  const approvedThisMonthCount = useMemo(() => {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    return applications.filter((a: any) => a.status === 'approved' && new Date(a.updated_at || a.created_at) >= startOfMonth).length
+  }, [applications])
+  
   const stats = useMemo(() => ([
     { icon: '📋', label: 'Active Programs', value: String(activeCount), color: 'ocean' },
-    { icon: '👥', label: 'Total Beneficiaries', value: beneficiariesTotal !== null ? beneficiariesTotal.toLocaleString() : '—', color: 'forest' },
-    { icon: '⏳', label: 'Pending Applications', value: '—', color: 'sunset' },
-    { icon: '✅', label: 'Approved This Month', value: '—', color: 'purple' },
-  ]), [activeCount, beneficiariesTotal])
+    { icon: '👥', label: 'Total Beneficiaries', value: beneficiariesTotal !== null ? beneficiariesTotal.toLocaleString() : '0', color: 'forest' },
+    { icon: '⏳', label: 'Pending Applications', value: String(pendingApplicationsCount), color: 'sunset' },
+    { icon: '✅', label: 'Approved This Month', value: String(approvedThisMonthCount), color: 'purple' },
+  ]), [activeCount, beneficiariesTotal, pendingApplicationsCount, approvedThisMonthCount])
 
   const openCreate = () => setCreateOpen(true)
   const closeCreate = () => setCreateOpen(false)
@@ -133,9 +149,13 @@ export default function Programs() {
       if (adminMunicipalityId) payload.append('municipality_id', String(adminMunicipalityId))
       if (data.imageFile) payload.append('file', data.imageFile)
       
-      // Add eligibility as JSON array
-      if (data.eligibility && data.eligibility.length > 0) {
-        payload.append('eligibility', JSON.stringify(data.eligibility))
+      // Add eligibility tags (API expects eligibility_criteria as structured object)
+      if (data.eligibility_criteria) {
+        payload.append('eligibility_criteria', JSON.stringify(data.eligibility_criteria))
+      }
+      // Add requirements as JSON array (API expects required_documents)
+      if (data.requirements && data.requirements.length > 0) {
+        payload.append('required_documents', JSON.stringify(data.requirements))
       }
 
       const res = await benefitsAdminApi.createProgram(payload)
@@ -155,7 +175,8 @@ export default function Programs() {
           completed_at: created.completed_at || null,
           is_active: created.is_active !== false,
           status: created.is_active ? 'active' : 'archived',
-          eligibility: created.eligibility || created.eligibility_criteria || [],
+          eligibility_criteria: created.eligibility_criteria || null,
+          requirements: created.requirements || created.required_documents || [],
           icon: '📋',
           color: 'ocean',
         }, ...prev])
@@ -214,47 +235,13 @@ export default function Programs() {
             <p className="text-sm text-neutral-600">{stat.label}</p>
           </div>
         ))}
-        {!loading && activeTab === 'archived' && programs.filter((p:any)=>!p.is_active).map((program, i) => (
-          <div key={i} className="group bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50">
-            <div className="relative h-32 bg-gradient-to-br from-ocean-500 to-ocean-700 flex items-center justify-center overflow-hidden">
-              {program.image_path ? (
-                <img src={mediaUrl(program.image_path)} alt={`${program.title} image`} className="absolute inset-0 w-full h-full object-cover" />
-              ) : null}
-              <div className="absolute inset-0 bg-white/10" />
-              {!program.image_path ? (
-                <span className="relative">
-                  <IconFromCode code={program.icon as string} className="w-12 h-12 text-white" />
-                </span>
-              ) : null}
-            </div>
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-bold text-lg text-neutral-900">{program.title}</h3>
-                <span className="px-2 py-1 bg-neutral-100 text-neutral-700 text-xs font-medium rounded-full">Program Completed</span>
-              </div>
-              <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{program.description}</p>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-neutral-50 rounded-xl p-3">
-                  <p className="text-xs text-neutral-600 mb-1">Beneficiaries</p>
-                  <p className="text-lg font-bold text-neutral-900">{program.beneficiaries}</p>
-                </div>
-                {Number(program.duration_days) > 0 && (
-                  <div className="bg-neutral-50 rounded-xl p-3">
-                    <p className="text-xs text-neutral-600 mb-1">Duration (days)</p>
-                    <p className="text-lg font-bold text-neutral-900">{program.duration_days}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
 
       <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-2 shadow-lg border border-white/50 mb-6 -mx-2 px-2 overflow-x-auto">
         <div className="inline-flex gap-2 min-w-max">
           {[
             { value: 'active', label: 'Active Programs', count: activeCount },
-            { value: 'applications', label: 'Applications', count: applicationsCount === null ? '—' : applicationsCount },
+            { value: 'applications', label: 'Applications', count: applicationsCount ?? 0 },
             { value: 'archived', label: 'Archived', count: programs.filter((p:any)=>!p.is_active).length },
           ].map((tab) => (
             <button key={tab.value} onClick={() => setActiveTab(tab.value as any)} className={`shrink-0 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === tab.value ? 'bg-ocean-gradient text-white shadow-lg' : 'text-neutral-700 hover:bg-neutral-100'}`}>
@@ -267,7 +254,7 @@ export default function Programs() {
 
       {error && <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 text-yellow-800 px-3 py-2 text-sm">{error}</div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading && activeTab !== 'applications' && [...Array(6)].map((_, i) => (
+        {loading && [...Array(6)].map((_, i) => (
           <div key={i} className="bg-white/70 rounded-3xl p-6 border border-white/50">
             <div className="h-32 skeleton rounded-2xl mb-4" />
             <div className="h-4 w-40 skeleton rounded mb-2" />
@@ -338,24 +325,75 @@ export default function Programs() {
               <div>
                 <div className="text-sm text-neutral-600">Application No. {app.application_number}</div>
                 <div className="font-semibold">{app.user?.first_name} {app.user?.last_name}</div>
-                <div className="text-sm">Program: <span className="font-medium">{app.program?.name || '—'}</span></div>
+                <div className="text-sm">Program: <span className="font-medium">{app.program?.name || <span className="text-neutral-400 italic">Unknown</span>}</span></div>
                 <div className="text-xs text-neutral-600">Submitted: {(app.created_at || '').slice(0,10)}</div>
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${app.status==='approved'?'bg-emerald-100 text-emerald-700':app.status==='rejected'?'bg-rose-100 text-rose-700':app.status==='under_review'?'bg-yellow-100 text-yellow-700':'bg-neutral-100 text-neutral-700'}`}>{app.status}</span>
             </div>
             <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:justify-end">
-              {app.status !== 'under_review' && app.status !== 'approved' && (
-                <button className="px-3 py-1.5 rounded-lg bg-yellow-100 hover:bg-yellow-200 text-yellow-700 text-sm" onClick={async()=>{
-                  try{ setActionLoading(app.id); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'under_review' }) }); updateApplication(app.id, { status: 'under_review' }); showToast('Application marked under review', 'success') } catch(e:any){ showToast('Failed to update application', 'error') } finally { setActionLoading(null) }}}>Mark Under Review</button>
+              {app.status !== 'approved' && app.status !== 'rejected' && (
+                <>
+                  {app.status !== 'under_review' && (
+                    <button className="px-3 py-1.5 rounded-lg bg-yellow-100 hover:bg-yellow-200 text-yellow-700 text-sm" disabled={actionLoading !== null} onClick={async()=>{
+                      try{ setActionLoading({ appId: app.id, action: 'review' }); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'under_review' }) }); updateApplication(app.id, { status: 'under_review' }); showToast('Application marked under review', 'success') } catch(e:any){ showToast('Failed to update application', 'error') } finally { setActionLoading(null) }}}>{typeof actionLoading === 'object' && actionLoading !== null && actionLoading.appId === app.id && actionLoading.action === 'review' ? 'Processing…' : 'Mark Under Review'}</button>
+                  )}
+                  <button className="px-3 py-1.5 rounded-lg bg-forest-100 hover:bg-forest-200 text-forest-700 text-sm" disabled={actionLoading !== null} onClick={async()=>{
+                    try{ setActionLoading({ appId: app.id, action: 'approve' }); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'approved' }) }); updateApplication(app.id, { status: 'approved' }); showToast('Application approved', 'success') } catch(e:any){ showToast(e?.response?.data?.error || 'Failed to approve application', 'error') } finally { setActionLoading(null) }}}>{typeof actionLoading === 'object' && actionLoading !== null && actionLoading.appId === app.id && actionLoading.action === 'approve' ? 'Processing…' : 'Approve'}</button>
+                  <button className="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-sm" disabled={actionLoading !== null} onClick={async()=>{
+                    const reason = window.prompt('Enter reason for rejection','Incomplete requirements') || 'Incomplete requirements'
+                    try{ setActionLoading({ appId: app.id, action: 'reject' }); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'rejected', rejection_reason: reason }) }); updateApplication(app.id, { status: 'rejected', rejection_reason: reason }); showToast('Application rejected', 'success') } catch(e:any){ showToast(e?.response?.data?.error || 'Failed to reject application', 'error') } finally { setActionLoading(null) }}}>{typeof actionLoading === 'object' && actionLoading !== null && actionLoading.appId === app.id && actionLoading.action === 'reject' ? 'Processing…' : 'Reject'}</button>
+                </>
               )}
-              {app.status !== 'approved' && (
-                <button className="px-3 py-1.5 rounded-lg bg-forest-100 hover:bg-forest-200 text-forest-700 text-sm" onClick={async()=>{
-                  try{ setActionLoading(app.id); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'approved' }) }); updateApplication(app.id, { status: 'approved' }); showToast('Application approved', 'success') } catch(e:any){ showToast('Failed to approve application', 'error') } finally { setActionLoading(null) }}}>Approve</button>
+              {(app.status === 'approved' || app.status === 'rejected') && (
+                <div className="text-sm text-gray-600 italic">
+                  {app.status === 'approved' ? 'Application has been approved.' : 'Application has been rejected. Status is final.'}
+                </div>
               )}
-              {app.status !== 'rejected' && (
-                <button className="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-sm" onClick={async()=>{
-                  const reason = window.prompt('Enter reason for rejection','Incomplete requirements') || 'Incomplete requirements'
-                  try{ setActionLoading(app.id); await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/api/admin/benefits/applications/${app.id}/status`, { method:'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }, body: JSON.stringify({ status:'rejected', rejection_reason: reason }) }); updateApplication(app.id, { status: 'rejected', rejection_reason: reason }); showToast('Application rejected', 'success') } catch(e:any){ showToast('Failed to reject application', 'error') } finally { setActionLoading(null) }}}>Reject</button>
+            </div>
+          </div>
+        ))}
+        {!loading && activeTab === 'archived' && programs.filter((p:any)=>!p.is_active).length === 0 && (
+          <div className="col-span-full">
+            <EmptyState
+              icon="archive"
+              title="No archived programs"
+              description="Programs marked as completed will appear here."
+            />
+          </div>
+        )}
+        {!loading && activeTab === 'archived' && programs.filter((p:any)=>!p.is_active).map((program, i) => (
+          <div key={i} className="group bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50">
+            <div className="relative h-32 bg-gradient-to-br from-ocean-500 to-ocean-700 flex items-center justify-center overflow-hidden">
+              {program.image_path ? (
+                <img src={mediaUrl(program.image_path)} alt={`${program.title} image`} className="absolute inset-0 w-full h-full object-cover" />
+              ) : null}
+              <div className="absolute inset-0 bg-white/10" />
+              {!program.image_path ? (
+                <span className="relative">
+                  <IconFromCode code={program.icon as string} className="w-12 h-12 text-white" />
+                </span>
+              ) : null}
+            </div>
+            <div className="p-6">
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="font-bold text-lg text-neutral-900">{program.title}</h3>
+                <span className="px-2 py-1 bg-neutral-100 text-neutral-700 text-xs font-medium rounded-full">Completed</span>
+              </div>
+              <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{program.description}</p>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-neutral-50 rounded-xl p-3">
+                  <p className="text-xs text-neutral-600 mb-1">Beneficiaries</p>
+                  <p className="text-lg font-bold text-neutral-900">{program.beneficiaries}</p>
+                </div>
+                {Number(program.duration_days) > 0 && (
+                  <div className="bg-neutral-50 rounded-xl p-3">
+                    <p className="text-xs text-neutral-600 mb-1">Duration (days)</p>
+                    <p className="text-lg font-bold text-neutral-900">{program.duration_days}</p>
+                  </div>
+                )}
+              </div>
+              {program.completed_at && (
+                <p className="text-xs text-neutral-500">Completed: {(program.completed_at || '').slice(0,10)}</p>
               )}
             </div>
           </div>
@@ -374,7 +412,8 @@ export default function Programs() {
                   description: viewProgram.description || '',
                   program_type: viewProgram.program_type || 'general',
                   duration_days: viewProgram.duration_days ?? '',
-                  eligibility: viewProgram.eligibility || [],
+                  eligibility_criteria: viewProgram.eligibility_criteria || null,
+                  requirements: viewProgram.requirements || [],
                 }}
                 initialImagePath={viewProgram.image_path || viewProgram.image || viewProgram.image_url || null}
                 requireImage={false}
@@ -390,8 +429,11 @@ export default function Programs() {
                       if (data.duration_days !== '' && data.duration_days !== null && data.duration_days !== undefined) {
                         fd.append('duration_days', String(data.duration_days))
                       }
-                      if (data.eligibility && data.eligibility.length > 0) {
-                        fd.append('eligibility', JSON.stringify(data.eligibility))
+                      if (data.eligibility_criteria) {
+                        fd.append('eligibility_criteria', JSON.stringify(data.eligibility_criteria))
+                      }
+                      if (data.requirements && data.requirements.length > 0) {
+                        fd.append('required_documents', JSON.stringify(data.requirements))
                       }
                       fd.append('file', imageFile)
                       const res = await benefitsAdminApi.updateProgram(viewProgram.id, fd)
@@ -400,15 +442,19 @@ export default function Programs() {
                         description: updated?.description ?? data.description, 
                         duration_days: updated?.duration_days ?? data.duration_days, 
                         image_path: updated?.image_path,
-                        eligibility: updated?.eligibility || updated?.eligibility_criteria || data.eligibility
+                        eligibility_criteria: updated?.eligibility_criteria || data.eligibility_criteria,
+                        requirements: updated?.requirements || updated?.required_documents || data.requirements
                       })
                     } else {
                       const payload: any = { description: data.description }
                       if (data.duration_days !== '' && data.duration_days !== null && data.duration_days !== undefined) {
                         payload.duration_days = data.duration_days
                       }
-                      if (data.eligibility && data.eligibility.length > 0) {
-                        payload.eligibility = data.eligibility
+                      if (data.eligibility_criteria) {
+                        payload.eligibility_criteria = data.eligibility_criteria
+                      }
+                      if (data.requirements && data.requirements.length > 0) {
+                        payload.required_documents = data.requirements
                       }
                       const res = await benefitsAdminApi.updateProgram(viewProgram.id, payload)
                       const updated = (res as any)?.program
@@ -416,7 +462,8 @@ export default function Programs() {
                         description: updated?.description ?? data.description, 
                         duration_days: updated?.duration_days ?? data.duration_days, 
                         image_path: updated?.image_path,
-                        eligibility: updated?.eligibility || updated?.eligibility_criteria || data.eligibility
+                        eligibility_criteria: updated?.eligibility_criteria || data.eligibility_criteria,
+                        requirements: updated?.requirements || updated?.required_documents || data.requirements
                       })
                     }
                     setViewProgram(null)
@@ -431,18 +478,52 @@ export default function Programs() {
             ) : (
               <div className="space-y-3">
                 <div className="text-sm"><span className="font-medium">Name:</span> {viewProgram.name || viewProgram.title}</div>
-                <div className="text-sm"><span className="font-medium">Code:</span> {viewProgram.code || '—'}</div>
-                <div className="text-sm"><span className="font-medium">Type:</span> {viewProgram.program_type || '—'}</div>
+                <div className="text-sm"><span className="font-medium">Code:</span> {viewProgram.code || <span className="text-neutral-400 italic">Not set</span>}</div>
+                <div className="text-sm"><span className="font-medium">Type:</span> {viewProgram.program_type || <span className="text-neutral-400 italic">General</span>}</div>
                 {Number(viewProgram.duration_days) > 0 && (
                   <div className="text-sm"><span className="font-medium">Duration:</span> {viewProgram.duration_days} days</div>
                 )}
                 <div className="text-sm"><span className="font-medium">Description:</span> <div className="mt-1 text-neutral-700 whitespace-pre-wrap">{viewProgram.description}</div></div>
-                {viewProgram.eligibility && viewProgram.eligibility.length > 0 && (
+                {(() => {
+                  const criteria = viewProgram.eligibility_criteria
+                  if (criteria && typeof criteria === 'object' && !Array.isArray(criteria) && Object.keys(criteria).length > 0) {
+                    const tags: string[] = []
+                    if ('age_min' in criteria) {
+                      const min = criteria.age_min
+                      const max = criteria.age_max
+                      if (max) {
+                        tags.push(`Age: ${min}-${max} years`)
+                      } else {
+                        tags.push(`Age: Minimum ${min} years`)
+                      }
+                    }
+                    if (criteria.location_required === true) {
+                      tags.push('Location: Must be registered in assigned municipality')
+                    }
+                    return (
+                      <div className="text-sm">
+                        <span className="font-medium">Eligibility Tags:</span>
+                        <ul className="mt-1 list-disc list-inside text-neutral-700 space-y-1">
+                          {tags.map((tag, i) => (
+                            <li key={i}>{tag}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  } else {
+                    return (
+                      <div className="text-sm">
+                        <span className="font-medium">Eligibility:</span> <span className="text-neutral-600">Open to all applicants</span>
+                      </div>
+                    )
+                  }
+                })()}
+                {viewProgram.requirements && viewProgram.requirements.length > 0 && (
                   <div className="text-sm">
-                    <span className="font-medium">Eligibility:</span>
+                    <span className="font-medium">Requirements:</span>
                     <ul className="mt-1 list-disc list-inside text-neutral-700 space-y-1">
-                      {viewProgram.eligibility.map((e: string, i: number) => (
-                        <li key={i}>{e}</li>
+                      {viewProgram.requirements.map((r: string, i: number) => (
+                        <li key={i}>{r}</li>
                       ))}
                     </ul>
                   </div>
@@ -488,7 +569,7 @@ export default function Programs() {
         <Modal open={true} onOpenChange={(o)=>{ if(!o) setCreateOpen(false) }} title="Create Program" size="md">
           <div className="max-h-[calc(100vh-320px)] sm:max-h-[calc(100vh-250px)] overflow-y-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-4 sm:pb-0">
             <ProgramForm
-              initial={{ name: '', code: '', description: '', program_type: 'general', duration_days: '', eligibility: [] }}
+              initial={{ name: '', code: '', description: '', program_type: 'general', duration_days: '', eligibility_criteria: null, requirements: [] }}
               requireImage={true}
               onCancel={closeCreate}
               onSubmit={async (data, imageFile) => {
@@ -498,7 +579,7 @@ export default function Programs() {
                 }
                 await submitCreate({ ...data, imageFile })
               }}
-              submitting={actionLoading===-1}
+              submitting={actionLoading === -1}
             />
           </div>
         </Modal>
@@ -604,25 +685,93 @@ function ProgramForm({
 }) {
   const [form, setForm] = useState<any>(initial)
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [eligibilityItems, setEligibilityItems] = useState<string[]>(initial.eligibility || [])
-  const [newEligibilityItem, setNewEligibilityItem] = useState('')
+  const [requirementsItems, setRequirementsItems] = useState<string[]>(initial.requirements || [])
+  const [newRequirementItem, setNewRequirementItem] = useState('')
   
-  // Sync form and eligibility when initial changes
+  // Tag-based eligibility state
+  const [hasAgeTag, setHasAgeTag] = useState<boolean>(() => {
+    const criteria = initial.eligibility_criteria || initial.eligibility
+    if (typeof criteria === 'object' && criteria !== null && !Array.isArray(criteria)) {
+      return 'age' in criteria || 'age_min' in criteria
+    }
+    return false
+  })
+  const [ageMin, setAgeMin] = useState<number | ''>(() => {
+    const criteria = initial.eligibility_criteria || initial.eligibility
+    if (typeof criteria === 'object' && criteria !== null && !Array.isArray(criteria)) {
+      if ('age_min' in criteria) return criteria.age_min
+      if ('age' in criteria) {
+        const age = criteria.age
+        if (typeof age === 'string' && age.startsWith('>=')) {
+          return parseInt(age.replace('>=', '').trim()) || ''
+        }
+        if (typeof age === 'number') return age
+      }
+    }
+    return ''
+  })
+  const [ageMax, setAgeMax] = useState<number | ''>(() => {
+    const criteria = initial.eligibility_criteria || initial.eligibility
+    if (typeof criteria === 'object' && criteria !== null && !Array.isArray(criteria)) {
+      if ('age_max' in criteria) return criteria.age_max
+      if ('age' in criteria) {
+        const age = criteria.age
+        if (typeof age === 'string' && (age.startsWith('<=') || age.startsWith('<'))) {
+          return parseInt(age.replace(/[<=]/, '').trim()) || ''
+        }
+      }
+    }
+    return ''
+  })
+  const [hasLocationTag, setHasLocationTag] = useState<boolean>(() => {
+    const criteria = initial.eligibility_criteria || initial.eligibility
+    if (typeof criteria === 'object' && criteria !== null && !Array.isArray(criteria)) {
+      return 'municipality' in criteria || 'location_required' in criteria
+    }
+    return false
+  })
+  
+  // Sync form, eligibility, and requirements when initial changes
   useEffect(() => {
     setForm(initial)
-    setEligibilityItems(initial.eligibility || [])
+    setRequirementsItems(initial.requirements || [])
     setImageFile(null)
+    
+    // Parse eligibility tags from initial data
+    const criteria = initial.eligibility_criteria || initial.eligibility
+    if (typeof criteria === 'object' && criteria !== null && !Array.isArray(criteria)) {
+      setHasAgeTag('age' in criteria || 'age_min' in criteria)
+      if ('age_min' in criteria) {
+        setAgeMin(criteria.age_min)
+      } else if ('age' in criteria) {
+        const age = criteria.age
+        if (typeof age === 'string' && age.startsWith('>=')) {
+          setAgeMin(parseInt(age.replace('>=', '').trim()) || '')
+        } else if (typeof age === 'number') {
+          setAgeMin(age)
+        }
+      }
+      if ('age_max' in criteria) {
+        setAgeMax(criteria.age_max)
+      }
+      setHasLocationTag('municipality' in criteria || 'location_required' in criteria)
+    } else {
+      setHasAgeTag(false)
+      setAgeMin('')
+      setAgeMax('')
+      setHasLocationTag(false)
+    }
   }, [initial])
   
-  const addEligibilityItem = () => {
-    if (newEligibilityItem.trim()) {
-      setEligibilityItems([...eligibilityItems, newEligibilityItem.trim()])
-      setNewEligibilityItem('')
+  const addRequirementItem = () => {
+    if (newRequirementItem.trim()) {
+      setRequirementsItems([...requirementsItems, newRequirementItem.trim()])
+      setNewRequirementItem('')
     }
   }
   
-  const removeEligibilityItem = (index: number) => {
-    setEligibilityItems(eligibilityItems.filter((_, i) => i !== index))
+  const removeRequirementItem = (index: number) => {
+    setRequirementsItems(requirementsItems.filter((_, i) => i !== index))
   }
   
   const disabled = !(form.name && form.code && form.description && (!requireImage || !!imageFile))
@@ -632,7 +781,19 @@ function ProgramForm({
       onSubmit={(e)=>{ 
         e.preventDefault(); 
         if(!disabled) {
-          onSubmit({ ...form, eligibility: eligibilityItems }, imageFile)
+          // Build eligibility tags structure
+          const eligibilityTags: any = {}
+          if (hasAgeTag && ageMin !== '') {
+            eligibilityTags.age_min = Number(ageMin)
+            if (ageMax !== '') {
+              eligibilityTags.age_max = Number(ageMax)
+            }
+          }
+          if (hasLocationTag) {
+            eligibilityTags.location_required = true
+          }
+          
+          onSubmit({ ...form, eligibility_criteria: Object.keys(eligibilityTags).length > 0 ? eligibilityTags : null, requirements: requirementsItems }, imageFile)
         }
       }}
       className="space-y-4"
@@ -717,33 +878,113 @@ function ProgramForm({
         <p className="text-xs text-neutral-500 mt-1">Leave blank to keep the program active until marked Done.</p>
       </div>
       <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-1" htmlFor="program-eligibility">Eligibility Criteria</label>
+        <label className="block text-sm font-medium text-neutral-700 mb-2">Eligibility Tags</label>
+        <p className="text-xs text-neutral-500 mb-3">Add eligibility requirements using tags. If no tags are added, the program is open to all applicants.</p>
+        
+        <div className="space-y-3">
+          {/* Age Requirement Tag */}
+          <div className="border border-neutral-200 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasAgeTag}
+                  onChange={(e) => {
+                    setHasAgeTag(e.target.checked)
+                    if (!e.target.checked) {
+                      setAgeMin('')
+                      setAgeMax('')
+                    }
+                  }}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-medium">Age Requirement</span>
+              </label>
+            </div>
+            {hasAgeTag && (
+              <div className="mt-3 space-y-2 pl-6">
+                <div>
+                  <label className="block text-xs text-neutral-600 mb-1">Minimum Age <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={ageMin}
+                    onChange={(e) => setAgeMin(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="e.g., 18"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"
+                    required={hasAgeTag}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-neutral-600 mb-1">Maximum Age (Optional)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={ageMax}
+                    onChange={(e) => setAgeMax(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="e.g., 65"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Location Requirement Tag */}
+          <div className="border border-neutral-200 rounded-lg p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasLocationTag}
+                onChange={(e) => setHasLocationTag(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <span className="text-sm font-medium">Location Requirement</span>
+            </label>
+            {hasLocationTag && (
+              <div className="mt-2 pl-6">
+                <p className="text-xs text-neutral-600">Must be registered in your assigned municipality</p>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {!hasAgeTag && !hasLocationTag && (
+          <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+            No eligibility tags selected. This program will be open to all applicants.
+          </div>
+        )}
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 mb-1" htmlFor="program-requirements">Required Documents</label>
         <div className="space-y-2">
           <div className="flex gap-2">
             <input
-              id="program-eligibility"
+              id="program-requirements"
               type="text"
-              value={newEligibilityItem}
-              onChange={(e) => setNewEligibilityItem(e.target.value)}
+              value={newRequirementItem}
+              onChange={(e) => setNewRequirementItem(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  addEligibilityItem()
+                  addRequirementItem()
                 }
               }}
-              placeholder="Add eligibility requirement..."
+              placeholder="Add required document (e.g., Valid ID, Birth Certificate)..."
               className="flex-1 px-3 py-2 border border-neutral-300 rounded-md"
             />
-            <Button type="button" variant="secondary" size="sm" onClick={addEligibilityItem}>Add</Button>
+            <Button type="button" variant="secondary" size="sm" onClick={addRequirementItem}>Add</Button>
           </div>
-          {eligibilityItems.length > 0 && (
+          {requirementsItems.length > 0 && (
             <ul className="space-y-1">
-              {eligibilityItems.map((item, index) => (
+              {requirementsItems.map((item, index) => (
                 <li key={index} className="flex items-center justify-between bg-neutral-50 px-3 py-2 rounded-md">
                   <span className="text-sm text-neutral-700">{item}</span>
                   <button
                     type="button"
-                    onClick={() => removeEligibilityItem(index)}
+                    onClick={() => removeRequirementItem(index)}
                     className="text-red-600 hover:text-red-700 text-sm font-medium"
                     aria-label={`Remove ${item}`}
                   >
@@ -754,7 +995,7 @@ function ProgramForm({
             </ul>
           )}
         </div>
-        <p className="text-xs text-neutral-500 mt-1">List the requirements or criteria for program eligibility.</p>
+        <p className="text-xs text-neutral-500 mt-1">List the documents or files that applicants need to upload when applying.</p>
       </div>
       <div className="flex items-center justify-end gap-2 pt-2">
         <Button variant="secondary" size="sm" onClick={onCancel} type="button">Cancel</Button>

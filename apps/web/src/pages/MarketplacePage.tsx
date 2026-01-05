@@ -25,6 +25,7 @@ const TYPES = ['All', 'donate', 'lend', 'sell'] as const
 
 export default function MarketplacePage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
+  const selectedProvince = useAppStore((s) => s.selectedProvince)
   const user = useAppStore((s) => s.user)
   const userMunicipalityId = Number((user as any)?.municipality_id)
   const [category, setCategory] = useState<string>('All')
@@ -34,19 +35,29 @@ export default function MarketplacePage() {
   const isViewingMismatch = !!userMunicipalityId && !!selectedMunicipality?.id && userMunicipalityId !== selectedMunicipality.id
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
 
+  // Municipality scoping: Determine effective municipality and whether to fetch
+  // Logged-in users: default to their registered municipality
+  // Guests: must select province AND municipality before data loads
+  const effectiveMunicipalityId = isAuthenticated && userMunicipalityId 
+    ? (selectedMunicipality?.id || userMunicipalityId)  // Allow browsing other municipalities
+    : selectedMunicipality?.id
+  const guestLocationComplete = !isAuthenticated && !!selectedProvince?.id && !!selectedMunicipality?.id
+  const shouldFetchItems = isAuthenticated || guestLocationComplete
+
   // Use cached fetch with filter-specific keys
   const { data: itemsData, loading: itemsLoading, invalidate, refetch } = useCachedFetch(
     CACHE_KEYS.MARKETPLACE_ITEMS,
     () => {
       const params: any = { status: 'available', page: 1, per_page: 24 }
-      if (selectedMunicipality?.id) params.municipality_id = selectedMunicipality.id
+      if (effectiveMunicipalityId) params.municipality_id = effectiveMunicipalityId
       if (category !== 'All') params.category = category
       if (type !== 'All') params.transaction_type = type
       return marketplaceApi.getItems(params)
     },
     { 
-      dependencies: [selectedMunicipality?.id, category, type],
-      staleTime: 5 * 60 * 1000
+      dependencies: [effectiveMunicipalityId, category, type],
+      staleTime: 5 * 60 * 1000,
+      enabled: shouldFetchItems  // Only fetch when location context is ready
     }
   )
 
@@ -109,6 +120,20 @@ export default function MarketplacePage() {
           </GatedAction>
         </div>
       </div>
+
+      {/* Cross-Municipality Discovery Warning */}
+      {isViewingMismatch && (
+        <div className="mb-4 p-3 rounded-lg border border-yellow-300 bg-yellow-50 text-sm text-yellow-900">
+          <strong>Viewing {selectedMunicipality?.name}</strong>. You can only post, transact, or engage in your registered municipality.
+        </div>
+      )}
+
+      {/* Guest Location Required Message */}
+      {!isAuthenticated && !guestLocationComplete && (
+        <div className="mb-4 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
+          <p><strong>Select your location</strong> to view marketplace items. Use the location selector above to choose your province and municipality.</p>
+        </div>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-3">
         <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value)}>

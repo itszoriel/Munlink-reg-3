@@ -114,12 +114,22 @@ export default function Layout() {
               
               <span aria-hidden="true" className="w-px h-5 bg-gray-300 mx-1" />
               
-              {/* Hide location selectors on Dashboard page */}
+              {/* Location context: Hide on Dashboard, show user's municipality when logged in */}
               {location.pathname !== '/dashboard' && (
               <div className="flex items-center gap-1 bg-ocean-50/50 rounded-lg px-2 py-1">
-                <ProvinceSelect />
-                <span className="text-gray-300">/</span>
-                <MunicipalitySelect />
+                {role === 'public' ? (
+                  // Guests: Allow province/municipality selection for discovery
+                  <>
+                    <ProvinceSelect />
+                    <span className="text-gray-300">/</span>
+                    <MunicipalitySelect />
+                  </>
+                ) : (
+                  // Logged-in users: Show their registered municipality (non-editable)
+                  <span className="font-serif text-sm text-gray-700" title="Your registered municipality">
+                    📍 {(user as any)?.municipality_name || 'Your Municipality'}
+                  </span>
+                )}
               </div>
               )}
               
@@ -177,11 +187,21 @@ export default function Layout() {
             <Link to="/problems" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Problems</Link>
             <Link to="/programs" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Programs</Link>
             <Link to="/about" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">About</Link>
-            {/* Hide location selectors on Dashboard page */}
+            {/* Location context: Hide on Dashboard, show user's municipality when logged in */}
             {location.pathname !== '/dashboard' && (
-            <div className="px-3 py-2 space-y-2">
-              <ProvinceSelect />
-              <MunicipalitySelect />
+            <div className="px-3 py-2">
+              {role === 'public' ? (
+                // Guests: Allow province/municipality selection for discovery
+                <div className="space-y-2">
+                  <ProvinceSelect />
+                  <MunicipalitySelect />
+                </div>
+              ) : (
+                // Logged-in users: Show their registered municipality (non-editable)
+                <div className="text-sm text-gray-700 py-1">
+                  📍 <strong>Your Municipality:</strong> {(user as any)?.municipality_name || 'Not set'}
+                </div>
+              )}
             </div>
             )}
           </div>

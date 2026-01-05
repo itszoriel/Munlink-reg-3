@@ -10,7 +10,6 @@ import { CACHE_KEYS } from '@/lib/dataStore'
 import Stepper from '@/components/ui/Stepper'
 import FileUploader from '@/components/ui/FileUploader'
 import { EmptyState } from '@munlink/ui'
-import ProvinceSelect from '@/components/ProvinceSelect'
 import MunicipalitySelect from '@/components/MunicipalitySelect'
 // pickup location is tied to resident profile; no remote fetch needed
 
@@ -36,6 +35,9 @@ export default function DocumentsPage() {
   const userBarangayName = (user as any)?.barangay_name // kept for review display and future use
   const [consent, setConsent] = useState(false)
   const [pickupLocation, setPickupLocation] = useState<'municipal'|'barangay'>('municipal')
+
+  // Municipality scoping: Determine if location context is ready
+  const guestLocationComplete = !isAuthenticated && !!selectedProvince?.id && !!selectedMunicipality?.id
 
   // Use cached fetch for document types (rarely changes)
   const { data: typesData, loading } = useCachedFetch(
@@ -118,33 +120,10 @@ export default function DocumentsPage() {
         <p className="text-sm text-gray-600">Request documents for your selected municipality.</p>
       </div>
 
-      {/* Location Selection - Only show for logged-in users if no province/municipality selected */}
-      {isAuthenticated && (!selectedProvince || !selectedMunicipality) && (
-        <div className="bg-white rounded-xl border p-4 mb-6">
-          <h2 className="text-lg font-semibold mb-3">Select Location</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Select a province and municipality to view documents for that area. Your requests will be submitted to your registered municipality.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Province:</label>
-              <ProvinceSelect />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Municipality:</label>
-              <MunicipalitySelect />
-            </div>
-          </div>
-          {!selectedProvince && (
-            <div className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <strong>Step 1:</strong> Select a province first. This will enable municipality selection.
-            </div>
-          )}
-          {selectedProvince && !selectedMunicipality && (
-            <div className="mt-3 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <strong>Step 2:</strong> Now select a municipality from the dropdown above.
-            </div>
-          )}
+      {/* Guest Location Required Message */}
+      {!isAuthenticated && !guestLocationComplete && (
+        <div className="mb-4 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
+          <p><strong>Select your location</strong> to browse available documents. Use the location selector in the header to choose your province and municipality. Document requests require an account.</p>
         </div>
       )}
       { (searchParams.get('tab') || '').toLowerCase() === 'requests' && (
@@ -189,15 +168,39 @@ export default function DocumentsPage() {
       )}
       {/* Only show skeleton on first load when no cached data */}
       {loading && types.length === 0 ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="skeleton-card">
-                <div className="p-4 space-y-2">
-                  <div className="h-4 w-1/3 skeleton" />
-                  <div className="h-4 w-2/3 skeleton" />
+          <div className="bg-white rounded-lg border p-4">
+            <Stepper steps={["Type","Details","Review"]} current={step} />
+            <h2 className="text-xl font-bold mb-4">Select Document Type</h2>
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="skeleton-card p-4 rounded-xl border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2 flex-1">
+                      <div className="h-5 w-2/3 skeleton rounded" />
+                      <div className="h-4 w-1/2 skeleton rounded" />
+                    </div>
+                    <div className="ml-4 text-right space-y-1">
+                      <div className="h-4 w-12 skeleton rounded" />
+                      <div className="h-6 w-16 skeleton rounded" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <div className="h-10 w-28 skeleton rounded-lg" />
+            </div>
+          </div>
+        ) : !loading && types.length === 0 ? (
+          <div className="bg-white rounded-lg border p-4">
+            <Stepper steps={["Type","Details","Review"]} current={step} />
+            <EmptyState
+              icon="document"
+              title="No document types available"
+              description={!selectedMunicipality 
+                ? "Please select a municipality to view available document types."
+                : "No document types have been configured for this municipality yet. Check back later."}
+            />
           </div>
         ) : (
           <div className="bg-white rounded-lg border p-4">

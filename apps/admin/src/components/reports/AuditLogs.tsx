@@ -122,10 +122,10 @@ export default function AuditLogs() {
                 {logs.map((l, i) => (
                   <tr key={i} className={i%2? 'bg-neutral-50':''}>
                     <td className="p-2">{String(l.created_at||'').replace('T',' ').slice(0,19)}</td>
-                    <td className="p-2">{l.user_id||'—'}</td>
-                    <td className="p-2">{l.actor_role||'—'}</td>
+                    <td className="p-2">{l.user_id || <span className="text-neutral-400">System</span>}</td>
+                    <td className="p-2">{l.actor_role || <span className="text-neutral-400 italic">N/A</span>}</td>
                     <td className="p-2">{l.entity_type}</td>
-                    <td className="p-2">{l.entity_id||'—'}</td>
+                    <td className="p-2">{l.entity_id || <span className="text-neutral-400 italic">N/A</span>}</td>
                     <td className="p-2">{String(l.action||'').replace(/_/g,' ')}</td>
                   </tr>
                 ))}

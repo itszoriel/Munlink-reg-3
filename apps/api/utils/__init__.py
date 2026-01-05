@@ -88,6 +88,42 @@ except ImportError:
         TransitionError,
     )
 
+# Security utilities
+try:
+    from apps.api.utils.security import (
+        safe_error_response,
+        error_400,
+        error_401,
+        error_403,
+        error_404,
+        error_409,
+        error_429,
+        error_500,
+        validate_file_mime_type,
+        validate_image_file,
+        validate_document_file,
+        APIError,
+        ALLOWED_IMAGE_MIMES,
+        ALLOWED_DOCUMENT_MIMES,
+    )
+except ImportError:
+    from .security import (
+        safe_error_response,
+        error_400,
+        error_401,
+        error_403,
+        error_404,
+        error_409,
+        error_429,
+        error_500,
+        validate_file_mime_type,
+        validate_image_file,
+        validate_document_file,
+        APIError,
+        ALLOWED_IMAGE_MIMES,
+        ALLOWED_DOCUMENT_MIMES,
+    )
+
 __all__ = [
     # Validators
     'validate_email',
@@ -139,4 +175,19 @@ __all__ = [
     'require_tx_role',
     'assert_status',
     'TransitionError',
+    # Security utilities
+    'safe_error_response',
+    'error_400',
+    'error_401',
+    'error_403',
+    'error_404',
+    'error_409',
+    'error_429',
+    'error_500',
+    'validate_file_mime_type',
+    'validate_image_file',
+    'validate_document_file',
+    'APIError',
+    'ALLOWED_IMAGE_MIMES',
+    'ALLOWED_DOCUMENT_MIMES',
 ]

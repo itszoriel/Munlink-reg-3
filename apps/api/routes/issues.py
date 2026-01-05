@@ -41,7 +41,22 @@ def list_categories():
 
 @issues_bp.route('', methods=['GET'])
 def list_issues():
-    """Public list of issues (only public ones). Supports filters and pagination."""
+    """Public list of issues with municipality scoping.
+    
+    Query params:
+      - municipality_id: int (REQUIRED for guests; authenticated users auto-scoped)
+      - status: string (optional filter)
+      - category: int or string (optional filter)
+      - page: int (default 1)
+      - per_page: int (default 20)
+    
+    Municipality Scoping Rules:
+      - Guest users: MUST provide municipality_id; returns empty if not provided
+      - Logged-in users: Can view issues from other municipalities (read-only discovery)
+      - No global/unscoped data loads by default
+    """
+    from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+    
     try:
         municipality_id = request.args.get('municipality_id', type=int)
         status = request.args.get('status')
@@ -49,9 +64,45 @@ def list_issues():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
 
+        # Check if user is authenticated
+        is_authenticated = False
+        user_municipality_id = None
+        try:
+            verify_jwt_in_request(optional=True)
+            user_id = get_jwt_identity()
+            if user_id:
+                is_authenticated = True
+                user = User.query.get(user_id)
+                if user:
+                    user_municipality_id = user.municipality_id
+        except Exception:
+            pass
+
+        # Municipality Scoping Enforcement:
+        # - Guests without municipality_id get empty results (no global data)
+        # - Logged-in users default to their municipality if no filter provided
+        effective_municipality_id = municipality_id
+        if not effective_municipality_id:
+            if is_authenticated and user_municipality_id:
+                # Default to user's registered municipality
+                effective_municipality_id = user_municipality_id
+            else:
+                # Guest without location context: return empty per scoping rules
+                return jsonify({
+                    'issues': [],
+                    'pagination': {
+                        'page': page,
+                        'per_page': per_page,
+                        'total': 0,
+                        'pages': 0,
+                    },
+                    'message': 'Please select a municipality to view issues'
+                }), 200
+
+        # Build query with enforced municipality scoping
         query = Issue.query.filter_by(is_public=True)
-        if municipality_id:
-            query = query.filter(Issue.municipality_id == municipality_id)
+        query = query.filter(Issue.municipality_id == effective_municipality_id)
+        
         if status:
             query = query.filter(Issue.status == status)
         if category:
@@ -169,6 +220,75 @@ def my_issues():
         return jsonify({'issues': [i.to_dict() for i in issues], 'count': len(issues)}), 200
     except Exception as e:
         return jsonify({'error': 'Failed to get issues', 'details': str(e)}), 500
+
+
+@issues_bp.route('/<int:issue_id>', methods=['PUT'])
+@jwt_required()
+@fully_verified_required
+def update_issue(issue_id: int):
+    """Update an issue owned by the current user.
+    
+    Municipality Scoping Rules:
+      - Users can only update issues they created
+      - Issue municipality_id is derived from user's profile and cannot be changed
+      - Users can only edit issues in their registered municipality
+    """
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        issue = Issue.query.get(issue_id)
+        if not issue:
+            return jsonify({'error': 'Issue not found'}), 404
+        
+        # Ownership check
+        if issue.user_id != int(user_id):
+            return jsonify({'error': 'You can only edit your own issues'}), 403
+        
+        # Municipality scoping: Ensure issue belongs to user's registered municipality
+        if not user.municipality_id or issue.municipality_id != user.municipality_id:
+            return jsonify({'error': 'You can only edit issues in your registered municipality'}), 403
+        
+        # Only allow edits when issue is in early status (not yet resolved/closed)
+        if issue.status in ['resolved', 'closed', 'rejected']:
+            return jsonify({'error': 'Cannot edit issues that are already resolved, closed, or rejected'}), 400
+        
+        data = request.get_json() or {}
+        
+        # Update allowed fields (municipality_id CANNOT be changed)
+        if 'title' in data and data['title']:
+            issue.title = data['title']
+        if 'description' in data and data['description']:
+            issue.description = data['description']
+        if 'specific_location' in data:
+            issue.specific_location = data['specific_location']
+        if 'latitude' in data:
+            issue.latitude = data['latitude']
+        if 'longitude' in data:
+            issue.longitude = data['longitude']
+        if 'category_id' in data:
+            category = IssueCategory.query.get(int(data['category_id']))
+            if category:
+                issue.category_id = category.id
+        
+        # Update timestamp
+        from datetime import datetime
+        issue.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Issue updated successfully',
+            'issue': issue.to_dict()
+        }), 200
+    
+    except ValidationError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update issue', 'details': str(e)}), 500
 
 
 @issues_bp.route('/<int:issue_id>/upload', methods=['POST'])

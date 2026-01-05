@@ -95,7 +95,7 @@ export default function VerifyTicket() {
                     <div><span className="font-medium">Municipality:</span> {result.municipality}</div>
                   </div>
                   {(result.window_start || result.window_end) && (
-                    <div className="mt-1 text-xs text-neutral-600"><span className="font-medium">Window:</span> {result.window_start || '—'} to {result.window_end || '—'}</div>
+                    <div className="mt-1 text-xs text-neutral-600"><span className="font-medium">Window:</span> {result.window_start || <span className="italic text-neutral-400">Not set</span>} to {result.window_end || <span className="italic text-neutral-400">Not set</span>}</div>
                   )}
                 </div>
               ) : (

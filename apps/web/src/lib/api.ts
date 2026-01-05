@@ -15,6 +15,30 @@ let accessToken: string | null = null
 let refreshPromise: Promise<string | null> | null = null
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
+/**
+ * Get CSRF token from cookies (for CSRF-protected endpoints)
+ * Flask-JWT-Extended sets csrf_refresh_token cookie when CSRF protection is enabled
+ */
+function getCsrfToken(): string | null {
+  try {
+    const cookies = document.cookie.split(';')
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=')
+      // Look for csrf_refresh_token (set by Flask-JWT-Extended)
+      if (name === 'csrf_refresh_token') {
+        return decodeURIComponent(value)
+      }
+      // Fallback to csrf_access_token
+      if (name === 'csrf_access_token') {
+        return decodeURIComponent(value)
+      }
+    }
+  } catch {
+    // Cookie parsing failed
+  }
+  return null
+}
+
 // Flag to track if user has ever logged in (avoids 401 errors for guests)
 const HAS_SESSION_KEY = 'munlink:has_session'
 
@@ -103,10 +127,21 @@ function scheduleRefresh(token: string) {
 
 async function doRefresh(): Promise<string | null> {
   try {
+    // Include CSRF token if available (for CSRF-protected backends)
+    const csrfToken = getCsrfToken()
+    const headers: Record<string, string> = {}
+    if (csrfToken) {
+      headers['X-CSRF-TOKEN'] = csrfToken
+    }
+    
     const resp = await axios.post(
       `${API_BASE_URL}/api/auth/refresh`,
       {},
-      { withCredentials: true, validateStatus: () => true }
+      { 
+        withCredentials: true, 
+        validateStatus: () => true,
+        headers 
+      }
     )
     if (resp.status !== 200) return null
     const newToken: string | undefined = resp?.data?.access_token

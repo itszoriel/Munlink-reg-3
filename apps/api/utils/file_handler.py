@@ -5,6 +5,22 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from apps.api.utils.validators import validate_file_size, validate_file_extension, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_DOCUMENT_EXTENSIONS
 
+# MIME type sets for validation
+ALLOWED_IMAGE_MIMES = {
+    'image/jpeg',
+    'image/png', 
+    'image/gif',
+    'image/webp',
+}
+
+ALLOWED_DOCUMENT_MIMES = {
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png',
+}
+
 # Base upload directory - will be set by Flask app
 UPLOAD_BASE_DIR = None
 
@@ -63,7 +79,7 @@ def generate_unique_filename(original_filename):
     return f"{timestamp}_{unique_id}{ext}"
 
 
-def save_uploaded_file(file, category, municipality_slug, subcategory=None, allowed_extensions=None, max_size_mb=10, user_type='residents'):
+def save_uploaded_file(file, category, municipality_slug, subcategory=None, allowed_extensions=None, max_size_mb=10, user_type='residents', validate_mime=True):
     """
     Save an uploaded file and return the file path.
     
@@ -74,10 +90,19 @@ def save_uploaded_file(file, category, municipality_slug, subcategory=None, allo
         subcategory: Optional subcategory
         allowed_extensions: Set of allowed file extensions
         max_size_mb: Maximum file size in MB
+        user_type: Type of user (residents, admins)
+        validate_mime: Whether to validate MIME type (recommended: True)
     
     Returns:
         Relative file path from uploads directory
+    
+    Security:
+        - Validates file extension against whitelist
+        - Validates file size
+        - Optionally validates MIME type against actual file content
     """
+    from flask import current_app
+    
     if not file:
         raise FileUploadError('No file provided')
     
@@ -88,7 +113,36 @@ def save_uploaded_file(file, category, municipality_slug, subcategory=None, allo
     original_filename = secure_filename(file.filename)
     
     # Validate file extension
-    validate_file_extension(original_filename, allowed_extensions)
+    extension = validate_file_extension(original_filename, allowed_extensions)
+    
+    # Check file size (if we can get it)
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    
+    validate_file_size(file_size, max_size_mb)
+    
+    # Validate MIME type if enabled (defense in depth)
+    if validate_mime:
+        try:
+            from apps.api.utils.security import validate_file_mime_type
+            
+            # Determine allowed MIME types based on allowed extensions
+            if allowed_extensions == ALLOWED_IMAGE_EXTENSIONS:
+                allowed_mimes = ALLOWED_IMAGE_MIMES
+            elif allowed_extensions == ALLOWED_DOCUMENT_EXTENSIONS:
+                allowed_mimes = ALLOWED_DOCUMENT_MIMES
+            else:
+                # For mixed or custom extensions, allow common types
+                allowed_mimes = ALLOWED_IMAGE_MIMES | ALLOWED_DOCUMENT_MIMES
+            
+            validate_file_mime_type(file, allowed_mimes, extension)
+        except ImportError:
+            # Security module not available - log warning but continue
+            current_app.logger.warning("MIME validation skipped - security module not available")
+        except Exception as e:
+            # MIME validation failed
+            raise FileUploadError(f'File content validation failed: {e}')
     
     # Generate unique filename
     unique_filename = generate_unique_filename(original_filename)
@@ -100,18 +154,10 @@ def save_uploaded_file(file, category, municipality_slug, subcategory=None, allo
     # Full file path
     file_path = os.path.join(directory, unique_filename)
     
-    # Check file size (if we can get it)
-    file.seek(0, os.SEEK_END)
-    file_size = file.tell()
-    file.seek(0)
-    
-    validate_file_size(file_size, max_size_mb)
-    
     # Save the file
     file.save(file_path)
     
     # Return relative path (from upload directory)
-    from flask import current_app
     upload_base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
     relative_path = os.path.relpath(file_path, upload_base_dir)
     

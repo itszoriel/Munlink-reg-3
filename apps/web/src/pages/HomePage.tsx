@@ -29,22 +29,40 @@ export default function HomePage() {
   // Use user's registered municipality for hero display, not the selected filter
   const userMunicipalityName = (user as any)?.municipality_name
   const userProvinceName = (user as any)?.province_name || (user as any)?.municipality?.province?.name
+  
+  // Municipality scoping: Determine effective municipality and whether to fetch
+  // Logged-in users: default to their registered municipality
+  // Guests: must select province AND municipality before data loads
+  const userMunicipalityId = (user as any)?.municipality_id
+  const effectiveMunicipalityId = isAuthenticated && userMunicipalityId 
+    ? (selectedMunicipality?.id || userMunicipalityId)  // Allow browsing, default to user's
+    : selectedMunicipality?.id
+  const guestLocationComplete = !isAuthenticated && !!selectedProvince?.id && !!selectedMunicipality?.id
+  const shouldFetchHomeData = isAuthenticated || guestLocationComplete
 
   // Use cached fetch hooks with filter-specific keys
   const { data: announcementsData, loading: announcementsLoading } = useCachedFetch(
     CACHE_KEYS.HOME_ANNOUNCEMENTS,
-    () => announcementsApi.getAll({ active: true, page: 1, per_page: 2, municipality_id: selectedMunicipality?.id }),
-    { dependencies: [selectedMunicipality?.id], staleTime: 3 * 60 * 1000 }
+    () => announcementsApi.getAll({ active: true, page: 1, per_page: 2, municipality_id: effectiveMunicipalityId }),
+    { 
+      dependencies: [effectiveMunicipalityId], 
+      staleTime: 3 * 60 * 1000,
+      enabled: shouldFetchHomeData  // Only fetch when location context is ready
+    }
   )
   
   const { data: marketplaceData, loading: marketplaceLoading } = useCachedFetch(
     CACHE_KEYS.HOME_MARKETPLACE,
-    () => marketplaceApi.getItems({ status: 'available', page: 1, per_page: 2, municipality_id: selectedMunicipality?.id }),
-    { dependencies: [selectedMunicipality?.id], staleTime: 3 * 60 * 1000 }
+    () => marketplaceApi.getItems({ status: 'available', page: 1, per_page: 2, municipality_id: effectiveMunicipalityId }),
+    { 
+      dependencies: [effectiveMunicipalityId], 
+      staleTime: 3 * 60 * 1000,
+      enabled: shouldFetchHomeData  // Only fetch when location context is ready
+    }
   )
 
-  const recentAnnouncements = ((announcementsData as any)?.data?.announcements || [])
-  const featuredItems = ((marketplaceData as any)?.data?.items || [])
+  const recentAnnouncements = shouldFetchHomeData ? ((announcementsData as any)?.data?.announcements || []) : []
+  const featuredItems = shouldFetchHomeData ? ((marketplaceData as any)?.data?.items || []) : []
   const loading = announcementsLoading || marketplaceLoading
 
   // Get the province seal - prefer user's registered province, then selected province
@@ -225,6 +243,13 @@ export default function HomePage() {
 
       {/* Two-column layout: Latest Announcements (left) and Featured Marketplace (right) */}
       <section className="container-responsive py-10 md:py-12 mt-10 md:mt-12">
+        {/* Guest Location Required Message */}
+        {!isAuthenticated && !guestLocationComplete && (
+          <div className="max-w-6xl mx-auto mb-6 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
+            <p><strong>Select your location</strong> to view announcements and marketplace items. Use the location selector above to choose your province and municipality.</p>
+          </div>
+        )}
+
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* Left: Latest Announcements */}
           <div>
