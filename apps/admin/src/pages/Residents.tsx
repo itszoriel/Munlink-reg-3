@@ -26,7 +26,7 @@ export default function Residents() {
   const [munMap, setMunMap] = useState<Record<number, string>>({})
 
   // Use cached fetch for residents
-  const { data: residentsData, loading, update: updateResidents, refetch: refetchResidents } = useCachedFetch(
+  const { data: residentsData, loading, update: updateResidents } = useCachedFetch(
     CACHE_KEYS.RESIDENTS,
     async () => {
       const [verifiedRes, pendingRes] = await Promise.all([

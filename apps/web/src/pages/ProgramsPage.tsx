@@ -126,7 +126,7 @@ export default function ProgramsPage() {
 
   // Helper function to safely get eligibility array
   // Handles both old format (object) and new format (array)
-  const getEligibilityArray = (program: Program | null): string[] => {
+  const _getEligibilityArray = (program: Program | null): string[] => {
     if (!program) return []
     const eligibility = (program as any).eligibility || (program as any).eligibility_criteria
     
