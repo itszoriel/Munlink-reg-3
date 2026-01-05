@@ -56,13 +56,6 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
   
   const announcements = (announcementsData || []) as Announcement[]
   const loading = announcementsLoading && announcements.length === 0
-
-  // Update helpers for optimistic updates
-  const _updateAnnouncementInCache = (id: number, updates: Partial<Announcement>) => {
-    updateCache((prev: Announcement[]) => 
-      (prev || []).map((a: Announcement) => a.id === id ? { ...a, ...updates } : a)
-    )
-  }
   
   const removeAnnouncementFromCache = (id: number) => {
     updateCache((prev: Announcement[]) => 

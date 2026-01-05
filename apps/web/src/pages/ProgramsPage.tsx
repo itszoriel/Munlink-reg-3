@@ -124,65 +124,6 @@ export default function ProgramsPage() {
     if (t === 'applications') setTab('applications')
   }, [searchParams])
 
-  // Helper function to safely get eligibility array
-  // Handles both old format (object) and new format (array)
-  const _getEligibilityArray = (program: Program | null): string[] => {
-    if (!program) return []
-    const eligibility = (program as any).eligibility || (program as any).eligibility_criteria
-    
-    // If it's already an array, return it
-    if (Array.isArray(eligibility)) return eligibility
-    
-    // If it's an object (old format), convert to readable strings
-    if (eligibility && typeof eligibility === 'object') {
-      const items: string[] = []
-      if (eligibility.age) {
-        if (typeof eligibility.age === 'string') {
-          if (eligibility.age.startsWith('>=')) {
-            const age = eligibility.age.replace('>=', '').trim()
-            items.push(`Must be at least ${age} years old`)
-          } else if (eligibility.age.startsWith('>')) {
-            const age = eligibility.age.replace('>', '').trim()
-            items.push(`Must be older than ${age} years`)
-          } else if (eligibility.age.startsWith('<=')) {
-            const age = eligibility.age.replace('<=', '').trim()
-            items.push(`Must be ${age} years old or younger`)
-          } else if (eligibility.age.startsWith('<')) {
-            const age = eligibility.age.replace('<', '').trim()
-            items.push(`Must be younger than ${age} years`)
-          } else {
-            items.push(`Age requirement: ${eligibility.age}`)
-          }
-        } else {
-          items.push(`Must be at least ${eligibility.age} years old`)
-        }
-      }
-      if (eligibility.resident === true) {
-        items.push('Must be a registered resident')
-      }
-      if (eligibility.municipality) {
-        items.push(`Must be from ${eligibility.municipality} municipality`)
-      }
-      if (eligibility.training === true) {
-        items.push('Training required')
-      }
-      // Add any other criteria
-      Object.keys(eligibility).forEach(key => {
-        if (!['age', 'resident', 'municipality', 'training'].includes(key)) {
-          const value = eligibility[key]
-          if (value === true) {
-            items.push(key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '))
-          } else if (typeof value === 'string' && value.trim()) {
-            items.push(`${key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}: ${value}`)
-          }
-        }
-      })
-      return items
-    }
-    
-    return []
-  }
-
   // Helper function to safely get requirements array
   const getRequirementsArray = (program: Program | null): string[] => {
     if (!program) return []
