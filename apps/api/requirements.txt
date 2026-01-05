@@ -24,7 +24,7 @@ cryptography==42.0.5
 # File Handling
 Werkzeug==3.0.1
 Pillow==11.0.0
-python-magic-bin==0.4.14  # For Windows; use python-magic on Linux
+python-magic==0.4.27  # Linux-compatible (python-magic-bin is Windows-only)
 
 # PDF Generation
 reportlab==4.0.7
