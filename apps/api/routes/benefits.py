@@ -75,7 +75,6 @@ def list_programs():
             # GUEST: Allow province or municipality filtering for discovery
             if province_id:
                 # Filter by province - get all municipalities in this province
-                from apps.api.models.municipality import Municipality
                 province_municipalities = Municipality.query.filter_by(province_id=province_id).all()
                 province_muni_ids = [m.id for m in province_municipalities]
                 if province_muni_ids:
