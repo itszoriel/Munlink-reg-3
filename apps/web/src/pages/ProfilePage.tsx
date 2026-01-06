@@ -35,7 +35,6 @@ export default function ProfilePage() {
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferForm, setTransferForm] = useState({ province_id: '', to_municipality_id: '', to_barangay_id: '', notes: '' })
   const [transferBarangays, setTransferBarangays] = useState<any[]>([])
-  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const profilePhotoInputRef = useRef<HTMLInputElement>(null)
 
@@ -192,7 +191,6 @@ export default function ProfilePage() {
 
   const handleProfilePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
-    setProfilePhotoFile(file)
     if (file) {
       handleProfilePhotoUpload(file)
     }
@@ -209,7 +207,6 @@ export default function ProfilePage() {
         setForm((prev) => ({ ...prev, profile_picture: userData.profile_picture || prev.profile_picture }))
         showToast('Profile photo updated successfully', 'success')
       }
-      setProfilePhotoFile(null)
       if (profilePhotoInputRef.current) {
         profilePhotoInputRef.current.value = ''
       }

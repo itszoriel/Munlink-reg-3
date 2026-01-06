@@ -10,7 +10,6 @@ export default function Profile() {
   const [form, setForm] = useState<{ first_name: string; middle_name?: string; last_name: string }>(
     { first_name: storeUser?.first_name || '', middle_name: storeUser?.middle_name || '', last_name: storeUser?.last_name || '' }
   )
-  const [file, setFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [imageError, setImageError] = useState(false)
@@ -66,14 +65,12 @@ export default function Profile() {
               onChange={async (e) => {
                 const selectedFile = e.target.files?.[0] || null
                 if (selectedFile) {
-                  setFile(selectedFile)
                   setUploadingPhoto(true)
                   try {
                     const res = await authApi.uploadProfilePhoto(selectedFile)
                     const u = (res as any)?.data?.user || (res as any)?.user || res
                     setUser(u)
                     updateUser(u)
-                    setFile(null)
                     showToast('Photo updated', 'success')
                     if (profilePhotoInputRef.current) {
                       profilePhotoInputRef.current.value = ''

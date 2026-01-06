@@ -18,6 +18,20 @@ export type User = {
   admin_municipality_slug?: string
 }
 
+export type Province = {
+  id: number
+  name: string
+  slug: string
+  region_name?: string
+}
+
+export type Municipality = {
+  id: number
+  name: string
+  slug: string
+  province_id?: number
+}
+
 type AdminState = {
   user?: User
   accessToken?: string

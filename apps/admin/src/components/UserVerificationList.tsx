@@ -3,7 +3,7 @@
  * Component for managing user verification requests
  */
 import { useState, useEffect, useRef } from 'react'
-import { userApi, handleApiError, mediaUrl } from '../lib/api'
+import { userApi, handleApiError, mediaUrl, showToast } from '../lib/api'
 import SafeImage from './SafeImage'
 
 interface User {
@@ -15,6 +15,7 @@ interface User {
   profile_picture?: string
   valid_id_front?: string
   valid_id_back?: string
+  selfie_with_id?: string
   created_at: string
   municipality_name?: string
 }
@@ -292,9 +293,9 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
       if (idFrontInputRef.current) idFrontInputRef.current.value = ''
       if (idBackInputRef.current) idBackInputRef.current.value = ''
       if (selfieInputRef.current) selfieInputRef.current.value = ''
-      handleApiError(null, 'Documents uploaded successfully')
+      showToast('Documents uploaded successfully', 'success')
     } catch (e: any) {
-      handleApiError(e, 'Failed to upload documents')
+      showToast(handleApiError(e), 'error')
     } finally {
       setUploadingDocs(false)
     }
