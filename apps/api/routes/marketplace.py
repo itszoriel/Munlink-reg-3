@@ -1012,7 +1012,7 @@ def tx_audit(transaction_id: int):
                 from flask_jwt_extended import get_jwt
                 claims = get_jwt() or {}
                 role = claims.get('role')
-                if role not in ('admin', 'municipal_admin'):
+                if role not in ('superadmin', 'municipal_admin'):
                     return jsonify({'error': 'Forbidden'}), 403
             except Exception:
                 return jsonify({'error': 'Forbidden'}), 403

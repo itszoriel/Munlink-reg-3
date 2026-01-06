@@ -57,7 +57,7 @@ def enforce_admin_role():
         verify_jwt_in_request()
         claims = get_jwt() or {}
         role = claims.get('role')
-        if role not in ('admin', 'municipal_admin'):
+        if role not in ('superadmin', 'municipal_admin'):
             current_app.logger.warning(f"Admin access denied: role={role}")
             return jsonify({'error': 'Forbidden', 'code': 'ROLE_MISMATCH'}), 403
     except NoAuthorizationError:
@@ -93,7 +93,7 @@ def get_admin_municipality_id():
     user = User.query.get(user_id)
     print(f"DEBUG: User found: {user.username if user else 'None'}, Role: {user.role if user else 'None'}")  # Debug line
     
-    if not user or user.role not in ['admin', 'municipal_admin']:
+    if not user or user.role not in ['superadmin', 'municipal_admin']:
         print(f"DEBUG: User validation failed - user: {user}, role: {user.role if user else 'None'}")  # Debug line
         return None
     
@@ -2699,7 +2699,7 @@ def admin_municipality_performance():
             name = (Municipality.query.get(m_id).name if Municipality.query.get(m_id) else f"Municipality {m_id}")
             return {'id': m_id, 'name': name, 'users': users, 'listings': listings, 'documents': docs, 'benefits_active': benefits_active, 'disputes': disputes_opened}
 
-        if role == 'admin':
+        if role == 'superadmin':
             # Province-level: return top N municipalities by activity
             ids = [m.id for m in Municipality.query.all()]
             data = [build_perf(mid) for mid in ids]
@@ -2815,7 +2815,7 @@ def admin_audit_meta():
         ac_rows = db.session.query(AuditLog.action).filter(AuditLog.municipality_id == municipality_id).distinct().all()
         entity_types = [r[0] for r in et_rows if r and r[0]]
         actions = [r[0] for r in ac_rows if r and r[0]]
-        roles = ['admin', 'resident', 'system']
+        roles = ['superadmin', 'municipal_admin', 'resident', 'system']
         return jsonify({'entity_types': entity_types, 'actions': actions, 'actor_roles': roles}), 200
     except Exception as e:
         return jsonify({'error': 'Failed to load audit meta', 'details': str(e)}), 500

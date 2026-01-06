@@ -596,8 +596,8 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
     if admin_user is not None:
         try:
             admin_role = getattr(admin_user, 'role', None)
-            if admin_role == 'admin':
-                by_role = 'Admin'
+            if admin_role == 'superadmin':
+                by_role = 'Super Admin'
             elif admin_role == 'municipal_admin':
                 by_role = 'Municipal Admin'
         except Exception:

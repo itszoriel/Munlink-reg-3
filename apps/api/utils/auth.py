@@ -33,7 +33,7 @@ def admin_required(fn):
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        if user.role not in ('admin', 'municipal_admin'):
+        if user.role not in ('superadmin', 'municipal_admin'):
             return jsonify({'error': 'Admin access required', 'code': 'ROLE_MISMATCH'}), 403
         
         return fn(*args, **kwargs)
@@ -144,7 +144,7 @@ def municipality_admin_required(municipality_id=None):
             if not user:
                 return jsonify({'error': 'User not found'}), 404
             
-            if user.role not in ('admin', 'municipal_admin'):
+            if user.role not in ('superadmin', 'municipal_admin'):
                 return jsonify({'error': 'Admin access required', 'code': 'ROLE_MISMATCH'}), 403
             
             # If specific municipality is required

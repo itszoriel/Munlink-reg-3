@@ -35,6 +35,23 @@ except ImportError:
     except ImportError:
         limiter = None
 import bcrypt
+from werkzeug.security import check_password_hash
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    """Verify password against hash, supporting both bcrypt and Werkzeug formats."""
+    if not password_hash:
+        return False
+    
+    # Check if it's a Werkzeug hash (scrypt, pbkdf2, etc.)
+    if password_hash.startswith(('scrypt:', 'pbkdf2:', 'sha256:', 'sha512:')):
+        return check_password_hash(password_hash, password)
+    
+    # Otherwise try bcrypt
+    try:
+        return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+    except ValueError:
+        return False
 try:
     from apps.api.models.user import User
 except ImportError:
@@ -272,8 +289,8 @@ def login():
         if not user:
             return jsonify({'error': 'Invalid credentials'}), 401
         
-        # Check password
-        if not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
+        # Check password (supports both bcrypt and Werkzeug formats)
+        if not verify_password(password, user.password_hash):
             return jsonify({'error': 'Invalid credentials'}), 401
         
         # Check if account is active
@@ -564,12 +581,12 @@ def admin_login():
         if not user:
             return jsonify({'error': 'Invalid credentials'}), 401
         
-        # Check password
-        if not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
+        # Check password (supports both bcrypt and Werkzeug formats)
+        if not verify_password(password, user.password_hash):
             return jsonify({'error': 'Invalid credentials'}), 401
         
         # ADMIN CHECK: Verify user has admin role
-        if user.role not in ('admin', 'superadmin'):
+        if user.role not in ('superadmin', 'municipal_admin'):
             return jsonify({'error': 'Access denied. Admin privileges required.'}), 403
         
         # Check if account is active
@@ -1124,8 +1141,8 @@ def change_password():
         if not current_password or not new_password:
             return jsonify({'error': 'Current password and new password are required'}), 400
         
-        # Verify current password
-        if not bcrypt.checkpw(current_password.encode('utf-8'), user.password_hash.encode('utf-8')):
+        # Verify current password (supports both bcrypt and Werkzeug formats)
+        if not verify_password(current_password, user.password_hash):
             return jsonify({'error': 'Current password is incorrect'}), 401
         
         # Validate new password
