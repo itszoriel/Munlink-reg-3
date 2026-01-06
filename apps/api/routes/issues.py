@@ -144,7 +144,7 @@ def get_issue(issue_id: int):
         issue = Issue.query.get(issue_id)
         if not issue or not issue.is_public:
             return jsonify({'error': 'Issue not found'}), 404
-        return jsonify(issue.to_dict(include_updates=True)), 200
+        return jsonify(issue.to_dict()), 200
     except Exception as e:
         return jsonify({'error': 'Failed to get issue', 'details': str(e)}), 500
 

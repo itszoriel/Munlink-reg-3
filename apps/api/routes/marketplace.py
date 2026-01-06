@@ -6,7 +6,7 @@ import sqlite3
 from sqlalchemy.exc import OperationalError as SAOperationalError, ProgrammingError as SAProgrammingError
 from apps.api import db
 from apps.api.models.user import User
-from apps.api.models.marketplace import Item, Transaction, Message
+from apps.api.models.marketplace import Item, Transaction
 from apps.api.models.municipality import Municipality
 from apps.api.utils import (
     verified_resident_required,
@@ -22,7 +22,7 @@ from apps.api.utils import (
     assert_status,
     TransitionError,
 )
-from apps.api.utils.file_handler import save_marketplace_image
+from apps.api.utils.storage_handler import save_marketplace_image
 
 marketplace_bp = Blueprint('marketplace', __name__, url_prefix='/api/marketplace')
 

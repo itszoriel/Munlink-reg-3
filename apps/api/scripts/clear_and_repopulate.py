@@ -34,9 +34,9 @@ from apps.api.models.user import User
 from apps.api.models.province import Province
 from apps.api.models.municipality import Municipality, Barangay
 from apps.api.models.document import DocumentType, DocumentRequest
-from apps.api.models.issue import IssueCategory, Issue, IssueUpdate
+from apps.api.models.issue import IssueCategory, Issue
 from apps.api.models.benefit import BenefitProgram, BenefitApplication
-from apps.api.models.marketplace import Item, Transaction, Message
+from apps.api.models.marketplace import Item, Transaction
 from apps.api.models.announcement import Announcement
 from apps.api.models.token_blacklist import TokenBlacklist
 from apps.api.models.audit import AuditLog
@@ -71,23 +71,18 @@ with app.app_context():
         deleted = AuditLog.query.delete()
         print(f"  [OK] Deleted {deleted} audit log entries")
         
-        # 2. Delete issue updates (references issues)
-        print("\n[1.2] Deleting issue updates...")
-        deleted = IssueUpdate.query.delete()
-        print(f"  [OK] Deleted {deleted} issue updates")
-        
-        # 3. Delete issues (references users, municipalities, issue_categories)
-        print("\n[1.3] Deleting issues...")
+        # 2. Delete issues (references users, municipalities, issue_categories)
+        print("\n[1.2] Deleting issues...")
         deleted = Issue.query.delete()
         print(f"  [OK] Deleted {deleted} issues")
         
-        # 4. Delete issue categories
-        print("\n[1.4] Deleting issue categories...")
+        # 3. Delete issue categories
+        print("\n[1.3] Deleting issue categories...")
         deleted = IssueCategory.query.delete()
         print(f"  [OK] Deleted {deleted} issue categories")
         
-        # 5. Delete benefit applications (references benefit_programs, users)
-        print("\n[1.5] Deleting benefit applications...")
+        # 4. Delete benefit applications (references benefit_programs, users)
+        print("\n[1.4] Deleting benefit applications...")
         deleted = BenefitApplication.query.delete()
         print(f"  [OK] Deleted {deleted} benefit applications")
         
@@ -101,18 +96,13 @@ with app.app_context():
         deleted = DocumentRequest.query.delete()
         print(f"  [OK] Deleted {deleted} document requests")
         
-        # 5.3. Delete document types
-        print("\n[1.5.3] Deleting document types...")
+        # 4.3. Delete document types
+        print("\n[1.4.3] Deleting document types...")
         deleted = DocumentType.query.delete()
         print(f"  [OK] Deleted {deleted} document types")
         
-        # 6. Delete marketplace messages (references transactions, users)
-        print("\n[1.6] Deleting marketplace messages...")
-        deleted = Message.query.delete()
-        print(f"  [OK] Deleted {deleted} messages")
-        
-        # 7. Delete transactions (references items, users)
-        print("\n[1.7] Deleting transactions...")
+        # 5. Delete transactions (references items, users)
+        print("\n[1.5] Deleting transactions...")
         deleted = Transaction.query.delete()
         print(f"  [OK] Deleted {deleted} transactions")
         

@@ -50,26 +50,36 @@ from apps.api.utils.auth import (
     verify_token_type,
 )
 
-from apps.api.utils.file_handler import (
-    save_uploaded_file,
+# Storage handler - uses Supabase Storage in production, filesystem in development
+from apps.api.utils.storage_handler import (
+    save_file as save_uploaded_file,
     save_profile_picture,
     save_verification_document,
     save_marketplace_image,
     save_issue_attachment,
     save_benefit_document,
     save_document_request_file,
-    delete_file,
     get_file_url,
+    is_legacy_path,
+    is_file_missing,
+    StorageError as FileUploadError,
+)
+
+# Keep backward compatibility with file_handler for cleanup functions
+from apps.api.utils.file_handler import (
+    delete_file,
     cleanup_user_files,
     cleanup_item_files,
-    FileUploadError,
 )
 
 from apps.api.utils.qr_generator import (
     generate_qr_code_data,
     generate_qr_code_image,
+    generate_qr_code_bytes,
+    generate_and_upload_qr_code,
     save_qr_code_file,
     validate_qr_data,
+    regenerate_qr_code,
 )
 
 # Transaction audit helpers
@@ -152,7 +162,7 @@ __all__ = [
     'check_user_access_level',
     'generate_verification_token',
     'verify_token_type',
-    # File Handler
+    # Storage Handler (Supabase in production, filesystem in dev)
     'save_uploaded_file',
     'save_profile_picture',
     'save_verification_document',
@@ -165,11 +175,16 @@ __all__ = [
     'cleanup_user_files',
     'cleanup_item_files',
     'FileUploadError',
+    'is_legacy_path',
+    'is_file_missing',
     # QR Generator
     'generate_qr_code_data',
     'generate_qr_code_image',
+    'generate_qr_code_bytes',
+    'generate_and_upload_qr_code',
     'save_qr_code_file',
     'validate_qr_data',
+    'regenerate_qr_code',
     # Tx audit
     'log_tx_action',
     'require_tx_role',

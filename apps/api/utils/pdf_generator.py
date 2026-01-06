@@ -7,19 +7,21 @@ Uses reportlab to render an official-looking document with:
 - Body text with simple {{placeholders}} replacement
 - Border, watermark (seal/logo if available), and optional QR code
 
-Entry point: generate_document_pdf(request, document_type, user) -> (abs_path, rel_path)
+Production Ready:
+- PDFs can be generated in memory and uploaded to Supabase Storage
+- QR codes embedded directly from memory (no filesystem dependency)
+- Falls back to filesystem in development
 
-The file is saved under the Flask UPLOAD_FOLDER at:
-  generated_docs/{municipality_slug}/{request_id}.pdf
-
-Returns absolute path and relative path (from UPLOAD_FOLDER) for storage in DB and public URL building.
+Entry point: generate_document_pdf(request, document_type, user) -> (abs_path_or_none, url_or_path)
 """
 from __future__ import annotations
 
 import os
+import logging
 from pathlib import Path
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Union
 from datetime import datetime
+from io import BytesIO
 
 from flask import current_app
 
@@ -28,6 +30,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors
 from reportlab.lib.units import mm
+
+logger = logging.getLogger(__name__)
 
 
 def _slugify(name: str) -> str:
@@ -611,28 +615,58 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
     footer_text = footer or "This is a digitally issued document. No physical signature required. Generated via MunLink Region III System."
     c.drawString(25 * mm, 20 * mm, footer_text)
 
-    # Optional QR code (simple URL based on request number)
+    # Optional QR code - generate in memory (no filesystem dependency)
     try:
-        from apps.api.utils.qr_generator import save_qr_code_file, generate_qr_code_data
+        from apps.api.utils.qr_generator import generate_qr_code_data, get_qr_code_bytesio
 
-        qr_dir = out_dir / "qr"
-        _ensure_dir(qr_dir)
         qr_data = generate_qr_code_data(request)
-        qr_file = qr_dir / f"{request.id}.png"
-        save_qr_code_file(qr_data, str(qr_file))
-        img = ImageReader(str(qr_file))
+        qr_bytesio = get_qr_code_bytesio(qr_data, size=350)  # Larger size for PDF embedding
+        img = ImageReader(qr_bytesio)
         # Increased QR size from 20mm to 35mm for better scannability
         qr_size = 35 * mm
         # Position QR at bottom-right, but shifted left to avoid overlapping blue border
         # Increased left margin from 10mm to 20mm to accommodate larger QR size
         c.drawImage(img, width - (qr_size + 20 * mm), 20 * mm, width=qr_size, height=qr_size, preserveAspectRatio=True, mask='auto')
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to embed QR code in PDF: {e}")
 
     c.showPage()
     c.save()
 
-    # Build relative path from UPLOAD_FOLDER for public URL
+    # Check if we should upload to Supabase Storage
+    flask_env = current_app.config.get('FLASK_ENV') or os.getenv('FLASK_ENV', 'development')
+    is_production = flask_env == 'production'
+    
+    if is_production:
+        # Upload to Supabase Storage
+        try:
+            from apps.api.utils.storage_handler import save_generated_document
+            
+            # Read the generated PDF
+            with open(str(pdf_path), 'rb') as f:
+                pdf_bytes = f.read()
+            
+            # Upload to Supabase
+            public_url = save_generated_document(
+                pdf_bytes=pdf_bytes,
+                request_id=request.id,
+                municipality_slug=municipality_slug
+            )
+            
+            # Clean up local file
+            try:
+                os.remove(str(pdf_path))
+            except Exception:
+                pass
+            
+            logger.info(f"PDF uploaded to Supabase: {public_url}")
+            return None, public_url
+            
+        except Exception as e:
+            logger.error(f"Failed to upload PDF to Supabase: {e}")
+            # Fall through to return local path
+    
+    # Development or fallback: return local path
     rel_path = os.path.relpath(pdf_path, upload_base)
     # Normalize to POSIX-style for URLs
     rel_posix = rel_path.replace("\\", "/")

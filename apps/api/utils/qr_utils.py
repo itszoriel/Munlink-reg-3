@@ -77,21 +77,66 @@ def sign_claim_token(request_obj) -> Dict[str, Any]:
     return {"token": token, "jti": jti, "exp": payload["exp"]}
 
 
-def build_qr_png(data: str, request_id: int, municipality_slug: str) -> Tuple[Path, str]:
-    """Render a QR PNG file under uploads/claims/{municipality_slug}/{request_id}.png.
-
-    Returns absolute path and relative path from UPLOAD_FOLDER.
-    """
-    base = _uploads_base()
-    out_dir = base / "claims" / municipality_slug
-    out_dir.mkdir(parents=True, exist_ok=True)
-    png_path = out_dir / f"{request_id}.png"
-
+def _generate_qr_bytes(data: str) -> bytes:
+    """Generate QR code as PNG bytes in memory."""
+    from io import BytesIO
+    
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=10, border=4)
     qr.add_data(data)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
-    img.save(str(png_path))
+    
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def _is_production() -> bool:
+    """Check if running in production."""
+    flask_env = current_app.config.get('FLASK_ENV') or os.getenv('FLASK_ENV', 'development')
+    return flask_env == 'production'
+
+
+def build_qr_png(data: str, request_id: int, municipality_slug: str) -> Tuple[Path, str]:
+    """Generate QR PNG and upload to Supabase Storage (production) or filesystem (dev).
+
+    Returns:
+        In production: (None, public_url)
+        In development: (absolute_path, relative_path)
+    """
+    # Generate QR code bytes in memory
+    qr_bytes = _generate_qr_bytes(data)
+    
+    # In production, upload to Supabase Storage
+    if _is_production():
+        try:
+            from apps.api.utils.storage_handler import save_bytes
+            
+            public_url = save_bytes(
+                data=qr_bytes,
+                category='claims',
+                municipality_slug=municipality_slug,
+                filename=f"claim_{request_id}.png",
+                subcategory=None,
+                user_type='system',
+                content_type='image/png'
+            )
+            
+            # Return None for path, URL for storage reference
+            return None, public_url
+            
+        except Exception as e:
+            current_app.logger.error(f"Failed to upload claim QR to Supabase: {e}")
+            # Fall back to filesystem
+    
+    # Development or fallback: save to filesystem
+    base = _uploads_base()
+    out_dir = base / "claims" / municipality_slug
+    out_dir.mkdir(parents=True, exist_ok=True)
+    png_path = out_dir / f"{request_id}.png"
+    
+    with open(str(png_path), 'wb') as f:
+        f.write(qr_bytes)
 
     rel = os.path.relpath(png_path, base)
     return png_path, rel.replace("\\", "/")

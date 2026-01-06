@@ -28,7 +28,7 @@ from apps.api.models.document import DocumentType, DocumentRequest
 from apps.api.models.benefit import BenefitProgram, BenefitApplication
 from sqlalchemy.exc import OperationalError as SAOperationalError
 from apps.api.models.issue import Issue, IssueCategory
-from apps.api.models.marketplace import Item, Transaction, Message
+from apps.api.models.marketplace import Item, Transaction
 from apps.api.models.announcement import Announcement
 from apps.api.models.transfer import TransferRequest
 from apps.api.models.token_blacklist import TokenBlacklist
@@ -104,7 +104,6 @@ def main():
         print(f"  Benefit applications: {BenefitApplication.query.count()}")
         print(f"  Marketplace items: {Item.query.count()}")
         print(f"  Transactions: {Transaction.query.count()}")
-        print(f"  Messages: {Message.query.count()}")
         print(f"  Announcements: {Announcement.query.count()}")
         print(f"  Transfer requests: {TransferRequest.query.count()}")
         print(f"  Token blacklist entries: {TokenBlacklist.query.count()}")

@@ -20,7 +20,7 @@ from apps.api.models.benefit import BenefitApplication
 from apps.api.models.document import DocumentRequest, DocumentType
 from apps.api.models.announcement import Announcement
 from apps.api.models.transfer import TransferRequest
-from apps.api.utils.file_handler import save_announcement_image
+from apps.api.utils.storage_handler import save_announcement_image, save_verification_document
 from apps.api.utils.validators import ValidationError
 from apps.api.utils.email_sender import send_user_status_email, send_document_request_status_email
 from apps.api.models.audit import AuditLog
@@ -290,6 +290,60 @@ def suspend_user(user_id: int):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to update user status', 'details': str(e)}), 500
+
+@admin_bp.route('/users/<int:user_id>/verification-docs', methods=['POST'])
+@jwt_required()
+def admin_upload_user_verification_docs(user_id: int):
+    """Allow admin to re-upload verification documents for a user."""
+    try:
+        municipality_id = require_admin_municipality()
+        if isinstance(municipality_id, tuple):
+            return municipality_id
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        if user.municipality_id != municipality_id:
+            return jsonify({'error': 'User not in your municipality'}), 403
+
+        if not (request.content_type and 'multipart/form-data' in request.content_type):
+            return jsonify({'error': 'Files must be uploaded as multipart/form-data'}), 400
+
+        municipality = Municipality.query.get(municipality_id)
+        municipality_slug = municipality.slug if municipality else 'general'
+
+        saved_any = False
+
+        id_front = request.files.get('valid_id_front')
+        if id_front and getattr(id_front, 'filename', ''):
+            user.valid_id_front = save_verification_document(id_front, user.id, municipality_slug, 'valid_id_front', user_type='residents')
+            saved_any = True
+
+        id_back = request.files.get('valid_id_back')
+        if id_back and getattr(id_back, 'filename', ''):
+            user.valid_id_back = save_verification_document(id_back, user.id, municipality_slug, 'valid_id_back', user_type='residents')
+            saved_any = True
+
+        selfie = request.files.get('selfie_with_id')
+        if selfie and getattr(selfie, 'filename', ''):
+            user.selfie_with_id = save_verification_document(selfie, user.id, municipality_slug, 'selfie_with_id', user_type='residents')
+            saved_any = True
+
+        if not saved_any:
+            return jsonify({'error': 'Please upload at least one verification file'}), 400
+
+        user.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Verification documents updated successfully',
+            'user': user.to_dict(include_sensitive=True, include_municipality=True)
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to upload verification documents', 'details': str(e)}), 500
 
 @admin_bp.route('/users/verified', methods=['GET'])
 @jwt_required()
@@ -2011,10 +2065,200 @@ def download_document_request_pdf(request_id: int):
         if not req.document_file:
             return jsonify({'error': 'No generated document available'}), 404
 
-        # Redirect via uploads handler path (pdf or docx)
-        return jsonify({'url': f"/uploads/{req.document_file}"}), 200
+        # Return URL - could be Supabase URL or local path
+        url = req.document_file
+        if not url.startswith(('http://', 'https://')):
+            url = f"/uploads/{req.document_file}"
+        return jsonify({'url': url}), 200
     except Exception as e:
         return jsonify({'error': 'Failed to download PDF', 'details': str(e)}), 500
+
+
+@admin_bp.route('/documents/requests/<int:request_id>/regenerate-qr', methods=['POST'])
+@jwt_required()
+def regenerate_document_qr_code(request_id: int):
+    """
+    Regenerate QR code for a document request.
+    
+    This endpoint allows admins to regenerate QR codes for documents
+    that have missing or broken QR codes (e.g., after migration).
+    
+    Returns:
+        JSON with new QR code URL
+    """
+    try:
+        municipality_id = require_admin_municipality()
+        if isinstance(municipality_id, tuple):
+            return municipality_id
+
+        req = DocumentRequest.query.get(request_id)
+        if not req:
+            return jsonify({'error': 'Request not found'}), 404
+        if req.municipality_id != municipality_id:
+            return jsonify({'error': 'Request not in your municipality'}), 403
+        
+        # Get municipality slug
+        municipality = Municipality.query.get(municipality_id)
+        municipality_slug = municipality.slug if municipality else 'unknown'
+        
+        # Regenerate QR code
+        from apps.api.utils.qr_generator import regenerate_qr_code
+        
+        new_qr_url = regenerate_qr_code(req, municipality_slug)
+        
+        # Update database
+        req.qr_code = new_qr_url
+        req.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Audit log
+        try:
+            log_generic_action(
+                action='regenerate_qr',
+                target_type='document_request',
+                target_id=request_id,
+                municipality_id=municipality_id,
+                details={'new_qr_url': new_qr_url[:100] if new_qr_url else None}
+            )
+        except Exception:
+            pass
+        
+        return jsonify({
+            'message': 'QR code regenerated successfully',
+            'qr_code': new_qr_url,
+            'request': req.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Failed to regenerate QR code: {e}")
+        return jsonify({'error': 'Failed to regenerate QR code', 'details': str(e)}), 500
+
+
+@admin_bp.route('/documents/requests/<int:request_id>/regenerate-pdf', methods=['POST'])
+@jwt_required()
+def regenerate_document_pdf(request_id: int):
+    """
+    Regenerate PDF for a document request.
+    
+    This endpoint allows admins to regenerate PDFs for documents
+    that have missing or broken files (e.g., after migration).
+    
+    Returns:
+        JSON with new PDF URL
+    """
+    try:
+        municipality_id = require_admin_municipality()
+        if isinstance(municipality_id, tuple):
+            return municipality_id
+
+        req = DocumentRequest.query.get(request_id)
+        if not req:
+            return jsonify({'error': 'Request not found'}), 404
+        if req.municipality_id != municipality_id:
+            return jsonify({'error': 'Request not in your municipality'}), 403
+        
+        # Check status - only regenerate for approved/ready/completed requests
+        if req.status not in ('approved', 'processing', 'ready', 'completed', 'picked_up'):
+            return jsonify({'error': 'Cannot regenerate PDF for this request status'}), 400
+        
+        # Get document type and user
+        doc_type = req.document_type
+        if not doc_type:
+            return jsonify({'error': 'Document type not found'}), 404
+        
+        user = User.query.get(req.user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get admin user for signatory
+        admin_id = get_jwt_identity()
+        admin_user = User.query.get(admin_id)
+        
+        # Regenerate PDF
+        from apps.api.utils.pdf_generator import generate_document_pdf
+        
+        _, new_pdf_url = generate_document_pdf(req, doc_type, user, admin_user)
+        
+        # Update database
+        req.document_file = new_pdf_url
+        req.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Audit log
+        try:
+            log_generic_action(
+                action='regenerate_pdf',
+                target_type='document_request',
+                target_id=request_id,
+                municipality_id=municipality_id,
+                details={'new_pdf_url': new_pdf_url[:100] if new_pdf_url else None}
+            )
+        except Exception:
+            pass
+        
+        return jsonify({
+            'message': 'PDF regenerated successfully',
+            'document_file': new_pdf_url,
+            'request': req.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Failed to regenerate PDF: {e}")
+        return jsonify({'error': 'Failed to regenerate PDF', 'details': str(e)}), 500
+
+
+@admin_bp.route('/storage/check-legacy', methods=['GET'])
+@jwt_required()
+def check_legacy_files():
+    """
+    Check for legacy file paths in the admin's municipality.
+    
+    Returns a report of records with missing or legacy file paths
+    that need attention (re-upload or regeneration).
+    """
+    try:
+        municipality_id = require_admin_municipality()
+        if isinstance(municipality_id, tuple):
+            return municipality_id
+        
+        from apps.api.utils.storage_handler import is_legacy_path, is_file_missing
+        
+        results = {
+            'document_requests': {'total': 0, 'legacy': 0, 'missing': 0},
+            'issues': [],
+            'items': [],
+            'announcements': []
+        }
+        
+        # Check document requests
+        doc_requests = DocumentRequest.query.filter_by(municipality_id=municipality_id).all()
+        for req in doc_requests:
+            results['document_requests']['total'] += 1
+            
+            # Check QR code
+            if req.qr_code:
+                if is_legacy_path(req.qr_code):
+                    results['document_requests']['legacy'] += 1
+                if is_file_missing(req.qr_code):
+                    results['document_requests']['missing'] += 1
+            
+            # Check document file
+            if req.document_file:
+                if is_legacy_path(req.document_file):
+                    results['document_requests']['legacy'] += 1
+                if is_file_missing(req.document_file):
+                    results['document_requests']['missing'] += 1
+        
+        return jsonify({
+            'message': 'Legacy file check complete',
+            'municipality_id': municipality_id,
+            'results': results
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to check legacy files', 'details': str(e)}), 500
 
 
 @admin_bp.route('/documents/requests/<int:request_id>/status', methods=['PUT'])

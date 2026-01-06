@@ -5,6 +5,7 @@ import { useCachedFetch } from '../lib/useCachedFetch'
 import { CACHE_KEYS } from '../lib/dataStore'
 import { ShoppingBag, Hourglass, CheckCircle, XCircle, Store, BadgeDollarSign, Handshake, Gift, Check, X } from 'lucide-react'
 import { EmptyState } from '@munlink/ui'
+import SafeImage from '../components/SafeImage'
 
 export default function Marketplace() {
   const [tab, setTab] = useState<'items' | 'transactions'>('items')
@@ -351,7 +352,7 @@ export default function Marketplace() {
               <div className="space-y-2">
                 <div className="aspect-[4/3] bg-neutral-100 rounded-xl overflow-hidden">
                   {Array.isArray(reviewItem.image ? [reviewItem.image] : reviewItem.images) && (reviewItem.image || reviewItem.images?.[0]) ? (
-                    <img src={mediaUrl(reviewItem.image || reviewItem.images?.[0])} alt={reviewItem.title} className="w-full h-full object-cover" />
+                    <SafeImage src={mediaUrl(reviewItem.image || reviewItem.images?.[0])} alt={reviewItem.title} className="w-full h-full object-cover" fallbackIcon="image" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-neutral-400">No image</div>
                   )}
@@ -359,7 +360,7 @@ export default function Marketplace() {
                 {Array.isArray(reviewItem.images) && reviewItem.images.length > 1 && (
                   <div className="flex gap-2 overflow-x-auto pt-1">
                     {reviewItem.images.slice(1).map((img: string, idx: number) => (
-                      <img key={idx} src={mediaUrl(img)} alt="thumb" className="w-16 h-16 rounded-lg object-cover border" />
+                      <SafeImage key={idx} src={mediaUrl(img)} alt="thumb" className="w-16 h-16 rounded-lg object-cover border" fallbackIcon="image" />
                     ))}
                   </div>
                 )}

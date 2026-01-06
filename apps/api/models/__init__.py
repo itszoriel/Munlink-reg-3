@@ -15,9 +15,9 @@ try:
     from apps.api.models.user import User
     from apps.api.models.province import Province
     from apps.api.models.municipality import Municipality, Barangay
-    from apps.api.models.marketplace import Item, Transaction, Message
+    from apps.api.models.marketplace import Item, Transaction
     from apps.api.models.document import DocumentType, DocumentRequest
-    from apps.api.models.issue import IssueCategory, Issue, IssueUpdate
+    from apps.api.models.issue import IssueCategory, Issue
     from apps.api.models.benefit import BenefitProgram, BenefitApplication
     from apps.api.models.token_blacklist import TokenBlacklist
     from apps.api.models.audit import AuditLog
@@ -26,9 +26,9 @@ except ImportError:
     from .user import User
     from .province import Province
     from .municipality import Municipality, Barangay
-    from .marketplace import Item, Transaction, Message
+    from .marketplace import Item, Transaction
     from .document import DocumentType, DocumentRequest
-    from .issue import IssueCategory, Issue, IssueUpdate
+    from .issue import IssueCategory, Issue
     from .benefit import BenefitProgram, BenefitApplication
     from .token_blacklist import TokenBlacklist
     from .audit import AuditLog
@@ -41,12 +41,10 @@ __all__ = [
     'Barangay',
     'Item',
     'Transaction',
-    'Message',
     'DocumentType',
     'DocumentRequest',
     'IssueCategory',
     'Issue',
-    'IssueUpdate',
     'BenefitProgram',
     'BenefitApplication',
     'TokenBlacklist',

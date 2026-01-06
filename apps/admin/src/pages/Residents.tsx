@@ -8,6 +8,7 @@ import { DataTable, Modal, Button, EmptyState } from '@munlink/ui'
 import { X, Check, RotateCcw, Pause, ExternalLink, Hourglass } from 'lucide-react'
 import TransferRequestCard from '../components/transfers/TransferRequestCard'
 import TransferRequestModal from '../components/transfers/TransferRequestModal'
+import SafeImage from '../components/SafeImage'
 
 export default function Residents() {
   const location = useLocation()
@@ -614,13 +615,19 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
                 {data?.valid_id_front && (
                   <div>
                     <p className="text-xs text-neutral-500 mb-2">Front</p>
-                    <img src={mediaUrl(data.valid_id_front)} alt="ID Front" className="w-full h-44 sm:h-48 object-cover rounded border" />
+                    <SafeImage src={mediaUrl(data.valid_id_front)} alt="ID Front" className="w-full h-44 sm:h-48 object-cover rounded border" fallbackIcon="document" />
                   </div>
                 )}
                 {data?.valid_id_back && (
                   <div>
                     <p className="text-xs text-neutral-500 mb-2">Back</p>
-                    <img src={mediaUrl(data.valid_id_back)} alt="ID Back" className="w-full h-44 sm:h-48 object-cover rounded border" />
+                    <SafeImage src={mediaUrl(data.valid_id_back)} alt="ID Back" className="w-full h-44 sm:h-48 object-cover rounded border" fallbackIcon="document" />
+                  </div>
+                )}
+                {data?.selfie_with_id && (
+                  <div>
+                    <p className="text-xs text-neutral-500 mb-2">Selfie</p>
+                    <SafeImage src={mediaUrl(data.selfie_with_id)} alt="Selfie with ID" className="w-full h-44 sm:h-48 object-cover rounded border" fallbackIcon="user" />
                   </div>
                 )}
                 {!data?.valid_id_front && !data?.valid_id_back && (

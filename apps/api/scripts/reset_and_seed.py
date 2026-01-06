@@ -40,9 +40,9 @@ from apps.api.models.benefit import BenefitProgram
 
 # Optional model imports for clearing tables safely
 from apps.api.models.announcement import Announcement
-from apps.api.models.issue import Issue, IssueUpdate, IssueCategory
+from apps.api.models.issue import Issue, IssueCategory
 from apps.api.models.document import DocumentRequest
-from apps.api.models.marketplace import Item, Transaction, Message
+from apps.api.models.marketplace import Item, Transaction
 from apps.api.models.token_blacklist import TokenBlacklist
 from apps.api.models.transfer import TransferRequest
 
@@ -91,16 +91,14 @@ def clear_non_geo_tables() -> None:
 
     # Child-first deletion order
     deletion_models = [
-        # Issues and updates
-        IssueUpdate,
+        # Issues
         Issue,
         IssueCategory,
         # Document requests and types
         DocumentRequest,
         DocumentType,
-        # Benefits
+        # Marketplace
         Transaction,  # depends on Item and Users
-        Message,
         Item,
         # Benefit applications then programs
         # BenefitApplication is referenced inside BenefitProgram model file

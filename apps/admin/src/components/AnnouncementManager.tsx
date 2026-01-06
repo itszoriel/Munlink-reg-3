@@ -10,6 +10,7 @@ import { announcementApi, handleApiError, mediaUrl } from '../lib/api'
 import { useCachedFetch } from '../lib/useCachedFetch'
 import { CACHE_KEYS } from '../lib/dataStore'
 import { EmptyState } from '@munlink/ui'
+import SafeImage from './SafeImage'
 
 interface Announcement {
   id: number
@@ -207,7 +208,7 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
             {/* Image banner with fixed aspect to avoid stretching on wide screens */}
             {Array.isArray(announcement.images) && announcement.images.length > 0 ? (
               <div className="aspect-[16/9] bg-neutral-100">
-                <img src={mediaUrl(announcement.images[0])} alt="Announcement" loading="lazy" className="w-full h-full object-cover" />
+                <SafeImage src={mediaUrl(announcement.images[0])} alt="Announcement" className="w-full h-full object-cover" fallbackIcon="image" />
               </div>
             ) : (
               <div className="aspect-[16/9] bg-neutral-100" />

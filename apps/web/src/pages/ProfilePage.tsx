@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { X } from 'lucide-react'
 import { authApi, mediaUrl, transferApi, showToast, municipalityApi } from '@/lib/api'
 import { ProfileCard, Form, FormField, Input, Button } from '@munlink/ui'
 import { getProvinces, getMunicipalities, getMunicipalityById } from '@/lib/locations'
+import SafeImage from '@/components/SafeImage'
+import { useAppStore } from '@/lib/store'
+import { getAccessToken } from '@/lib/api'
 
 type Profile = {
   first_name?: string
@@ -20,6 +23,7 @@ type Profile = {
 }
 
 export default function ProfilePage() {
+  const setAuth = useAppStore((s) => s.setAuth)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,6 +35,9 @@ export default function ProfilePage() {
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferForm, setTransferForm] = useState({ province_id: '', to_municipality_id: '', to_barangay_id: '', notes: '' })
   const [transferBarangays, setTransferBarangays] = useState<any[]>([])
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null)
 
   // Static province and municipality data
   const provinces = getProvinces()
@@ -53,10 +60,29 @@ export default function ProfilePage() {
       try {
         const profileRes = await authApi.getProfile()
         const data = (profileRes as any).data || profileRes
-        // Find municipality and province from static data (now matches database IDs)
-        const userMuni = data.municipality_id ? getMunicipalityById(data.municipality_id) : null
-        const provinceName = userMuni ? getProvinces().find(p => p.id === userMuni.province_id)?.name || '' : ''
-        const provinceId = userMuni?.province_id
+        
+        // Use API-provided names first (from database relationships)
+        // Fall back to static lookup only if API doesn't return them
+        let provinceName = data.province_name || ''
+        let provinceId = undefined
+        
+        // If API didn't return province_name, try static lookup
+        if (!provinceName && data.municipality_id) {
+          // Convert to number in case it's a string from JSON
+          const muniId = typeof data.municipality_id === 'string' 
+            ? parseInt(data.municipality_id, 10) 
+            : data.municipality_id
+          const userMuni = getMunicipalityById(muniId)
+          if (userMuni) {
+            provinceId = userMuni.province_id
+            const province = getProvinces().find(p => p.id === userMuni.province_id)
+            provinceName = province?.name || ''
+          }
+        }
+        
+        // For barangay_name, use API data directly (comes from database relationship)
+        const barangayName = data.barangay_name || ''
+        
         if (!cancelled) {
           setForm({
             first_name: data.first_name || '',
@@ -70,7 +96,7 @@ export default function ProfilePage() {
             municipality_id: data.municipality_id,
             municipality_name: data.municipality_name,
             barangay_id: data.barangay_id,
-            barangay_name: data.barangay_name,
+            barangay_name: barangayName,
           })
           // Note: Barangay is now read-only in profile, only editable through transfer request
         }
@@ -164,17 +190,97 @@ export default function ProfilePage() {
     }
   }
 
+  const handleProfilePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setProfilePhotoFile(file)
+    if (file) {
+      handleProfilePhotoUpload(file)
+    }
+  }
+
+  const handleProfilePhotoUpload = async (file: File) => {
+    setUploadingPhoto(true)
+    setError(null)
+    try {
+      const response = await authApi.uploadProfilePhoto(file)
+      const userData = (response as any)?.data?.user || (response as any)?.user || response
+      if (userData) {
+        setAuth(userData, getAccessToken() || '', '')
+        setForm((prev) => ({ ...prev, profile_picture: userData.profile_picture || prev.profile_picture }))
+        showToast('Profile photo updated successfully', 'success')
+      }
+      setProfilePhotoFile(null)
+      if (profilePhotoInputRef.current) {
+        profilePhotoInputRef.current.value = ''
+      }
+    } catch (e: any) {
+      setError('Failed to upload profile photo')
+      showToast(e?.response?.data?.error || 'Failed to upload profile photo', 'error')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
   return (
     <div className="container-responsive py-12">
       <div className="max-w-3xl mx-auto space-y-6">
-        <ProfileCard
-          role="resident"
-          name={`${form.first_name || ''} ${form.last_name || ''}`.trim() || (form.username || 'My Profile')}
-          email={form.email}
-          phone={form.phone}
-          avatarUrl={form.profile_picture ? mediaUrl(form.profile_picture) : undefined}
-          editable={false}
-        />
+        {/* Profile Picture Section */}
+        <div className="bg-white rounded-lg border p-6">
+          <h3 className="text-lg font-semibold mb-4">Profile Picture</h3>
+          <div className="flex items-center gap-6">
+            <div className="relative">
+              <SafeImage
+                src={form.profile_picture ? mediaUrl(form.profile_picture) : undefined}
+                alt="Profile"
+                className="w-24 h-24 rounded-full"
+                fallbackIcon="user"
+                showReuploadButton={true}
+                onReupload={() => profilePhotoInputRef.current?.click()}
+                reuploadLabel="Change Photo"
+              />
+              {uploadingPhoto && (
+                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs">Uploading...</span>
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-gray-600 mb-2">
+                {form.profile_picture ? 'Your profile picture is displayed across the platform.' : 'Upload a profile picture to personalize your account.'}
+              </p>
+              <input
+                ref={profilePhotoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleProfilePhotoSelect}
+                disabled={uploadingPhoto}
+              />
+              <button
+                type="button"
+                onClick={() => profilePhotoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="px-4 py-2 text-sm font-medium text-white bg-ocean-600 hover:bg-ocean-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
+              >
+                {uploadingPhoto ? 'Uploading...' : form.profile_picture ? 'Change Photo' : 'Upload Photo'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Profile Info Card */}
+        <div className="bg-white rounded-lg border p-6">
+          <h3 className="text-lg font-semibold mb-4">Profile Information</h3>
+          <ProfileCard
+            role="resident"
+            name={`${form.first_name || ''} ${form.last_name || ''}`.trim() || (form.username || 'My Profile')}
+            email={form.email}
+            phone={form.phone}
+            avatarUrl={form.profile_picture ? mediaUrl(form.profile_picture) : undefined}
+            editable={false}
+          />
+        </div>
+
         {error && <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
         {ok && <div className="rounded-md border border-green-200 bg-green-50 text-green-700 px-3 py-2 text-sm">{ok}</div>}
 

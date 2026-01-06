@@ -2,8 +2,9 @@
  * MunLink Region 3 - User Verification Component
  * Component for managing user verification requests
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { userApi, handleApiError, mediaUrl } from '../lib/api'
+import SafeImage from './SafeImage'
 
 interface User {
   id: number
@@ -252,6 +253,11 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [fullUser, setFullUser] = useState<User | null>(user)
   const [fetching, setFetching] = useState(false)
+  const [uploadingDocs, setUploadingDocs] = useState(false)
+  const [docFiles, setDocFiles] = useState<{ valid_id_front?: File, valid_id_back?: File, selfie_with_id?: File }>({})
+  const idFrontInputRef = useRef<HTMLInputElement>(null)
+  const idBackInputRef = useRef<HTMLInputElement>(null)
+  const selfieInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let mounted = true
@@ -270,6 +276,27 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
   const handleReject = () => {
     if (rejectReason.trim()) {
       onReject(user.id, rejectReason)
+    }
+  }
+
+  const handleUploadDocs = async () => {
+    if (!Object.keys(docFiles).length) return
+    setUploadingDocs(true)
+    try {
+      const res = await userApi.uploadUserVerificationDocs(user.id, docFiles)
+      const updatedUser = (res as any)?.data?.user || (res as any)?.data || res
+      if (updatedUser) {
+        setFullUser(updatedUser)
+      }
+      setDocFiles({})
+      if (idFrontInputRef.current) idFrontInputRef.current.value = ''
+      if (idBackInputRef.current) idBackInputRef.current.value = ''
+      if (selfieInputRef.current) selfieInputRef.current.value = ''
+      handleApiError(null, 'Documents uploaded successfully')
+    } catch (e: any) {
+      handleApiError(e, 'Failed to upload documents')
+    } finally {
+      setUploadingDocs(false)
     }
   }
 
@@ -322,30 +349,89 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
           {/* ID Documents */}
           <div className="mb-6">
             <h4 className="text-sm font-medium text-gray-900 mb-3">ID Documents</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               {fullUser?.valid_id_front && (
                 <div>
                   <p className="text-xs text-gray-500 mb-2">Front</p>
-                  <img
+                  <SafeImage
                     src={mediaUrl(fullUser.valid_id_front)}
                     alt="ID Front"
                     className="w-full h-32 object-cover rounded border"
+                    fallbackIcon="document"
                   />
                 </div>
               )}
               {fullUser?.valid_id_back && (
                 <div>
                   <p className="text-xs text-gray-500 mb-2">Back</p>
-                  <img
+                  <SafeImage
                     src={mediaUrl(fullUser.valid_id_back)}
                     alt="ID Back"
                     className="w-full h-32 object-cover rounded border"
+                    fallbackIcon="document"
+                  />
+                </div>
+              )}
+              {fullUser?.selfie_with_id && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">Selfie</p>
+                  <SafeImage
+                    src={mediaUrl(fullUser.selfie_with_id)}
+                    alt="Selfie with ID"
+                    className="w-full h-32 object-cover rounded border"
+                    fallbackIcon="user"
                   />
                 </div>
               )}
               {!fetching && !fullUser?.valid_id_front && !fullUser?.valid_id_back && (
                 <p className="text-sm text-gray-500">No ID documents uploaded.</p>
               )}
+            </div>
+
+            {/* Re-upload Section */}
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+              <h5 className="text-sm font-medium text-gray-900 mb-3">Re-upload Documents (Admin)</h5>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">ID Front</label>
+                  <input
+                    ref={idFrontInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="text-xs"
+                    onChange={(e) => setDocFiles(prev => ({ ...prev, valid_id_front: e.target.files?.[0] || undefined }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">ID Back</label>
+                  <input
+                    ref={idBackInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="text-xs"
+                    onChange={(e) => setDocFiles(prev => ({ ...prev, valid_id_back: e.target.files?.[0] || undefined }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Selfie with ID</label>
+                  <input
+                    ref={selfieInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="text-xs"
+                    onChange={(e) => setDocFiles(prev => ({ ...prev, selfie_with_id: e.target.files?.[0] || undefined }))}
+                  />
+                </div>
+                {Object.keys(docFiles).length > 0 && (
+                  <button
+                    onClick={handleUploadDocs}
+                    disabled={uploadingDocs}
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-ocean-600 hover:bg-ocean-700 disabled:opacity-50 rounded-md"
+                  >
+                    {uploadingDocs ? 'Uploading...' : 'Upload Selected Documents'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

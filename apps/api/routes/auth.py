@@ -125,11 +125,15 @@ def register():
         
         # Get municipality ID from slug
         municipality_id = None
+        municipality_obj = None
         if municipality_slug:
-            municipality = Municipality.query.filter_by(slug=municipality_slug).first()
-            if municipality:
-                municipality_id = municipality.id
-        # Validate optional barangay_id belongs to municipality if both provided
+            municipality_obj = Municipality.query.filter_by(slug=municipality_slug).first()
+            if municipality_obj:
+                municipality_id = municipality_obj.id
+            else:
+                current_app.logger.warning(f"Registration: Municipality not found for slug '{municipality_slug}'")
+        
+        # Validate barangay_id belongs to municipality if both provided
         barangay_id = None
         if barangay_id_raw is not None and str(barangay_id_raw).strip() != '':
             try:
@@ -140,9 +144,15 @@ def register():
                 bid = int(barangay_id_raw)
             except Exception:
                 bid = None
+                current_app.logger.warning(f"Registration: Invalid barangay_id format: '{barangay_id_raw}'")
             if bid:
                 b = Barangay.query.get(bid)
-                if b and (not municipality_id or b.municipality_id == municipality_id):
+                if not b:
+                    # Barangay not found - try to find a matching one by looking up barangays for this municipality
+                    current_app.logger.warning(f"Registration: Barangay ID {bid} not found in database (municipality_id={municipality_id})")
+                elif municipality_id and b.municipality_id != municipality_id:
+                    current_app.logger.warning(f"Registration: Barangay {bid} belongs to municipality {b.municipality_id}, not {municipality_id}")
+                else:
                     barangay_id = bid
         
         # Check if user already exists
@@ -217,7 +227,7 @@ def register():
 
         resp = {
             'message': 'Registration successful. Please check your Gmail to verify your account.',
-            'user': user.to_dict(),
+            'user': user.to_dict(include_municipality=True),  # Include location info
             'email_sent': email_sent,  # Always include this for debugging
         }
         # Include error details in debug mode
@@ -922,9 +932,6 @@ def update_profile():
         
         if 'phone_number' in data:
             user.phone_number = validate_phone(data['phone_number'])
-        
-        if 'street_address' in data:
-            user.street_address = data['street_address']
         
         # Location updates
         if 'barangay_id' in data:

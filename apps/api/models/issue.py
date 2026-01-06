@@ -102,7 +102,6 @@ class Issue(db.Model):
     assigned_admin = db.relationship('User', foreign_keys=[assigned_admin_id], backref='assigned_issues')
     municipality = db.relationship('Municipality', backref='issues')
     barangay = db.relationship('Barangay', backref='issues')
-    updates = db.relationship('IssueUpdate', backref='issue', lazy='dynamic', cascade='all, delete-orphan')
     
     # Indexes
     __table_args__ = (
@@ -116,7 +115,7 @@ class Issue(db.Model):
     def __repr__(self):
         return f'<Issue {self.issue_number} - {self.title}>'
     
-    def to_dict(self, include_user=False, include_updates=False):
+    def to_dict(self, include_user=False):
         """Convert issue to dictionary."""
         data = {
             'id': self.id,
@@ -155,53 +154,5 @@ class Issue(db.Model):
         if self.category:
             data['category'] = self.category.to_dict()
         
-        if include_updates:
-            data['updates'] = [u.to_dict() for u in self.updates.order_by(IssueUpdate.created_at.desc()).all()]
-        
         return data
-
-
-class IssueUpdate(db.Model):
-    __tablename__ = 'issue_updates'
-    
-    # Primary Key
-    id = db.Column(db.Integer, primary_key=True)
-    
-    # Related Issue
-    issue_id = db.Column(db.Integer, db.ForeignKey('issues.id'), nullable=False)
-    
-    # Author (can be user or admin)
-    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    author_type = db.Column(db.String(20), nullable=False)  # user, admin
-    
-    # Update Content
-    content = db.Column(db.Text, nullable=False)
-    
-    # Attachments
-    attachments = db.Column(db.JSON, nullable=True)
-    
-    # Status Change
-    status_change = db.Column(db.String(50), nullable=True)  # e.g., "submitted -> under_review"
-    
-    # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    author = db.relationship('User', backref='issue_updates')
-    
-    def __repr__(self):
-        return f'<IssueUpdate {self.id} for Issue {self.issue_id}>'
-    
-    def to_dict(self):
-        """Convert issue update to dictionary."""
-        return {
-            'id': self.id,
-            'issue_id': self.issue_id,
-            'author_id': self.author_id,
-            'author_type': self.author_type,
-            'content': self.content,
-            'attachments': self.attachments,
-            'status_change': self.status_change,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-        }
 

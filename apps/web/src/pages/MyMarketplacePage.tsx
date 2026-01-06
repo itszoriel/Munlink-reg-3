@@ -7,6 +7,7 @@ import { useCachedFetch } from '@/lib/useCachedFetch'
 import { CACHE_KEYS } from '@/lib/dataStore'
 import Modal from '@/components/ui/Modal'
 import { EmptyState } from '@munlink/ui'
+import SafeImage from '@/components/SafeImage'
 
 type MyItem = {
   id: number
@@ -432,16 +433,51 @@ export default function MyMarketplacePage() {
                 <label htmlFor="edit-images" className="block text-sm font-medium mb-1">Images</label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {editForm.images.map((img, idx) => (
-                    <div key={`${img}-${idx}`} className="relative">
-                      <img src={mediaUrl(img)} className="w-20 h-20 rounded object-cover border" />
+                    <div key={`${img}-${idx}`} className="relative group">
+                      <SafeImage
+                        src={mediaUrl(img)}
+                        alt={`Item image ${idx + 1}`}
+                        className="w-20 h-20 rounded object-cover border"
+                        fallbackIcon="image"
+                      />
                       <button
                         type="button"
-                        className="absolute -top-2 -right-2 bg-white border rounded-full p-1"
+                        className="absolute -top-2 -right-2 bg-white border rounded-full p-1 hover:bg-red-50 transition-colors"
                         onClick={() => setEditForm((f) => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))}
                         aria-label="Remove image"
                       >
                         <X className="w-3 h-3" aria-hidden="true" />
                       </button>
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <button
+                          type="button"
+                          className="px-2 py-1 text-xs font-medium text-white bg-ocean-600 hover:bg-ocean-700 rounded"
+                          onClick={async () => {
+                            // Remove old image and allow new upload
+                            const newImages = editForm.images.filter((_, i) => i !== idx)
+                            setEditForm((f) => ({ ...f, images: newImages }))
+                            // Trigger file input for replacement
+                            const input = document.createElement('input')
+                            input.type = 'file'
+                            input.accept = 'image/*'
+                            input.onchange = async (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0]
+                              if (file && editItem) {
+                                try {
+                                  await marketplaceApi.uploadItemImage(editItem.id, file)
+                                  await refetchItems()
+                                  showToast('Image replaced successfully', 'success')
+                                } catch (err: any) {
+                                  showToast(err?.response?.data?.error || 'Failed to replace image', 'error')
+                                }
+                              }
+                            }
+                            input.click()
+                          }}
+                        >
+                          Replace
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -134,7 +134,7 @@ export const authApi = {
   },
   getProfile: async (): Promise<ApiResponse<any>> =>
     apiClient.get('/api/auth/profile').then(res => res.data),
-  updateProfile: async (data: Partial<{ first_name: string; middle_name?: string; last_name: string; suffix?: string; phone_number?: string; street_address?: string }>): Promise<ApiResponse<any>> =>
+  updateProfile: async (data: Partial<{ first_name: string; middle_name?: string; last_name: string; suffix?: string; phone_number?: string }>): Promise<ApiResponse<any>> =>
     apiClient.put('/api/auth/profile', data).then(res => res.data),
   uploadProfilePhoto: async (file: File): Promise<ApiResponse<any>> => {
     const form = new FormData()
@@ -182,6 +182,15 @@ export const userApi = {
   // Get user by id (detail for modal)
   getUserById: (userId: number): Promise<ApiResponse<any>> =>
     apiClient.get(`/api/admin/users/${userId}`).then(res => res.data),
+
+  // Upload verification documents for a user (admin re-upload)
+  uploadUserVerificationDocs: async (userId: number, files: { valid_id_front?: File, valid_id_back?: File, selfie_with_id?: File }): Promise<ApiResponse<any>> => {
+    const form = new FormData()
+    if (files.valid_id_front) form.append('valid_id_front', files.valid_id_front)
+    if (files.valid_id_back) form.append('valid_id_back', files.valid_id_back)
+    if (files.selfie_with_id) form.append('selfie_with_id', files.selfie_with_id)
+    return apiClient.post(`/api/admin/users/${userId}/verification-docs`, form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data)
+  },
 }
 
 // Issue Management API

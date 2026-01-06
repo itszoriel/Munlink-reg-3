@@ -26,14 +26,12 @@ class User(db.Model):
     # Location (required for residents)
     municipality_id = db.Column(db.Integer, db.ForeignKey('municipalities.id'), nullable=True)
     barangay_id = db.Column(db.Integer, db.ForeignKey('barangays.id'), nullable=True)
-    street_address = db.Column(db.String(200), nullable=True)
     
     # Contact
     phone_number = db.Column(db.String(15), nullable=True)
     
     # Birth Information
     date_of_birth = db.Column(db.Date, nullable=True)
-    place_of_birth = db.Column(db.String(100), nullable=True)
     
     # Role and Verification Status
     role = db.Column(db.String(20), default='resident')  # public, resident, municipal_admin
@@ -88,7 +86,6 @@ class User(db.Model):
             'suffix': self.suffix,
             'municipality_id': self.municipality_id,
             'barangay_id': self.barangay_id,
-            'street_address': self.street_address,
             'phone_number': self.phone_number if include_sensitive else None,
             'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
             'role': self.role,

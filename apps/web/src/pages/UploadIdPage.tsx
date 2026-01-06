@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { authApi, getAccessToken } from '@/lib/api'
+import { authApi, getAccessToken, mediaUrl } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import SafeImage from '@/components/SafeImage'
 
 export default function UploadIdPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
@@ -74,20 +75,88 @@ export default function UploadIdPage() {
         {msg && <div className="mb-4 p-3 rounded-md bg-green-50 border border-green-200 text-green-700 text-sm">{msg}</div>}
 
         <form onSubmit={onSubmit} className="space-y-5">
+          {/* ID Front */}
           <div>
-            <label htmlFor="id-front" className="block text-sm font-medium mb-1">Valid ID - Front</label>
+            <label htmlFor="id-front" className="block text-sm font-medium mb-2">Valid ID - Front</label>
+            {user?.valid_id_front && (
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 mb-2">Current ID Front:</p>
+                <div className="relative w-full max-w-xs">
+                  <SafeImage
+                    src={mediaUrl(user.valid_id_front)}
+                    alt="ID Front"
+                    className="w-full h-48 rounded-lg border"
+                    fallbackIcon="document"
+                    showReuploadButton={true}
+                    onReupload={() => document.getElementById('id-front')?.click()}
+                    reuploadLabel="Replace"
+                  />
+                </div>
+              </div>
+            )}
             <input id="id-front" name="id_front" className="input-field" type="file" accept="image/*" onChange={(e)=>setFront(e.target.files?.[0] || null)} />
-            {front && <p className="text-xs text-gray-500 mt-1">Selected: {front.name}</p>}
+            {front && (
+              <div className="mt-2">
+                <p className="text-xs text-gray-500 mb-2">New file selected: {front.name}</p>
+                <img src={URL.createObjectURL(front)} alt="Preview" className="w-full max-w-xs h-48 object-contain rounded-lg border" />
+              </div>
+            )}
           </div>
+
+          {/* ID Back */}
           <div>
-            <label htmlFor="id-back" className="block text-sm font-medium mb-1">Valid ID - Back</label>
+            <label htmlFor="id-back" className="block text-sm font-medium mb-2">Valid ID - Back</label>
+            {user?.valid_id_back && (
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 mb-2">Current ID Back:</p>
+                <div className="relative w-full max-w-xs">
+                  <SafeImage
+                    src={mediaUrl(user.valid_id_back)}
+                    alt="ID Back"
+                    className="w-full h-48 rounded-lg border"
+                    fallbackIcon="document"
+                    showReuploadButton={true}
+                    onReupload={() => document.getElementById('id-back')?.click()}
+                    reuploadLabel="Replace"
+                  />
+                </div>
+              </div>
+            )}
             <input id="id-back" name="id_back" className="input-field" type="file" accept="image/*" onChange={(e)=>setBack(e.target.files?.[0] || null)} />
-            {back && <p className="text-xs text-gray-500 mt-1">Selected: {back.name}</p>}
+            {back && (
+              <div className="mt-2">
+                <p className="text-xs text-gray-500 mb-2">New file selected: {back.name}</p>
+                <img src={URL.createObjectURL(back)} alt="Preview" className="w-full max-w-xs h-48 object-contain rounded-lg border" />
+              </div>
+            )}
           </div>
+
+          {/* Selfie */}
           <div>
-            <label htmlFor="id-selfie" className="block text-sm font-medium mb-1">Selfie holding the ID (optional)</label>
+            <label htmlFor="id-selfie" className="block text-sm font-medium mb-2">Selfie holding the ID (optional)</label>
+            {user?.selfie_with_id && (
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 mb-2">Current Selfie:</p>
+                <div className="relative w-full max-w-xs">
+                  <SafeImage
+                    src={mediaUrl(user.selfie_with_id)}
+                    alt="Selfie with ID"
+                    className="w-full h-48 rounded-lg border"
+                    fallbackIcon="user"
+                    showReuploadButton={true}
+                    onReupload={() => document.getElementById('id-selfie')?.click()}
+                    reuploadLabel="Replace"
+                  />
+                </div>
+              </div>
+            )}
             <input id="id-selfie" name="id_selfie" className="input-field" type="file" accept="image/*" onChange={(e)=>setSelfie(e.target.files?.[0] || null)} />
-            {selfie && <p className="text-xs text-gray-500 mt-1">Selected: {selfie.name}</p>}
+            {selfie && (
+              <div className="mt-2">
+                <p className="text-xs text-gray-500 mb-2">New file selected: {selfie.name}</p>
+                <img src={URL.createObjectURL(selfie)} alt="Preview" className="w-full max-w-xs h-48 object-contain rounded-lg border" />
+              </div>
+            )}
           </div>
 
           <div className="pt-2">

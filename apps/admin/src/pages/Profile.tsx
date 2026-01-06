@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAdminStore } from '../lib/store'
 import { authApi, mediaUrl, showToast } from '../lib/api'
+import SafeImage from '../components/SafeImage'
 
 export default function Profile() {
   const storeUser = useAdminStore((s) => s.user)
@@ -11,6 +12,9 @@ export default function Profile() {
   )
   const [file, setFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -29,13 +33,21 @@ export default function Profile() {
       <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
         {/* Header with photo */}
         <div className="flex flex-col items-center text-center mb-8">
-          {user?.profile_picture ? (
-            <img src={mediaUrl(user.profile_picture)} alt="Profile" className="w-24 h-24 rounded-full object-cover mb-4 ring-4 ring-ocean-100" />
-          ) : (
-            <div className="w-24 h-24 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 text-3xl font-semibold mb-4">
-              {(user?.first_name?.[0] || 'A')}{(user?.last_name?.[0] || '')}
-            </div>
-          )}
+          <div className="relative">
+            <SafeImage
+              src={user?.profile_picture ? mediaUrl(user.profile_picture) : undefined}
+              alt="Profile"
+              className="w-24 h-24 rounded-full object-cover mb-4 ring-4 ring-ocean-100"
+              fallbackIcon="user"
+              onError={() => setImageError(true)}
+              onLoad={() => setImageError(false)}
+            />
+            {uploadingPhoto && (
+              <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center mb-4">
+                <span className="text-white text-xs">Uploading...</span>
+              </div>
+            )}
+          </div>
           <h2 className="text-xl font-semibold text-neutral-900">{user?.first_name} {user?.last_name}</h2>
           <p className="text-neutral-600 text-sm">{user?.email}</p>
           <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ocean-50 text-ocean-700 text-xs font-medium">
@@ -46,27 +58,45 @@ export default function Profile() {
           
           {/* Photo upload */}
           <div className="mt-4 flex items-center gap-2">
-            <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-sm transition">
-              Change Photo
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => setFile((e.target.files && e.target.files[0]) || null)} />
-            </label>
-            {file && (
-              <button
-                className="px-3 py-1.5 rounded-lg bg-ocean-600 hover:bg-ocean-700 text-white text-sm"
-                onClick={async () => {
+            <input
+              ref={profilePhotoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const selectedFile = e.target.files?.[0] || null
+                if (selectedFile) {
+                  setFile(selectedFile)
+                  setUploadingPhoto(true)
                   try {
-                    const res = await authApi.uploadProfilePhoto(file)
+                    const res = await authApi.uploadProfilePhoto(selectedFile)
                     const u = (res as any)?.data?.user || (res as any)?.user || res
                     setUser(u)
                     updateUser(u)
                     setFile(null)
                     showToast('Photo updated', 'success')
+                    if (profilePhotoInputRef.current) {
+                      profilePhotoInputRef.current.value = ''
+                    }
                   } catch (e: any) {
                     showToast(e?.response?.data?.error || 'Upload failed', 'error')
+                  } finally {
+                    setUploadingPhoto(false)
                   }
-                }}
-              >Upload</button>
-            )}
+                }
+              }}
+            />
+            <button
+              className={`px-3 py-1.5 rounded-lg text-sm transition disabled:opacity-50 ${
+                imageError || !user?.profile_picture
+                  ? 'bg-ocean-600 hover:bg-ocean-700 text-white'
+                  : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700'
+              }`}
+              onClick={() => profilePhotoInputRef.current?.click()}
+              disabled={uploadingPhoto}
+            >
+              {uploadingPhoto ? 'Uploading...' : 'Change Photo'}
+            </button>
           </div>
         </div>
 
