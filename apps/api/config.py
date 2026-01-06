@@ -213,8 +213,15 @@ class Config:
         os.getenv('ALLOWED_EXTENSIONS', 'pdf,jpg,jpeg,png,doc,docx').split(',')
     )
     
-    # Email (SendGrid API - works on Render free tier, SMTP is blocked)
+    # Email Configuration
+    # SendGrid API (for production on Render where SMTP is blocked)
     SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
+    # SMTP (for development with Gmail)
+    SMTP_SERVER = os.getenv('SMTP_SERVER', '')
+    SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
+    SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
+    SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+    # Sender email address (used by both SendGrid and SMTP)
     FROM_EMAIL = os.getenv('FROM_EMAIL', '')
     
     # QR Codes
