@@ -572,114 +572,125 @@ def get_resident_document(user_id, doc_type):
     from apps.api.utils.admin_audit import log_resident_id_viewed
     from apps.api.models.municipality import Municipality
     import os
+    import traceback
 
-    # Check permission first
-    user_id_jwt = get_jwt_identity()
-    current_user = User.query.get(user_id_jwt)
+    try:
+        # Check permission first
+        user_id_jwt = get_jwt_identity()
+        current_user = User.query.get(user_id_jwt)
 
-    if not current_user:
-        return jsonify({'error': 'User not found'}), 404
+        if not current_user:
+            return jsonify({'error': 'User not found'}), 404
 
-    if not current_user.has_permission('residents:id_view'):
+        if not current_user.has_permission('residents:id_view'):
+            return jsonify({
+                'error': 'Permission denied: residents:id_view required',
+                'code': 'PERMISSION_DENIED'
+            }), 403
+
+        # Validate doc_type
+        valid_types = ['id_front', 'id_back', 'selfie']
+        if doc_type not in valid_types:
+            return jsonify({'error': f'Invalid document type. Must be one of: {valid_types}'}), 400
+
+        # Require reason
+        reason = request.args.get('reason', '').strip()
+        if not reason:
+            return jsonify({'error': 'Reason parameter required'}), 400
+
+        # Get admin context (allow None for superadmins)
+        admin_municipality_id = get_admin_municipality_id()
+
+        # Get resident
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        if user.role != 'resident':
+            return jsonify({'error': 'User is not a resident'}), 400
+
+        # Validate municipality scope (unless superadmin)
+        if current_user.role != 'superadmin':
+            if not admin_municipality_id:
+                return jsonify({'error': 'Admin access required'}), 403
+            if user.municipality_id != admin_municipality_id:
+                return jsonify({'error': 'Access denied: user not in your municipality'}), 403
+
+        # Get file path
+        doc_field_map = {
+            'id_front': 'valid_id_front',
+            'id_back': 'valid_id_back',
+            'selfie': 'selfie_with_id'
+        }
+        file_path = getattr(user, doc_field_map[doc_type], None)
+
+        if not file_path:
+            return jsonify({'error': f'No {doc_type} document found for this user'}), 404
+
+        # Log access to audit trail
+        municipality = Municipality.query.get(user.municipality_id)
+        log_resident_id_viewed(
+            admin_id=current_user.id,
+            admin_email=current_user.email,
+            resident_id=user.id,
+            resident_name=f"{user.first_name} {user.last_name}",
+            document_type=doc_type,
+            reason=reason,
+            municipality_id=user.municipality_id,
+            municipality_name=municipality.name if municipality else 'Unknown',
+            req=request
+        )
+
+        # Serve file
+        # If Supabase URL, redirect to it
+        if file_path.startswith(('http://', 'https://')):
+            from flask import redirect
+            from urllib.parse import urlparse
+
+            # Validate URL domain against allowed storage providers
+            parsed = urlparse(file_path)
+            allowed_domains = current_app.config.get('ALLOWED_FILE_DOMAINS', [])
+
+            if allowed_domains and parsed.netloc not in allowed_domains:
+                current_app.logger.warning(f"Blocked redirect to untrusted domain: {parsed.netloc}")
+                return jsonify({'error': 'Invalid file URL'}), 403
+
+            return redirect(file_path)
+
+        # If local file, serve it
+        upload_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        upload_dir_abs = os.path.abspath(upload_dir)
+        full_path = os.path.abspath(os.path.join(upload_dir, file_path))
+
+        # Validate path is within upload directory (prevent path traversal)
+        if not full_path.startswith(upload_dir_abs + os.sep):
+            current_app.logger.warning(f"Path traversal attempt detected: {file_path}")
+            return jsonify({'error': 'Invalid file path'}), 403
+
+        if not os.path.exists(full_path):
+            return jsonify({'error': 'File not found on server'}), 404
+
+        # Determine MIME type
+        mime_types = {
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/webp',
+            'webp': 'image/webp'
+        }
+        ext = file_path.split('.')[-1].lower()
+        mime_type = mime_types.get(ext, 'application/octet-stream')
+
+        return send_file(full_path, mimetype=mime_type)
+
+    except Exception as e:
+        # Log the full error for debugging
+        current_app.logger.error(f"Error serving document for user {user_id}: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         return jsonify({
-            'error': 'Permission denied: residents:id_view required',
-            'code': 'PERMISSION_DENIED'
-        }), 403
-
-    # Validate doc_type
-    valid_types = ['id_front', 'id_back', 'selfie']
-    if doc_type not in valid_types:
-        return jsonify({'error': f'Invalid document type. Must be one of: {valid_types}'}), 400
-
-    # Require reason
-    reason = request.args.get('reason', '').strip()
-    if not reason:
-        return jsonify({'error': 'Reason parameter required'}), 400
-
-    # Get admin context (allow None for superadmins)
-    admin_municipality_id = get_admin_municipality_id()
-
-    # Get resident
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-
-    if user.role != 'resident':
-        return jsonify({'error': 'User is not a resident'}), 400
-
-    # Validate municipality scope (unless superadmin)
-    if current_user.role != 'superadmin':
-        if not admin_municipality_id:
-            return jsonify({'error': 'Admin access required'}), 403
-        if user.municipality_id != admin_municipality_id:
-            return jsonify({'error': 'Access denied: user not in your municipality'}), 403
-
-    # Get file path
-    doc_field_map = {
-        'id_front': 'valid_id_front',
-        'id_back': 'valid_id_back',
-        'selfie': 'selfie_with_id'
-    }
-    file_path = getattr(user, doc_field_map[doc_type], None)
-
-    if not file_path:
-        return jsonify({'error': f'No {doc_type} document found for this user'}), 404
-
-    # Log access to audit trail
-    municipality = Municipality.query.get(user.municipality_id)
-    log_resident_id_viewed(
-        admin_id=current_user.id,
-        admin_email=current_user.email,
-        resident_id=user.id,
-        resident_name=f"{user.first_name} {user.last_name}",
-        document_type=doc_type,
-        reason=reason,
-        municipality_id=user.municipality_id,
-        municipality_name=municipality.name if municipality else 'Unknown',
-        req=request
-    )
-
-    # Serve file
-    # If Supabase URL, redirect to it
-    if file_path.startswith(('http://', 'https://')):
-        from flask import redirect
-        from urllib.parse import urlparse
-
-        # Validate URL domain against allowed storage providers
-        parsed = urlparse(file_path)
-        allowed_domains = current_app.config.get('ALLOWED_FILE_DOMAINS', [])
-
-        if allowed_domains and parsed.netloc not in allowed_domains:
-            current_app.logger.warning(f"Blocked redirect to untrusted domain: {parsed.netloc}")
-            return jsonify({'error': 'Invalid file URL'}), 403
-
-        return redirect(file_path)
-
-    # If local file, serve it
-    upload_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-    upload_dir_abs = os.path.abspath(upload_dir)
-    full_path = os.path.abspath(os.path.join(upload_dir, file_path))
-
-    # Validate path is within upload directory (prevent path traversal)
-    if not full_path.startswith(upload_dir_abs + os.sep):
-        current_app.logger.warning(f"Path traversal attempt detected: {file_path}")
-        return jsonify({'error': 'Invalid file path'}), 403
-
-    if not os.path.exists(full_path):
-        return jsonify({'error': 'File not found on server'}), 404
-
-    # Determine MIME type
-    mime_types = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
-    }
-    ext = file_path.split('.')[-1].lower()
-    mime_type = mime_types.get(ext, 'application/octet-stream')
-
-    return send_file(full_path, mimetype=mime_type)
+            'error': 'Internal server error while fetching document',
+            'details': str(e) if current_app.config.get('DEBUG') else 'An error occurred'
+        }), 500
 
 
 @admin_bp.route('/users/verified', methods=['GET'])
