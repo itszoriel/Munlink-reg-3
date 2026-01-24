@@ -1,8 +1,8 @@
 /**
- * MunLink Region III - Announcement Manager Component
+ * MunLink Zambales - Announcement Manager Component
  * Component for managing municipality announcements
  */
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
@@ -11,6 +11,8 @@ import { useCachedFetch } from '../lib/useCachedFetch'
 import { CACHE_KEYS } from '../lib/dataStore'
 import { EmptyState } from '@munlink/ui'
 import SafeImage from './SafeImage'
+import { useAdminStore } from '../lib/store'
+import { MUNICIPALITIES, getBarangaysByMunicipalityId } from '../lib/locations'
 
 interface Announcement {
   id: number
@@ -21,8 +23,18 @@ interface Announcement {
   created_at: string
   updated_at: string
   municipality_name?: string
+  municipality_id?: number
+  barangay_id?: number
+  barangay_name?: string
+  scope?: 'PROVINCE' | 'MUNICIPALITY' | 'BARANGAY'
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+  pinned?: boolean
+  pinned_until?: string
+  publish_at?: string
+  expire_at?: string
   creator_name?: string
   images?: string[]
+  shared_with_municipalities?: number[]
 }
 
 interface AnnouncementManagerProps {
@@ -36,6 +48,16 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [fabExpanded, setFabExpanded] = useState(false)
+  const user = useAdminStore((s) => s.user)
+  const staffRole = (user?.role || '').toLowerCase()
+  const staffMunicipalityId = user?.admin_municipality_id
+  const staffBarangayId = (user as any)?.barangay_id as number | undefined
+  const allowedScopes = useMemo(() => {
+    if (staffRole === 'barangay_admin') return ['BARANGAY'] as const
+    if (staffRole === 'municipal_admin') return ['MUNICIPALITY'] as const
+    return ['PROVINCE', 'MUNICIPALITY', 'BARANGAY'] as const
+  }, [staffRole])
+  const defaultScope = allowedScopes[0] || 'MUNICIPALITY'
 
   // Use cached fetch for announcements
   const { data: announcementsData, loading: announcementsLoading, update: updateCache, refetch } = useCachedFetch(
@@ -159,6 +181,21 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
     }
   }
 
+  const isPinnedActive = (announcement: Announcement) => {
+    if (!announcement.pinned) return false
+    if (announcement.pinned_until) {
+      return new Date(announcement.pinned_until).getTime() > Date.now()
+    }
+    return true
+  }
+
+  const scopeBadgeLabel = (announcement: Announcement) => {
+    const scope = (announcement.scope || 'MUNICIPALITY').toUpperCase()
+    if (scope === 'PROVINCE') return 'Province-wide'
+    if (scope === 'BARANGAY') return announcement.barangay_name || 'Barangay'
+    return announcement.municipality_name || 'Municipality'
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -216,12 +253,30 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
             <div className="p-5">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">{scopeBadgeLabel(announcement)}</span>
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(announcement.priority)}`}>{announcement.priority.toUpperCase()}</span>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${announcement.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{announcement.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    (announcement.status || '').toUpperCase() === 'PUBLISHED' ? 'bg-green-100 text-green-800'
+                      : (announcement.status || '').toUpperCase() === 'ARCHIVED' ? 'bg-gray-100 text-gray-700'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>{(announcement.status || (announcement.is_active ? 'PUBLISHED' : 'DRAFT')).toUpperCase()}</span>
+                  {isPinnedActive(announcement) && (
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-ocean-100 text-ocean-800">PINNED</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 sm:self-start">
                   <button onClick={() => openAnnouncementModal(announcement)} className="px-3 py-1 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">Edit</button>
-                  <button onClick={() => handleUpdateAnnouncement(announcement.id, { is_active: !announcement.is_active })} disabled={actionLoading === announcement.id} className={`px-3 py-1 text-xs sm:text-sm font-medium rounded-md transition-colors disabled:opacity-50 ${announcement.is_active ? 'text-orange-700 bg-orange-100 hover:bg-orange-200' : 'text-green-700 bg-green-100 hover:bg-green-200'}`}>{actionLoading === announcement.id ? 'Updating…' : (announcement.is_active ? 'Deactivate' : 'Activate')}</button>
+                  <button
+                    onClick={() => {
+                      const isActive = announcement.is_active
+                      const nextStatus = isActive ? 'ARCHIVED' : 'PUBLISHED'
+                      handleUpdateAnnouncement(announcement.id, { status: nextStatus })
+                    }}
+                    disabled={actionLoading === announcement.id}
+                    className={`px-3 py-1 text-xs sm:text-sm font-medium rounded-md transition-colors disabled:opacity-50 ${announcement.is_active ? 'text-orange-700 bg-orange-100 hover:bg-orange-200' : 'text-green-700 bg-green-100 hover:bg-green-200'}`}
+                  >
+                    {actionLoading === announcement.id ? 'Updating…' : (announcement.is_active ? 'Archive' : 'Publish')}
+                  </button>
                 </div>
               </div>
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 line-clamp-2">{announcement.title}</h3>
@@ -230,7 +285,7 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
                 {announcement.municipality_name && (<span className="truncate">{announcement.municipality_name}</span>)}
                 {announcement.creator_name && (<span className="truncate">By: {announcement.creator_name}</span>)}
                 <span className="hidden sm:inline">•</span>
-                <span>{new Date(announcement.created_at).toLocaleDateString()}</span>
+                <span>{new Date(announcement.publish_at || announcement.created_at).toLocaleDateString()}</span>
               </div>
             </div>
           </div>
@@ -264,6 +319,9 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
           onUpdate={handleUpdateAnnouncement}
           onDelete={handleDeleteAnnouncement}
           loading={actionLoading === selectedAnnouncement.id}
+          allowedScopes={allowedScopes}
+          staffMunicipalityId={staffMunicipalityId}
+          staffBarangayId={staffBarangayId}
         />
       )}
 
@@ -273,6 +331,10 @@ export default function AnnouncementManager({ onAnnouncementUpdated }: Announcem
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreateAnnouncement}
           loading={actionLoading === -1}
+          allowedScopes={allowedScopes}
+          defaultScope={defaultScope}
+          staffMunicipalityId={staffMunicipalityId}
+          staffBarangayId={staffBarangayId}
         />
       )}
 
@@ -362,6 +424,9 @@ interface AnnouncementDetailModalProps {
   onUpdate: (id: number, data: any) => Promise<void>
   onDelete: (id: number) => void
   loading: boolean
+  allowedScopes: readonly string[]
+  staffMunicipalityId?: number
+  staffBarangayId?: number
 }
 
 function AnnouncementDetailModal({ 
@@ -369,16 +434,31 @@ function AnnouncementDetailModal({
   onClose, 
   onUpdate, 
   onDelete, 
-  loading 
+  loading,
+  allowedScopes,
+  staffMunicipalityId,
+  staffBarangayId,
 }: AnnouncementDetailModalProps) {
   const [editMode, setEditMode] = useState(true)
+  const toInputValue = (value?: string) => value ? value.slice(0, 16) : ''
   const [formData, setFormData] = useState({
     title: announcement.title,
     content: announcement.content,
     priority: announcement.priority,
-    is_active: announcement.is_active,
-    external_url: (announcement as any).external_url || ''
+    external_url: (announcement as any).external_url || '',
+    scope: (announcement.scope as any) || 'MUNICIPALITY',
+    municipality_id: announcement.municipality_id || staffMunicipalityId,
+    barangay_id: announcement.barangay_id || staffBarangayId,
+    status: (announcement.status as any) || (announcement.is_active ? 'PUBLISHED' : 'DRAFT'),
+    publish_at: toInputValue(announcement.publish_at),
+    expire_at: toInputValue(announcement.expire_at),
+    pinned: !!announcement.pinned,
+    pinned_until: toInputValue(announcement.pinned_until),
+    shared_with_municipalities: announcement.shared_with_municipalities || [],
   })
+  const selectedMunicipalityId = formData.scope === 'PROVINCE' ? undefined : (formData.municipality_id || staffMunicipalityId)
+  const barangayOptions = selectedMunicipalityId ? getBarangaysByMunicipalityId(selectedMunicipalityId) : []
+  const municipalityLocked = allowedScopes.length === 1 && allowedScopes[0] !== 'PROVINCE'
   const [uploading, setUploading] = useState(false)
   const [images, setImages] = useState<string[]>(announcement.images || [])
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -436,7 +516,20 @@ function AnnouncementDetailModal({
       }
     }
     // Persist fields and final image order (including removals/reorders)
-    await onUpdate(announcement.id, { ...formData, images: current })
+    const payload: any = {
+      ...formData,
+      images: current,
+    }
+    if (payload.scope === 'PROVINCE') {
+      payload.municipality_id = undefined
+      payload.barangay_id = undefined
+    } else if (payload.scope === 'MUNICIPALITY') {
+      payload.barangay_id = undefined
+    }
+    if (!payload.publish_at) delete payload.publish_at
+    if (!payload.expire_at) delete payload.expire_at
+    if (!payload.pinned_until) delete payload.pinned_until
+    await onUpdate(announcement.id, payload)
   }
 
   const handleDelete = () => {
@@ -446,9 +539,10 @@ function AnnouncementDetailModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[1000]" role="dialog" aria-modal="true">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto pb-24 sm:pb-0" tabIndex={-1} autoFocus>
-        <div className="p-6">
+    (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[1000]" role="dialog" aria-modal="true">
+        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto pb-24 sm:pb-0" tabIndex={-1} autoFocus>
+          <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Edit Announcement</h2>
@@ -565,7 +659,95 @@ function AnnouncementDetailModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Scope</label>
+                <select
+                  value={formData.scope}
+                  onChange={(e) => {
+                    const next = e.target.value as 'PROVINCE' | 'MUNICIPALITY' | 'BARANGAY'
+                    setFormData(prev => ({
+                      ...prev,
+                      scope: next,
+                      municipality_id: next === 'PROVINCE' ? undefined : (prev.municipality_id || staffMunicipalityId),
+                      barangay_id: next === 'BARANGAY' ? (prev.barangay_id || staffBarangayId) : undefined,
+                    }))
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                >
+                  {(['PROVINCE', 'MUNICIPALITY', 'BARANGAY'] as const).map((s) => (
+                    <option key={s} value={s} disabled={!allowedScopes.includes(s)}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+                  ))}
+                </select>
+              </div>
+              {formData.scope !== 'PROVINCE' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Municipality</label>
+                  <select
+                    value={selectedMunicipalityId || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, municipality_id: Number(e.target.value) || undefined }))}
+                    disabled={municipalityLocked}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                  >
+                    <option value="">Select municipality</option>
+                    {MUNICIPALITIES.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {formData.scope === 'BARANGAY' && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Barangay</label>
+                  <select
+                    value={formData.barangay_id || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, barangay_id: Number(e.target.value) || undefined }))}
+                    disabled={allowedScopes.length === 1 && allowedScopes[0] === 'BARANGAY' && !!staffBarangayId}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                  >
+                    <option value="">Select barangay</option>
+                    {barangayOptions.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Share with other municipalities */}
+            {(formData.scope === 'MUNICIPALITY' || formData.scope === 'BARANGAY') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Share with other municipalities (optional)</label>
+                <div className="border border-gray-300 rounded-md p-3 max-h-48 overflow-y-auto">
+                  {MUNICIPALITIES.filter(m => m.id !== selectedMunicipalityId).map((municipality) => (
+                    <label key={municipality.id} className="flex items-center space-x-2 py-1 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.shared_with_municipalities.includes(municipality.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          setFormData(prev => ({
+                            ...prev,
+                            shared_with_municipalities: checked
+                              ? [...prev.shared_with_municipalities, municipality.id]
+                              : prev.shared_with_municipalities.filter(id => id !== municipality.id)
+                          }))
+                        }}
+                        className="h-4 w-4 text-zambales-green border-gray-300 rounded focus:ring-zambales-green"
+                      />
+                      <span className="text-sm text-gray-700">{municipality.name}</span>
+                    </label>
+                  ))}
+                </div>
+                {formData.shared_with_municipalities.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Sharing with {formData.shared_with_municipalities.length} other {formData.shared_with_municipalities.length === 1 ? 'municipality' : 'municipalities'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                 {editMode ? (
@@ -588,12 +770,71 @@ function AnnouncementDetailModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">More details link (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 {editMode ? (
-                  <input
-                    type="url"
-                    inputMode="url"
-                    placeholder="https://domain.com/..."
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                  >
+                    <option value="PUBLISHED">Published</option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="ARCHIVED">Archived</option>
+                  </select>
+                ) : (
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">{(announcement.status || 'DRAFT').toUpperCase()}</span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Publish at</label>
+                <input
+                  type="datetime-local"
+                  value={formData.publish_at || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, publish_at: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expire at (optional)</label>
+                <input
+                  type="datetime-local"
+                  value={formData.expire_at || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, expire_at: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="announcement-pin"
+                  type="checkbox"
+                  checked={formData.pinned}
+                  onChange={(e) => setFormData(prev => ({ ...prev, pinned: e.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300 text-zambales-green focus:ring-zambales-green"
+                />
+                <label htmlFor="announcement-pin" className="text-sm text-gray-700">Pin announcement</label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pinned until (optional)</label>
+                <input
+                  type="datetime-local"
+                  value={formData.pinned_until || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, pinned_until: e.target.value }))}
+                  disabled={!formData.pinned}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green disabled:bg-gray-100"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">More details link (optional)</label>
+              {editMode ? (
+                <input
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://domain.com/..."
                     value={formData.external_url}
                     onChange={(e) => setFormData(prev => ({ ...prev, external_url: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
@@ -605,7 +846,6 @@ function AnnouncementDetailModal({
                     <span className="text-gray-500">No link</span>
                   ))
                 )}
-              </div>
             </div>
 
             <div className="text-sm text-gray-500">
@@ -614,41 +854,42 @@ function AnnouncementDetailModal({
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-between pt-6 border-t mt-6">
-            <button
-              onClick={handleDelete}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
-            >
-              {loading ? 'Deleting...' : 'Delete'}
-            </button>
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-6 border-t mt-6">
+              <button
+                onClick={handleDelete}
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
+              >
+                {loading ? 'Deleting...' : 'Delete'}
+              </button>
 
-            <div className="flex items-center space-x-3">
-              {(editMode || hasImageChanges || pendingFiles.length > 0) && (
-                <>
-                  {editMode && (
+              <div className="flex items-center space-x-3">
+                {(editMode || hasImageChanges || pendingFiles.length > 0) && (
+                  <>
+                    {editMode && (
+                      <button
+                        onClick={() => setEditMode(false)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
                     <button
-                      onClick={() => setEditMode(false)}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                      onClick={handleSave}
+                      disabled={loading || uploading || (editMode && (!formData.title.trim() || !formData.content.trim()))}
+                      className="px-4 py-2 text-sm font-medium text-white bg-zambales-green hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                     >
-                      Cancel
+                      {(loading || uploading) ? 'Saving...' : 'Save Changes'}
                     </button>
-                  )}
-                  <button
-                    onClick={handleSave}
-                    disabled={loading || uploading || (editMode && (!formData.title.trim() || !formData.content.trim()))}
-                    className="px-4 py-2 text-sm font-medium text-white bg-zambales-green hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
-                  >
-                    {(loading || uploading) ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </>
-              )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>,
+    ),
     document.body
   )
 }
@@ -658,26 +899,53 @@ interface CreateAnnouncementModalProps {
   onClose: () => void
   onCreate: (data: any, files?: File[]) => void
   loading: boolean
+  allowedScopes: readonly string[]
+  defaultScope: string
+  staffMunicipalityId?: number
+  staffBarangayId?: number
 }
 
-function CreateAnnouncementModal({ onClose, onCreate, loading }: CreateAnnouncementModalProps) {
+function CreateAnnouncementModal({ onClose, onCreate, loading, allowedScopes, defaultScope, staffMunicipalityId, staffBarangayId }: CreateAnnouncementModalProps) {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     priority: 'medium' as 'high' | 'medium' | 'low',
-    external_url: ''
+    external_url: '',
+    scope: (defaultScope as any) || 'MUNICIPALITY',
+    municipality_id: defaultScope === 'MUNICIPALITY' ? staffMunicipalityId : undefined,
+    barangay_id: defaultScope === 'BARANGAY' ? staffBarangayId : undefined,
+    status: 'PUBLISHED' as 'PUBLISHED' | 'DRAFT' | 'ARCHIVED',
+    publish_at: '',
+    expire_at: '',
+    pinned: false,
+    pinned_until: '',
+    shared_with_municipalities: [] as number[],
   })
+  const selectedMunicipalityId = formData.scope === 'PROVINCE' ? undefined : (formData.municipality_id || staffMunicipalityId)
+  const barangayOptions = selectedMunicipalityId ? getBarangaysByMunicipalityId(selectedMunicipalityId) : []
+  const municipalityLocked = allowedScopes.length === 1 && allowedScopes[0] !== 'PROVINCE'
   const [files, setFiles] = useState<File[]>([])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (formData.title.trim() && formData.content.trim()) {
-      onCreate(formData, files)
+      const payload: any = { ...formData }
+      if (payload.scope === 'PROVINCE') {
+        payload.municipality_id = undefined
+        payload.barangay_id = undefined
+      } else if (payload.scope === 'MUNICIPALITY') {
+        payload.barangay_id = undefined
+      }
+      if (!payload.publish_at) delete payload.publish_at
+      if (!payload.expire_at) delete payload.expire_at
+      if (!payload.pinned_until) delete payload.pinned_until
+      onCreate(payload, files)
     }
   }
 
   return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[1000]" role="dialog" aria-modal="true">
+    (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[1000]" role="dialog" aria-modal="true">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto pb-24 sm:pb-0" tabIndex={-1} autoFocus>
         <div className="p-6">
           {/* Header */}
@@ -753,6 +1021,164 @@ function CreateAnnouncementModal({ onClose, onCreate, loading }: CreateAnnouncem
               />
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Scope</label>
+                <select
+                  value={formData.scope}
+                  onChange={(e) => {
+                    const next = e.target.value as 'PROVINCE' | 'MUNICIPALITY' | 'BARANGAY'
+                    setFormData(prev => ({
+                      ...prev,
+                      scope: next,
+                      municipality_id: next === 'PROVINCE' ? undefined : (prev.municipality_id || staffMunicipalityId),
+                      barangay_id: next === 'BARANGAY' ? (prev.barangay_id || staffBarangayId) : undefined,
+                    }))
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                >
+                  {(['PROVINCE', 'MUNICIPALITY', 'BARANGAY'] as const).map((s) => (
+                    <option key={s} value={s} disabled={!allowedScopes.includes(s)}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+                  ))}
+                </select>
+              </div>
+              {formData.scope !== 'PROVINCE' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Municipality</label>
+                  <select
+                    value={selectedMunicipalityId || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, municipality_id: Number(e.target.value) || undefined }))}
+                    disabled={municipalityLocked}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                  >
+                    <option value="">Select municipality</option>
+                    {MUNICIPALITIES.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {formData.scope === 'BARANGAY' && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Barangay</label>
+                  <select
+                    value={formData.barangay_id || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, barangay_id: Number(e.target.value) || undefined }))}
+                    disabled={allowedScopes.length === 1 && allowedScopes[0] === 'BARANGAY' && !!staffBarangayId}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                  >
+                    <option value="">Select barangay</option>
+                    {barangayOptions.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Share with other municipalities */}
+            {(formData.scope === 'MUNICIPALITY' || formData.scope === 'BARANGAY') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Share with other municipalities (optional)</label>
+                <div className="border border-gray-300 rounded-md p-3 max-h-48 overflow-y-auto">
+                  {MUNICIPALITIES.filter(m => m.id !== selectedMunicipalityId).map((municipality) => (
+                    <label key={municipality.id} className="flex items-center space-x-2 py-1 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.shared_with_municipalities.includes(municipality.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          setFormData(prev => ({
+                            ...prev,
+                            shared_with_municipalities: checked
+                              ? [...prev.shared_with_municipalities, municipality.id]
+                              : prev.shared_with_municipalities.filter(id => id !== municipality.id)
+                          }))
+                        }}
+                        className="h-4 w-4 text-zambales-green border-gray-300 rounded focus:ring-zambales-green"
+                      />
+                      <span className="text-sm text-gray-700">{municipality.name}</span>
+                    </label>
+                  ))}
+                </div>
+                {formData.shared_with_municipalities.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Sharing with {formData.shared_with_municipalities.length} other {formData.shared_with_municipalities.length === 1 ? 'municipality' : 'municipalities'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <select
+                  name="create_announcement_priority"
+                  id="create-announcement-priority"
+                  value={formData.priority}
+                  onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as 'high' | 'medium' | 'low' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                >
+                  <option value="PUBLISHED">Published</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="ARCHIVED">Archived</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Publish at (optional)</label>
+                <input
+                  type="datetime-local"
+                  value={formData.publish_at}
+                  onChange={(e) => setFormData(prev => ({ ...prev, publish_at: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expire at (optional)</label>
+                <input
+                  type="datetime-local"
+                  value={formData.expire_at}
+                  onChange={(e) => setFormData(prev => ({ ...prev, expire_at: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="create-announcement-pin"
+                  type="checkbox"
+                  checked={formData.pinned}
+                  onChange={(e) => setFormData(prev => ({ ...prev, pinned: e.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300 text-zambales-green focus:ring-zambales-green"
+                />
+                <label htmlFor="create-announcement-pin" className="text-sm text-gray-700">Pin announcement</label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pinned until (optional)</label>
+                <input
+                  type="datetime-local"
+                  value={formData.pinned_until}
+                  onChange={(e) => setFormData(prev => ({ ...prev, pinned_until: e.target.value }))}
+                  disabled={!formData.pinned}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green disabled:bg-gray-100"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">More details link (optional)</label>
               <input
@@ -765,21 +1191,6 @@ function CreateAnnouncementModal({ onClose, onCreate, loading }: CreateAnnouncem
                 onChange={(e) => setFormData(prev => ({ ...prev, external_url: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-              <select
-                name="create_announcement_priority"
-                id="create-announcement-priority"
-                value={formData.priority}
-                onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as 'high' | 'medium' | 'low' }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zambales-green"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
             </div>
 
             {/* Actions */}
@@ -802,7 +1213,8 @@ function CreateAnnouncementModal({ onClose, onCreate, loading }: CreateAnnouncem
           </form>
         </div>
       </div>
-    </div>,
+    </div>
+    ),
     document.body
   )
 }

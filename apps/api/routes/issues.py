@@ -1,4 +1,7 @@
-"""Public/resident Issue reporting routes."""
+"""Public/resident Issue reporting routes.
+
+SCOPE: Zambales province only, excluding Olongapo City.
+"""
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
@@ -14,6 +17,10 @@ try:
         fully_verified_required,
         save_issue_attachment,
     )
+    from apps.api.utils.zambales_scope import (
+        ZAMBALES_MUNICIPALITY_IDS,
+        is_valid_zambales_municipality,
+    )
 except ImportError:
     from __init__ import db
     from models.issue import Issue, IssueCategory
@@ -24,6 +31,10 @@ except ImportError:
         ValidationError,
         fully_verified_required,
         save_issue_attachment,
+    )
+    from utils.zambales_scope import (
+        ZAMBALES_MUNICIPALITY_IDS,
+        is_valid_zambales_municipality,
     )
 
 
@@ -81,6 +92,7 @@ def list_issues():
         # Municipality Scoping Enforcement:
         # - Guests without municipality_id get empty results (no global data)
         # - Logged-in users default to their municipality if no filter provided
+        # - ZAMBALES SCOPE: Only allow Zambales municipalities (excluding Olongapo)
         effective_municipality_id = municipality_id
         if not effective_municipality_id:
             if is_authenticated and user_municipality_id:
@@ -98,6 +110,19 @@ def list_issues():
                     },
                     'message': 'Please select a municipality to view issues'
                 }), 200
+
+        # ZAMBALES SCOPE: Verify municipality is valid
+        if not is_valid_zambales_municipality(effective_municipality_id):
+            return jsonify({
+                'issues': [],
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': 0,
+                    'pages': 0,
+                },
+                'message': 'Municipality is not available in this system'
+            }), 200
 
         # Build query with enforced municipality scoping
         query = Issue.query.filter_by(is_public=True)
@@ -168,6 +193,10 @@ def create_issue():
         municipality_id = user.municipality_id
         if not municipality_id:
             return jsonify({'error': 'User has no registered municipality'}), 400
+        
+        # ZAMBALES SCOPE: Verify municipality is in Zambales (excluding Olongapo)
+        if not is_valid_zambales_municipality(municipality_id):
+            return jsonify({'error': 'Your municipality is not available in this system'}), 403
 
         # Validate category
         category = IssueCategory.query.get(int(data['category_id']))

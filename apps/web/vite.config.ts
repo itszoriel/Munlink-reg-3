@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [react()],
   publicDir: path.resolve(__dirname, '../../public'),
   server: {
+    host: 'localhost', // Restrict to local machine
     port: 3000,
     fs: {
       // Allow importing assets from the monorepo root (e.g., public/reference/, public/logos/)
@@ -27,4 +28,3 @@ export default defineConfig({
     },
   },
 })
-

@@ -1,10 +1,13 @@
 /**
- * MunLink Region 3 - User Verification Component
+ * MunLink Zambales - User Verification Component
  * Component for managing user verification requests
  */
 import { useState, useEffect, useRef } from 'react'
 import { userApi, handleApiError, mediaUrl, showToast } from '../lib/api'
 import SafeImage from './SafeImage'
+import { WatermarkedImageViewer } from './WatermarkedImageViewer'
+import { ViewIDReasonModal } from './ViewIDReasonModal'
+import { useAdminStore } from '../lib/store'
 
 interface User {
   id: number
@@ -250,6 +253,7 @@ interface UserDetailModalProps {
 }
 
 function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDetailModalProps) {
+  const currentUser = useAdminStore((s) => s.user)
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [fullUser, setFullUser] = useState<User | null>(user)
@@ -259,6 +263,19 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
   const idFrontInputRef = useRef<HTMLInputElement>(null)
   const idBackInputRef = useRef<HTMLInputElement>(null)
   const selfieInputRef = useRef<HTMLInputElement>(null)
+
+  // Watermarked viewer state
+  const [viewingDoc, setViewingDoc] = useState<{
+    type: 'id_front' | 'id_back' | 'selfie',
+    reason: string
+  } | null>(null)
+  const [showReasonModal, setShowReasonModal] = useState<{
+    type: 'id_front' | 'id_back' | 'selfie'
+  } | null>(null)
+
+  // Permission checks
+  const hasIdViewPermission = currentUser?.permissions?.includes('residents:id_view') ?? false
+  const hasApprovePermission = currentUser?.permissions?.includes('residents:approve') ?? false
 
   useEffect(() => {
     let mounted = true
@@ -299,6 +316,14 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
     } finally {
       setUploadingDocs(false)
     }
+  }
+
+  const handleConfirmView = (reason: string, notes: string) => {
+    if (!showReasonModal) return
+
+    const fullReason = notes ? `${reason} - ${notes}` : reason
+    setViewingDoc({ type: showReasonModal.type, reason: fullReason })
+    setShowReasonModal(null)
   }
 
   return (
@@ -350,41 +375,113 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
           {/* ID Documents */}
           <div className="mb-6">
             <h4 className="text-sm font-medium text-gray-900 mb-3">ID Documents</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              {fullUser?.valid_id_front && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">Front</p>
-                  <SafeImage
-                    src={mediaUrl(fullUser.valid_id_front)}
-                    alt="ID Front"
-                    className="w-full h-32 object-cover rounded border"
-                    fallbackIcon="document"
+            <div className="space-y-4 mb-4">
+              {/* ID Front */}
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">ID Front</label>
+                {viewingDoc?.type === 'id_front' ? (
+                  <WatermarkedImageViewer
+                    userId={fullUser?.id || user.id}
+                    docType="id_front"
+                    reason={viewingDoc.reason}
+                    municipalityName={fullUser?.municipality_name || user.municipality_name || 'Unknown'}
+                    residentId={fullUser?.id || user.id}
+                    onError={(err) => {
+                      console.error('Failed to load ID front:', err)
+                      setViewingDoc(null)
+                    }}
                   />
-                </div>
-              )}
-              {fullUser?.valid_id_back && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">Back</p>
-                  <SafeImage
-                    src={mediaUrl(fullUser.valid_id_back)}
-                    alt="ID Back"
-                    className="w-full h-32 object-cover rounded border"
-                    fallbackIcon="document"
+                ) : (
+                  <>
+                    {fullUser?.valid_id_front && hasIdViewPermission && (
+                      <button
+                        onClick={() => setShowReasonModal({ type: 'id_front' })}
+                        className="px-3 py-1.5 text-xs font-medium text-ocean-600 border border-ocean-600 rounded hover:bg-ocean-50"
+                      >
+                        View ID Front
+                      </button>
+                    )}
+                    {fullUser?.valid_id_front && !hasIdViewPermission && (
+                      <span className="text-xs text-gray-400">No permission to view</span>
+                    )}
+                    {!fullUser?.valid_id_front && (
+                      <span className="text-xs text-gray-500">Not uploaded</span>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* ID Back */}
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">ID Back</label>
+                {viewingDoc?.type === 'id_back' ? (
+                  <WatermarkedImageViewer
+                    userId={fullUser?.id || user.id}
+                    docType="id_back"
+                    reason={viewingDoc.reason}
+                    municipalityName={fullUser?.municipality_name || user.municipality_name || 'Unknown'}
+                    residentId={fullUser?.id || user.id}
+                    onError={(err) => {
+                      console.error('Failed to load ID back:', err)
+                      setViewingDoc(null)
+                    }}
                   />
-                </div>
-              )}
-              {fullUser?.selfie_with_id && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">Selfie</p>
-                  <SafeImage
-                    src={mediaUrl(fullUser.selfie_with_id)}
-                    alt="Selfie with ID"
-                    className="w-full h-32 object-cover rounded border"
-                    fallbackIcon="user"
+                ) : (
+                  <>
+                    {fullUser?.valid_id_back && hasIdViewPermission && (
+                      <button
+                        onClick={() => setShowReasonModal({ type: 'id_back' })}
+                        className="px-3 py-1.5 text-xs font-medium text-ocean-600 border border-ocean-600 rounded hover:bg-ocean-50"
+                      >
+                        View ID Back
+                      </button>
+                    )}
+                    {fullUser?.valid_id_back && !hasIdViewPermission && (
+                      <span className="text-xs text-gray-400">No permission to view</span>
+                    )}
+                    {!fullUser?.valid_id_back && (
+                      <span className="text-xs text-gray-500">Not uploaded</span>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Selfie with ID */}
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Selfie with ID</label>
+                {viewingDoc?.type === 'selfie' ? (
+                  <WatermarkedImageViewer
+                    userId={fullUser?.id || user.id}
+                    docType="selfie"
+                    reason={viewingDoc.reason}
+                    municipalityName={fullUser?.municipality_name || user.municipality_name || 'Unknown'}
+                    residentId={fullUser?.id || user.id}
+                    onError={(err) => {
+                      console.error('Failed to load selfie:', err)
+                      setViewingDoc(null)
+                    }}
                   />
-                </div>
-              )}
-              {!fetching && !fullUser?.valid_id_front && !fullUser?.valid_id_back && (
+                ) : (
+                  <>
+                    {fullUser?.selfie_with_id && hasIdViewPermission && (
+                      <button
+                        onClick={() => setShowReasonModal({ type: 'selfie' })}
+                        className="px-3 py-1.5 text-xs font-medium text-ocean-600 border border-ocean-600 rounded hover:bg-ocean-50"
+                      >
+                        View Selfie
+                      </button>
+                    )}
+                    {fullUser?.selfie_with_id && !hasIdViewPermission && (
+                      <span className="text-xs text-gray-400">No permission to view</span>
+                    )}
+                    {!fullUser?.selfie_with_id && (
+                      <span className="text-xs text-gray-500">Not uploaded</span>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {!fetching && !fullUser?.valid_id_front && !fullUser?.valid_id_back && !fullUser?.selfie_with_id && (
                 <p className="text-sm text-gray-500">No ID documents uploaded.</p>
               )}
             </div>
@@ -440,19 +537,25 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
           <div className="flex items-center justify-end space-x-3">
             {!showRejectForm ? (
               <>
-                <button
-                  onClick={() => setShowRejectForm(true)}
-                  className="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md transition-colors"
-                >
-                  Reject
-                </button>
-                <button
-                  onClick={() => onVerify(user.id)}
-                  disabled={loading !== null}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
-                >
-                  {loading === 'approve' ? 'Verifying...' : 'Approve'}
-                </button>
+                {hasApprovePermission ? (
+                  <>
+                    <button
+                      onClick={() => setShowRejectForm(true)}
+                      className="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md transition-colors"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => onVerify(user.id)}
+                      disabled={loading !== null}
+                      className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
+                    >
+                      {loading === 'approve' ? 'Verifying...' : 'Approve'}
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-sm text-gray-400">No permission to approve/reject</span>
+                )}
               </>
             ) : (
               <>
@@ -483,6 +586,14 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
           </div>
         </div>
       </div>
+
+      {/* Reason Modal for viewing ID/Selfie */}
+      <ViewIDReasonModal
+        isOpen={!!showReasonModal}
+        docType={showReasonModal?.type || 'id_front'}
+        onClose={() => setShowReasonModal(null)}
+        onConfirm={handleConfirmView}
+      />
     </div>
   )
 }

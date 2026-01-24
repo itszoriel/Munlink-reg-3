@@ -20,7 +20,7 @@ import os
 import logging
 from pathlib import Path
 from typing import Dict, Tuple, Optional, Union
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO
 
 from flask import current_app
@@ -358,7 +358,7 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
         filter(None, [getattr(user, 'first_name', None), getattr(user, 'last_name', None)])
     ) or getattr(user, 'username', 'Resident')
 
-    issue_date = datetime.utcnow()
+    issue_date = datetime.now(timezone.utc)
 
     # Load document type definitions
     doc_types = _load_document_types()
@@ -671,5 +671,250 @@ def generate_document_pdf(request, document_type, user, admin_user: Optional[obj
     # Normalize to POSIX-style for URLs
     rel_posix = rel_path.replace("\\", "/")
     return pdf_path, rel_posix
+
+
+def generate_admin_terms_pdf() -> bytes:
+    """Generate a professional PDF with admin terms of service and privacy policy.
+
+    Returns:
+        bytes: PDF file content
+    """
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+    from reportlab.lib.colors import HexColor
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=inch,
+        leftMargin=inch,
+        topMargin=inch,
+        bottomMargin=inch
+    )
+
+    # Container for the 'Flowable' objects
+    elements = []
+
+    # Define styles
+    styles = getSampleStyleSheet()
+
+    # Custom title style
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=24,
+        textColor=HexColor('#1e40af'),
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+
+    # Custom heading style
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=HexColor('#1e40af'),
+        spaceAfter=12,
+        spaceBefore=20,
+        fontName='Helvetica-Bold'
+    )
+
+    # Custom body style
+    body_style = ParagraphStyle(
+        'CustomBody',
+        parent=styles['BodyText'],
+        fontSize=11,
+        alignment=TA_JUSTIFY,
+        spaceAfter=12,
+        leading=16
+    )
+
+    # Document title
+    elements.append(Paragraph("MunLink Zambales", title_style))
+    elements.append(Paragraph("Administrative Staff Agreement", title_style))
+    elements.append(Spacer(1, 0.3*inch))
+
+    # Date
+    date_str = datetime.utcnow().strftime("%B %d, %Y")
+    elements.append(Paragraph(f"<i>Effective Date: {date_str}</i>", body_style))
+    elements.append(Spacer(1, 0.3*inch))
+
+    # Introduction
+    elements.append(Paragraph("Introduction", heading_style))
+    elements.append(Paragraph(
+        "Welcome to the MunLink Zambales administrative team. This document outlines "
+        "the terms of service, responsibilities, and privacy guidelines that govern "
+        "your role as an administrative staff member. By accepting this position, you "
+        "agree to uphold these standards and maintain the highest level of integrity "
+        "in serving the residents of Zambales province.",
+        body_style
+    ))
+    elements.append(Spacer(1, 0.2*inch))
+
+    # Section 1: Terms of Service
+    elements.append(Paragraph("1. Terms of Service", heading_style))
+
+    elements.append(Paragraph("1.1 Role and Responsibilities", heading_style))
+    elements.append(Paragraph(
+        "As an administrative staff member, you are responsible for verifying resident "
+        "information, processing document requests, managing announcements, moderating "
+        "marketplace listings, and handling issue reports within your assigned jurisdiction. "
+        "You must perform these duties diligently, fairly, and in accordance with all "
+        "applicable laws and regulations.",
+        body_style
+    ))
+
+    elements.append(Paragraph("1.2 Code of Conduct", heading_style))
+    elements.append(Paragraph(
+        "You must maintain professional conduct at all times. This includes treating all "
+        "residents with respect, avoiding conflicts of interest, refraining from accepting "
+        "bribes or improper payments, and reporting any suspected violations of these terms "
+        "or applicable laws to your supervisor immediately.",
+        body_style
+    ))
+
+    elements.append(Paragraph("1.3 Account Security", heading_style))
+    elements.append(Paragraph(
+        "You are solely responsible for maintaining the confidentiality of your account "
+        "credentials. Do not share your username, password, or access tokens with anyone. "
+        "You must use strong, unique passwords and enable two-factor authentication (2FA) "
+        "when available. Any actions taken using your account are your responsibility.",
+        body_style
+    ))
+
+    elements.append(Paragraph("1.4 System Usage", heading_style))
+    elements.append(Paragraph(
+        "You may only access the MunLink system for legitimate administrative purposes. "
+        "Unauthorized access, data mining, automated scraping, or attempts to circumvent "
+        "security measures are strictly prohibited and may result in immediate termination "
+        "and legal action.",
+        body_style
+    ))
+
+    elements.append(PageBreak())
+
+    # Section 2: Privacy and Data Protection
+    elements.append(Paragraph("2. Privacy and Data Protection", heading_style))
+
+    elements.append(Paragraph("2.1 Resident Privacy Law Compliance", heading_style))
+    elements.append(Paragraph(
+        "You must comply with all applicable Philippine data protection laws, including "
+        "the Data Privacy Act of 2012 (Republic Act No. 10173). Resident information is "
+        "highly sensitive and must be protected at all times.",
+        body_style
+    ))
+
+    elements.append(Paragraph("2.2 Data Minimization", heading_style))
+    elements.append(Paragraph(
+        "You may only access resident data that is necessary for performing your official "
+        "duties. Viewing resident profiles, documents, or personal information out of "
+        "curiosity or for personal reasons is strictly prohibited.",
+        body_style
+    ))
+
+    elements.append(Paragraph("2.3 Data Confidentiality", heading_style))
+    elements.append(Paragraph(
+        "All resident information must be kept strictly confidential. You may not disclose, "
+        "share, sell, or transfer any resident data to third parties without proper "
+        "authorization. This includes names, addresses, contact information, government IDs, "
+        "selfies, financial information, and any other personal data.",
+        body_style
+    ))
+
+    elements.append(Paragraph("2.4 Audit Logging", heading_style))
+    elements.append(Paragraph(
+        "All your actions on the MunLink platform are logged for security and accountability "
+        "purposes. These logs include when you view resident IDs, approve or reject requests, "
+        "create announcements, or perform any other administrative action. Super administrators "
+        "and authorized personnel may review these logs at any time.",
+        body_style
+    ))
+
+    elements.append(Paragraph("2.5 Data Retention", heading_style))
+    elements.append(Paragraph(
+        "Do not download, copy, screenshot, or otherwise retain resident data on your "
+        "personal devices unless explicitly required for your duties and approved by your "
+        "supervisor. Any data stored must be encrypted and deleted when no longer needed.",
+        body_style
+    ))
+
+    elements.append(PageBreak())
+
+    # Section 3: Legal Framework
+    elements.append(Paragraph("3. Legal Framework and Penalties", heading_style))
+
+    elements.append(Paragraph("3.1 Data Privacy Act of 2012 (RA 10173)", heading_style))
+    elements.append(Paragraph(
+        "Under Philippine law, unauthorized processing of personal data is a criminal offense. "
+        "Violations can result in imprisonment of one (1) to six (6) years and a fine of "
+        "Five hundred thousand pesos (Php 500,000.00) to Four million pesos (Php 4,000,000.00). "
+        "Accessing personal data without authorization or for unauthorized purposes is "
+        "specifically prohibited under Section 25 of the Act.",
+        body_style
+    ))
+
+    elements.append(Paragraph("3.2 Anti-Graft and Corrupt Practices Act (RA 3019)", heading_style))
+    elements.append(Paragraph(
+        "Public officials and employees who misuse their position for personal gain or "
+        "who act with manifest partiality, evident bad faith, or gross inexcusable negligence "
+        "may be prosecuted under this law. Penalties include imprisonment and perpetual "
+        "disqualification from public office.",
+        body_style
+    ))
+
+    elements.append(Paragraph("3.3 Revised Penal Code Provisions", heading_style))
+    elements.append(Paragraph(
+        "Relevant provisions include: Article 171 (Falsification by Public Officer), "
+        "Article 226 (Revealing Secrets with Abuse of Office), and Article 229 (Disclosure "
+        "of Secrets). Violations carry penalties of imprisonment and fines.",
+        body_style
+    ))
+
+    # Section 4: Consequences of Violations
+    elements.append(Paragraph("4. Consequences of Violations", heading_style))
+    elements.append(Paragraph(
+        "Violations of these terms may result in: (1) Immediate suspension or termination "
+        "of your administrative account; (2) Referral to law enforcement for criminal "
+        "prosecution; (3) Civil liability for damages caused to affected residents; "
+        "(4) Permanent disqualification from holding administrative positions in the "
+        "MunLink system or any government service.",
+        body_style
+    ))
+
+    elements.append(Spacer(1, 0.3*inch))
+
+    # Section 5: Acknowledgment
+    elements.append(Paragraph("5. Acknowledgment and Acceptance", heading_style))
+    elements.append(Paragraph(
+        "By registering as an administrative staff member, you acknowledge that you have "
+        "read, understood, and agree to comply with all terms outlined in this document. "
+        "You understand that violations may result in serious legal consequences, and you "
+        "commit to upholding the highest standards of integrity, professionalism, and "
+        "respect for resident privacy.",
+        body_style
+    ))
+
+    elements.append(Spacer(1, 0.5*inch))
+
+    # Footer
+    elements.append(Paragraph(
+        "<i>This document is generated automatically by the MunLink Zambales system. "
+        "For questions or concerns, please contact your supervisor or the system administrator.</i>",
+        body_style
+    ))
+
+    # Build PDF
+    doc.build(elements)
+
+    # Get PDF bytes
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+
+    return pdf_bytes
 
 

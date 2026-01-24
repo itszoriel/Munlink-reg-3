@@ -1,7 +1,11 @@
-import { Routes, Route, Link, useNavigate } from 'react-router-dom'
+import { Routes, Route, Link, useNavigate, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import AdminRegisterPage from './pages/AdminRegisterPage'
 import AdminLoginPage from './pages/AdminLoginPage'
+import SuperAdminPanel from './pages/SuperAdminPanel'
+import SuperAdminLoginPage from './pages/SuperAdminLoginPage'
+import SuperAdminAuditLog from './pages/SuperAdminAuditLog'
+import AuditLogPage from './pages/AuditLogPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAdminStore } from './lib/store'
 import AdminLayout from './components/layout/AdminLayout'
@@ -18,6 +22,21 @@ import Problems from './pages/Problems'
 import TransactionsPage from './pages/Transactions'
 import VerifyTicket from './pages/VerifyTicket'
 
+// Provincial Admin
+import ProvincialAdminLoginPage from './pages/ProvincialAdminLoginPage'
+import ProvincialAdminDashboard from './pages/ProvincialAdminDashboard'
+import ProvincialAdminAnnouncements from './pages/ProvincialAdminAnnouncements'
+import ProvincialAdminReports from './pages/ProvincialAdminReports'
+
+// Barangay Admin
+import BarangayAdminLoginPage from './pages/BarangayAdminLoginPage'
+import BarangayAdminDashboard from './pages/BarangayAdminDashboard'
+import BarangayAdminAnnouncements from './pages/BarangayAdminAnnouncements'
+import BarangayAdminReports from './pages/BarangayAdminReports'
+
+// Role Selector
+import RoleSelector from './pages/RoleSelector'
+
 export default function App() {
   const isAuthenticated = useAdminStore((s) => s.isAuthenticated)
   const navigate = useNavigate()
@@ -27,7 +46,7 @@ export default function App() {
     const recheckAuth = () => {
       const { isAuthenticated: auth, user } = useAdminStore.getState()
       if (!auth || !user) {
-        navigate('/login', { replace: true })
+        navigate('/', { replace: true })
       }
     }
 
@@ -164,9 +183,91 @@ export default function App() {
           }
         />
 
+        {/* Audit Log (super admin only) */}
+        <Route
+          path="/audit-log"
+          element={
+            <Navigate to="/superadmin" replace />
+          }
+        />
+
+        {/* Role Selector Landing Page */}
+        <Route path="/" element={<RoleSelector />} />
+
         {/* Auth pages */}
-        <Route path="/" element={<AdminLoginPage />} />
         <Route path="/login" element={<AdminLoginPage />} />
+        <Route
+          path="/superadmin"
+          element={
+            <ProtectedRoute>
+              <SuperAdminPanel />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/superadmin/audit"
+          element={
+            <ProtectedRoute>
+              <SuperAdminAuditLog />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/superadmin/login" element={<SuperAdminLoginPage />} />
+
+        {/* Provincial Admin routes */}
+        <Route path="/provincial/login" element={<ProvincialAdminLoginPage />} />
+        <Route
+          path="/provincial/dashboard"
+          element={
+            <ProtectedRoute>
+              <ProvincialAdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/provincial/announcements"
+          element={
+            <ProtectedRoute>
+              <ProvincialAdminAnnouncements />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/provincial/reports"
+          element={
+            <ProtectedRoute>
+              <ProvincialAdminReports />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Barangay Admin routes */}
+        <Route path="/barangay/login" element={<BarangayAdminLoginPage />} />
+        <Route
+          path="/barangay/dashboard"
+          element={
+            <ProtectedRoute>
+              <BarangayAdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/barangay/announcements"
+          element={
+            <ProtectedRoute>
+              <BarangayAdminAnnouncements />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/barangay/reports"
+          element={
+            <ProtectedRoute>
+              <BarangayAdminReports />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/register"
           element={
@@ -188,6 +289,9 @@ export default function App() {
             </>
           }
         />
+
+        {/* Fallback: always land on portal for unknown routes */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   )

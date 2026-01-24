@@ -134,6 +134,45 @@ except ImportError:
         ALLOWED_DOCUMENT_MIMES,
     )
 
+# Zambales Province Scope Configuration
+# This enforces Zambales-only scope across the platform (excluding Olongapo)
+try:
+    from apps.api.utils.zambales_scope import (
+        ZAMBALES_PROVINCE_ID,
+        ZAMBALES_PROVINCE_NAME,
+        ZAMBALES_PROVINCE_SLUG,
+        ZAMBALES_MUNICIPALITY_IDS,
+        ZAMBALES_MUNICIPALITY_SLUGS,
+        OLONGAPO_MUNICIPALITY_ID,
+        EXCLUDED_MUNICIPALITY_IDS,
+        is_valid_zambales_municipality,
+        is_olongapo,
+        is_excluded_municipality,
+        validate_municipality_in_zambales,
+        get_default_province,
+        apply_zambales_municipality_filter,
+        apply_zambales_scope_to_municipality_query,
+        PLATFORM_REGION_NAME,
+    )
+except ImportError:
+    from .zambales_scope import (
+        ZAMBALES_PROVINCE_ID,
+        ZAMBALES_PROVINCE_NAME,
+        ZAMBALES_PROVINCE_SLUG,
+        ZAMBALES_MUNICIPALITY_IDS,
+        ZAMBALES_MUNICIPALITY_SLUGS,
+        OLONGAPO_MUNICIPALITY_ID,
+        EXCLUDED_MUNICIPALITY_IDS,
+        is_valid_zambales_municipality,
+        is_olongapo,
+        is_excluded_municipality,
+        validate_municipality_in_zambales,
+        get_default_province,
+        apply_zambales_municipality_filter,
+        apply_zambales_scope_to_municipality_query,
+        PLATFORM_REGION_NAME,
+    )
+
 __all__ = [
     # Validators
     'validate_email',
@@ -205,4 +244,20 @@ __all__ = [
     'APIError',
     'ALLOWED_IMAGE_MIMES',
     'ALLOWED_DOCUMENT_MIMES',
+    # Zambales Province Scope
+    'ZAMBALES_PROVINCE_ID',
+    'ZAMBALES_PROVINCE_NAME',
+    'ZAMBALES_PROVINCE_SLUG',
+    'ZAMBALES_MUNICIPALITY_IDS',
+    'ZAMBALES_MUNICIPALITY_SLUGS',
+    'OLONGAPO_MUNICIPALITY_ID',
+    'EXCLUDED_MUNICIPALITY_IDS',
+    'is_valid_zambales_municipality',
+    'is_olongapo',
+    'is_excluded_municipality',
+    'validate_municipality_in_zambales',
+    'get_default_province',
+    'apply_zambales_municipality_filter',
+    'apply_zambales_scope_to_municipality_query',
+    'PLATFORM_REGION_NAME',
 ]

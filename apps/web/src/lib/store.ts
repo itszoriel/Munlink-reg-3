@@ -18,12 +18,26 @@ export type Municipality = {
   sealUrl?: string
 }
 
+export type Barangay = {
+  id: number
+  name: string
+  slug: string
+  municipality_id: number
+}
+
 type User = {
   id: number
   username: string
   role: 'public' | 'resident' | 'municipal_admin'
+  municipality_id?: number
+  municipality_name?: string
+  barangay_id?: number
+  barangay_name?: string
   email_verified?: boolean
   admin_verified?: boolean
+  mobile_number?: string
+  notify_email_enabled?: boolean
+  notify_sms_enabled?: boolean
   profile_picture?: string
   valid_id_front?: string
   valid_id_back?: string
@@ -35,6 +49,8 @@ type AppState = {
   setProvince: (p?: Province) => void
   selectedMunicipality?: Municipality
   setMunicipality: (m?: Municipality) => void
+  selectedBarangay?: Barangay
+  setBarangay: (b?: Barangay) => void
   role: 'public' | 'resident' | 'admin'
   setRole: (r: 'public' | 'resident' | 'admin') => void
   user?: User
@@ -53,7 +69,8 @@ type AppState = {
 export const useAppStore = create<AppState>((set) => {
   const storedRole = (typeof window !== 'undefined' && (localStorage.getItem('munlink:role') as any)) || 'public'
   const storedUser = typeof window !== 'undefined' ? localStorage.getItem('munlink:user') : null
-  const storedProvince = typeof window !== 'undefined' ? localStorage.getItem('munlink:selectedProvince') : null
+  const storedMunicipality = typeof window !== 'undefined' ? localStorage.getItem('munlink:selectedMunicipality') : null
+  const storedBarangay = typeof window !== 'undefined' ? localStorage.getItem('munlink:selectedBarangay') : null
   // no persisted tokens; use in-memory + sessionStorage handled in api layer
 
   let initialUser: User | undefined
@@ -63,11 +80,21 @@ export const useAppStore = create<AppState>((set) => {
     initialUser = undefined
   }
 
-  let initialProvince: Province | undefined
+  // Auto-select Zambales province (platform is Zambales-only)
+  const initialProvince: Province = { id: 6, name: 'Zambales', slug: 'zambales', region_name: 'Zambales' }
+
+  let initialMunicipality: Municipality | undefined
   try {
-    initialProvince = storedProvince ? JSON.parse(storedProvince) : undefined
+    initialMunicipality = storedMunicipality ? JSON.parse(storedMunicipality) : undefined
   } catch {
-    initialProvince = undefined
+    initialMunicipality = undefined
+  }
+
+  let initialBarangay: Barangay | undefined
+  try {
+    initialBarangay = storedBarangay ? JSON.parse(storedBarangay) : undefined
+  } catch {
+    initialBarangay = undefined
   }
 
   const emailVerified = !!initialUser?.email_verified
@@ -106,15 +133,34 @@ export const useAppStore = create<AppState>((set) => {
   return {
     selectedProvince: initialProvince,
     setProvince: (p) => {
-      if (typeof window !== 'undefined' && p) {
-        localStorage.setItem('munlink:selectedProvince', JSON.stringify(p))
-      } else if (typeof window !== 'undefined') {
-        localStorage.removeItem('munlink:selectedProvince')
+      // Province is auto-selected to Zambales and cannot be changed
+      // Keep this function for API compatibility but don't allow changes
+      if (p && p.id !== 6) {
+        console.warn('Only Zambales province is supported')
+        return
       }
-      set({ selectedProvince: p })
+      set({ selectedProvince: initialProvince })
     },
-    selectedMunicipality: undefined,
-    setMunicipality: (m) => set({ selectedMunicipality: m }),
+    selectedMunicipality: initialMunicipality,
+    setMunicipality: (m) => {
+      if (typeof window !== 'undefined' && m) {
+        localStorage.setItem('munlink:selectedMunicipality', JSON.stringify(m))
+        localStorage.removeItem('munlink:selectedBarangay')
+      } else if (typeof window !== 'undefined') {
+        localStorage.removeItem('munlink:selectedMunicipality')
+        localStorage.removeItem('munlink:selectedBarangay')
+      }
+      set({ selectedMunicipality: m, selectedBarangay: undefined })
+    },
+    selectedBarangay: initialBarangay,
+    setBarangay: (b) => {
+      if (typeof window !== 'undefined' && b) {
+        localStorage.setItem('munlink:selectedBarangay', JSON.stringify(b))
+      } else if (typeof window !== 'undefined') {
+        localStorage.removeItem('munlink:selectedBarangay')
+      }
+      set({ selectedBarangay: b })
+    },
     role: storedRole,
     setRole: (r) => {
       if (typeof window !== 'undefined') localStorage.setItem('munlink:role', r)
@@ -156,7 +202,11 @@ export const useAppStore = create<AppState>((set) => {
     },
     logout: () => {
       // best-effort server logout to clear cookie and blacklist token
-      try { void authApi.logout() } catch {}
+      try {
+        if (getApiAccessToken()) {
+          void authApi.logout().catch(() => {})
+        }
+      } catch {}
       if (typeof window !== 'undefined') {
         localStorage.removeItem('munlink:role')
         localStorage.removeItem('munlink:user')
@@ -166,5 +216,3 @@ export const useAppStore = create<AppState>((set) => {
     },
   }
 })
-
-

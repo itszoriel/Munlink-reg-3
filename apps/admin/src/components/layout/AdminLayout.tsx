@@ -65,7 +65,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <main
         className={`admin-main-content pt-16 pb-24 md:pb-28 overflow-x-hidden max-w-full transition-all duration-300 relative z-10 ${isSidebarCollapsed ? 'md:ml-[80px]' : 'md:ml-[260px]'}`}
       >
-        <div className="p-6 md:p-8 container-responsive">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-none">
           {children}
         </div>
       </main>

@@ -7,8 +7,8 @@ export default function Profile() {
   const storeUser = useAdminStore((s) => s.user)
   const updateUser = useAdminStore((s) => s.updateUser)
   const [user, setUser] = useState<any>(storeUser)
-  const [form, setForm] = useState<{ first_name: string; middle_name?: string; last_name: string }>(
-    { first_name: storeUser?.first_name || '', middle_name: storeUser?.middle_name || '', last_name: storeUser?.last_name || '' }
+  const [form, setForm] = useState<{ first_name: string; middle_name?: string; last_name: string; mobile_number?: string }>(
+    { first_name: storeUser?.first_name || '', middle_name: storeUser?.middle_name || '', last_name: storeUser?.last_name || '', mobile_number: storeUser?.mobile_number || '' }
   )
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -21,7 +21,7 @@ export default function Profile() {
         const res = await authApi.getProfile()
         const u = (res as any)?.data || res
         setUser(u)
-        setForm({ first_name: u.first_name || '', middle_name: u.middle_name || '', last_name: u.last_name || '' })
+        setForm({ first_name: u.first_name || '', middle_name: u.middle_name || '', last_name: u.last_name || '', mobile_number: u.mobile_number || '' })
         updateUser(u)
       } catch {}
     })()
@@ -114,6 +114,11 @@ export default function Profile() {
               <input className="input-field mt-1" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
             </label>
           </div>
+          <label className="block">
+            <span className="text-xs text-neutral-500">Mobile number (optional)</span>
+            <input className="input-field mt-1" value={form.mobile_number || ''} onChange={(e) => setForm({ ...form, mobile_number: e.target.value })} placeholder="09XXXXXXXXX" />
+            <span className="text-[11px] text-neutral-500">Used for SMS notifications when enabled.</span>
+          </label>
           <div className="flex justify-end pt-2">
             <button
               className="px-5 py-2 rounded-lg bg-ocean-600 text-white hover:bg-ocean-700 disabled:opacity-60 text-sm font-medium"
@@ -121,7 +126,7 @@ export default function Profile() {
               onClick={async () => {
                 setSaving(true)
                 try {
-                  const res = await authApi.updateProfile({ first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name })
+                  const res = await authApi.updateProfile({ first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name, mobile_number: form.mobile_number })
                   const u = (res as any)?.data?.user || (res as any)?.user || res
                   setUser(u)
                   updateUser(u)

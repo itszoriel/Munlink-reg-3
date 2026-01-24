@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"cd ''C:\\\\Users\\\\paula\\\\OneDrive\\\\Documents\\\\My Projects\\\\Munlink-reg-3\\\\apps\\\\api''; .\\\\venv\\\\Scripts\\\\flask db stamp 20260117_sharing\")",
+      "Bash(test:*)"
+    ]
+  }
+}

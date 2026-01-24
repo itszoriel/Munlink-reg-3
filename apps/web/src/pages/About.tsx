@@ -1,43 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Building, Heart, Shield, Globe, ArrowRight, Mail, Phone, Bug, Info, ChevronDown } from 'lucide-react';
+import { Users, Building, Heart, Shield, Globe, ArrowRight, Mail, Phone, Bug, Info, FileText, Clock } from 'lucide-react';
 
-// Province data with their municipalities and capitals
-const provinceData: Record<string, { capital: string; municipalities: string[] }> = {
-  'Aurora': {
-    capital: 'Baler',
-    municipalities: ['Baler', 'Casiguran', 'Dilasag', 'Dinalungan', 'Dingalan', 'Dipaculao', 'Maria Aurora', 'San Luis']
-  },
-  'Bataan': {
-    capital: 'Balanga',
-    municipalities: ['Abucay', 'Bagac', 'Balanga', 'Dinalupihan', 'Hermosa', 'Limay', 'Mariveles', 'Morong', 'Orani', 'Orion', 'Pilar', 'Samal']
-  },
-  'Bulacan': {
-    capital: 'Malolos',
-    municipalities: ['Angat', 'Balagtas', 'Baliuag', 'Bocaue', 'Bulakan', 'Bustos', 'Calumpit', 'Doña Remedios Trinidad', 'Guiguinto', 'Hagonoy', 'Malolos', 'Marilao', 'Meycauayan', 'Norzagaray', 'Obando', 'Pandi', 'Paombong', 'Plaridel', 'Pulilan', 'San Ildefonso', 'San Jose del Monte', 'San Miguel', 'San Rafael', 'Santa Maria']
-  },
-  'Nueva Ecija': {
-    capital: 'Palayan',
-    municipalities: ['Aliaga', 'Bongabon', 'Cabanatuan', 'Cabiao', 'Carranglan', 'Cuyapo', 'Gabaldon', 'Gapan', 'General Mamerto Natividad', 'General Tinio', 'Guimba', 'Jaen', 'Laur', 'Licab', 'Llanera', 'Lupao', 'Muñoz', 'Nampicuan', 'Palayan', 'Pantabangan', 'Peñaranda', 'Quezon', 'Rizal', 'San Antonio', 'San Isidro', 'San Jose', 'San Leonardo', 'Santa Rosa', 'Santo Domingo', 'Talavera', 'Talugtug', 'Zaragoza']
-  },
-  'Pampanga': {
-    capital: 'San Fernando',
-    municipalities: ['Apalit', 'Arayat', 'Bacolor', 'Candaba', 'Floridablanca', 'Guagua', 'Lubao', 'Mabalacat', 'Macabebe', 'Magalang', 'Masantol', 'Mexico', 'Minalin', 'Porac', 'San Fernando', 'San Luis', 'San Simon', 'Santa Ana', 'Santa Rita', 'Santo Tomas', 'Sasmuan', 'Angeles']
-  },
-  'Tarlac': {
-    capital: 'Tarlac City',
-    municipalities: ['Anao', 'Bamban', 'Camiling', 'Capas', 'Concepcion', 'Gerona', 'La Paz', 'Mayantoc', 'Moncada', 'Paniqui', 'Pura', 'Ramos', 'San Clemente', 'San Jose', 'San Manuel', 'Santa Ignacia', 'Tarlac City', 'Victoria']
-  },
-  'Zambales': {
-    capital: 'Iba',
-    municipalities: ['Botolan', 'Cabangan', 'Candelaria', 'Castillejos', 'Iba', 'Masinloc', 'Palauig', 'San Antonio', 'San Felipe', 'San Marcelino', 'San Narciso', 'Santa Cruz', 'Subic']
-  }
-};
+// Zambales municipalities (excluding Olongapo City)
+const zambalesMunicipalities = [
+  'Botolan', 'Cabangan', 'Candelaria', 'Castillejos', 'Iba', 'Masinloc', 
+  'Palauig', 'San Antonio', 'San Felipe', 'San Marcelino', 'San Narciso', 
+  'Santa Cruz', 'Subic'
+];
 
 const About: React.FC = () => {
-  const [expandedProvince, setExpandedProvince] = useState<string | null>(null);
-
   const features = [
     {
       icon: Building,
@@ -47,7 +20,7 @@ const About: React.FC = () => {
     {
       icon: Users,
       title: 'Community Marketplace',
-      description: 'Connect with neighbors across Central Luzon through our cross-municipal marketplace.'
+      description: 'Connect with neighbors across Zambales through our municipal marketplace.'
     },
     {
       icon: Heart,
@@ -61,91 +34,62 @@ const About: React.FC = () => {
     }
   ];
 
-  const provinces = Object.keys(provinceData);
-  const totalMunicipalities = Object.values(provinceData).reduce((sum, p) => sum + p.municipalities.length, 0);
-
   return (
-    <div className="min-h-screen bg-gray-50 -mt-24">
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="relative w-full min-h-[70vh] sm:min-h-[80vh] md:min-h-screen flex items-center justify-center overflow-hidden pt-24">
+      <section className="relative w-full min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center overflow-hidden">
         <img
           src="/assets/about.jpg"
-          alt="About MunLink"
+          alt="About MunLink Zambales"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/40" />
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-64 h-64 bg-white rounded-full blur-3xl" />
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-white rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/15 to-black/30" />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <img
+            src="/logos/provinces/zambales.png"
+            alt=""
+            aria-hidden="true"
+            className="w-[51vw] max-w-[440px] sm:w-[42vw] md:w-[36vw] lg:w-[31vw] opacity-10 object-contain drop-shadow"
+          />
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full py-16 sm:py-20 md:py-24">
-          <div className="text-center">
-            <motion.div 
-              className="flex justify-center gap-3 mb-6 sm:mb-8 flex-wrap"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              {provinces.map((province, idx) => (
-                <motion.img
-                  key={province}
-                  src={`/logos/provinces/${province.toLowerCase().replace(/\s+/g, '-')}.png`}
-                  alt={`${province} Seal`}
-                  className="w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 object-contain rounded-full bg-white/10 p-1"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                />
-              ))}
-            </motion.div>
-            <motion.h1 
-              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-white mb-3 sm:mb-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              About MunLink Region III
-            </motion.h1>
-            <motion.p 
-              className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 max-w-3xl mx-auto drop-shadow-lg px-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              A comprehensive digital governance platform connecting all {provinces.length} provinces 
-              and {totalMunicipalities} local government units (municipalities and cities) of Central Luzon 
+
+        <div className="relative z-10 container-responsive py-20 text-center px-4">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Heading */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white mb-6">
+              About MunLink Zambales
+            </h1>
+
+            {/* Description */}
+            <p className="text-base sm:text-lg md:text-xl text-white/95 max-w-3xl mx-auto leading-relaxed">
+              A comprehensive digital governance platform connecting all 13 municipalities of Zambales
               for seamless municipal services and community engagement.
-            </motion.p>
+            </p>
           </div>
         </div>
       </section>
 
 
       {/* Mission Section */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h2>
-              <p className="text-lg text-gray-600 mb-6">
-                To modernize municipal governance across Central Luzon (Region III) by providing 
-                a unified digital platform that enhances citizen engagement, streamlines 
-                municipal services, and fosters cross-provincial community connections.
-              </p>
-              <p className="text-lg text-gray-600">
-                We believe that technology should bridge the gap between government 
-                and citizens, making municipal services more accessible, transparent, 
-                and efficient for all residents of Region III.
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+            <div className="space-y-4 text-center lg:text-left">
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">Our Mission</h2>
+              <p className="text-lg text-gray-600 leading-relaxed">
+                To modernize municipal governance across Zambales province by providing
+                a unified digital platform that enhances citizen engagement, streamlines
+                municipal services, and fosters community connections.
               </p>
             </div>
-            <div className="bg-ocean-50 rounded-2xl p-8">
-              <div className="text-center">
-                <Globe className="h-16 w-16 text-ocean-500 mx-auto mb-4" />
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Digital Transformation</h3>
-                <p className="text-gray-600">
-                  Bringing Central Luzon's municipalities into the digital age with 
-                  modern, user-friendly solutions for municipal governance.
+
+            <div className="bg-gradient-to-br from-ocean-50 to-cyan-50 rounded-2xl p-8 lg:p-10 shadow-sm border border-ocean-100">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <Globe className="h-16 w-16 text-ocean-600" />
+                <h3 className="text-2xl font-bold text-gray-900">Digital Transformation</h3>
+                <p className="text-gray-700 leading-relaxed">
+                  Bringing Zambales municipalities into the digital age with modern,
+                  user-friendly solutions for municipal governance.
                 </p>
               </div>
             </div>
@@ -153,26 +97,96 @@ const About: React.FC = () => {
         </div>
       </section>
 
+      {/* Public Records Access Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="lg:col-span-1 space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ocean-50 text-ocean-700 text-sm font-semibold">
+                <Shield className="h-4 w-4" />
+                Public Records Access
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">Know your rights</h2>
+              <p className="text-lg text-gray-600 leading-relaxed">
+                MunLink guides Zambales residents through requesting municipal and barangay documents.
+                We ground the process on the 1987 Constitution (Art. III Sec. 7), RA 6713, RA 7160,
+                DILG Full Disclosure Policy, EO 02 (FOI, where adopted), RA 9184, RA 11032, and the
+                Data Privacy Act for redactions.
+              </p>
+              <div className="p-4 rounded-xl bg-ocean-50 border border-ocean-100 text-sm text-ocean-900 space-y-2">
+                <div className="flex items-start gap-2">
+                  <FileText className="h-4 w-4 mt-0.5" />
+                  <span><strong>Free digital by default:</strong> Ask for PDFs/Excel. Paper or certified copies may have minimal reproduction/cert fees.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 mt-0.5" />
+                  <span><strong>Timing:</strong> Target 15 working days (RA 6713 / EO 02), or faster if the LGU Citizen's Charter says so.</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <Users className="h-6 w-6 text-ocean-600" />
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">Barangay-handled</h3>
+                    <p className="text-sm text-gray-600">Barangay Secretary/Treasurer; Captain approval as needed</p>
+                  </div>
+                </div>
+                <ul className="space-y-3 text-sm text-gray-700">
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Ordinances/resolutions (free digital; cert fee if certified)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Assembly minutes/attendance (free digital; paper fee possible)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Annual/Supplemental budget and use (20% DF, BDRRM, SK) (free digital)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />DRRM plan and utilization (free digital)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Project status reports (free digital)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Citizen's Charter/service standards (free digital)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Permit/clearance logs if maintained (free to inspect; copy fee possible)</li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <Building className="h-6 w-6 text-ocean-600" />
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">Municipal/City-handled</h3>
+                    <p className="text-sm text-gray-600">Records/PIO, Sanggunian, Budget, Accounting, Treasurer, BAC</p>
+                  </div>
+                </div>
+                <ul className="space-y-3 text-sm text-gray-700">
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Ordinances/resolutions/journals; appropriation and revenue measures (free digital; cert fee if certified)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Annual/Supplemental Budget, AIP, 20% DF, SEF, GAD Plan & AR, 5% DRRM, Trust Fund, SRE/Quarterly Cash Flow (free digital)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Annual Procurement Plan/PPMPs; ITB/RFQ, Abstract of Bids, Minutes, NOA/NTP/Contracts (free digital)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Infrastructure project list/status and contract details (free digital)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Local tax/fee schedule (free digital)</li>
+                  <li className="flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-ocean-600" />Citizen's Charter/service standards (free digital)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Platform Features</h2>
-            <p className="text-xl text-gray-600">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Platform Features</h2>
+            <p className="text-lg text-gray-600">
               Comprehensive tools for municipal governance and community engagement
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <div key={index} className="text-center group">
-                  <div className="bg-ocean-100 rounded-2xl w-16 h-16 flex items-center justify-center mx-auto mb-4 group-hover:bg-ocean-200 transition-colors">
-                    <Icon className="h-8 w-8 text-ocean-600" />
+                <div key={index} className="text-center bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="bg-ocean-100 rounded-xl w-14 h-14 flex items-center justify-center mx-auto mb-4">
+                    <Icon className="h-7 w-7 text-ocean-600" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
+                  <p className="text-sm text-gray-600">{feature.description}</p>
                 </div>
               );
             })}
@@ -180,151 +194,135 @@ const About: React.FC = () => {
         </div>
       </section>
 
-      {/* Provinces Section */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Municipalities Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Serving All of Central Luzon</h2>
-            <p className="text-xl text-gray-600">
-              MunLink connects all {provinces.length} provinces of Region III
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Serving Zambales Province</h2>
+            <p className="text-lg text-gray-600">
+              MunLink connects all 13 municipalities of Zambales
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-            {provinces.map((province) => {
-              const data = provinceData[province];
-              const isExpanded = expandedProvince === province;
-              
-              return (
-                <div 
-                  key={province} 
-                  className="bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-shadow"
+
+          <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
+            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
+              <img
+                src="/logos/provinces/zambales.png"
+                alt="Zambales Provincial Seal"
+                className="w-16 h-16 object-contain"
+              />
+              <div>
+                <div className="font-bold text-xl text-gray-900">Zambales</div>
+                <div className="text-sm text-gray-600">13 municipalities - Capital: Iba</div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {zambalesMunicipalities.map((mun) => (
+                <span
+                  key={mun}
+                  className={`text-sm px-4 py-2 rounded-full ${
+                    mun === 'Iba'
+                      ? 'bg-ocean-600 text-white font-medium'
+                      : 'bg-white text-gray-700 border border-gray-200'
+                  }`}
                 >
-                  <button
-                    onClick={() => setExpandedProvince(isExpanded ? null : province)}
-                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={`/logos/provinces/${province.toLowerCase().replace(/\s+/g, '-')}.png`}
-                        alt={`${province} Seal`}
-                        className="w-10 h-10 object-contain"
-                        onError={(e) => { 
-                          (e.target as HTMLImageElement).src = '/logos/provinces/placeholder.png';
-                        }}
-                      />
-                      <div className="text-left">
-                        <div className="font-semibold text-gray-900">{province}</div>
-                        <div className="text-sm text-gray-500">{data.municipalities.length} municipalities</div>
-                      </div>
-                    </div>
-                    <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {isExpanded && (
-                    <div className="px-4 pb-4 border-t bg-gray-50">
-                      <div className="py-2 text-xs font-medium text-ocean-600 uppercase tracking-wide">
-                        Capital: {data.capital}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {data.municipalities.map((mun) => (
-                          <span
-                            key={mun}
-                            className={`text-xs px-2 py-1 rounded-full ${
-                              mun === data.capital 
-                                ? 'bg-ocean-100 text-ocean-700 font-medium' 
-                                : 'bg-white text-gray-600 border'
-                            }`}
-                          >
-                            {mun}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  {mun}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Support Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            {/* Left: Contact Actions */}
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Found a Bug? We're Here to Help</h2>
-              <p className="text-lg text-gray-600 mb-6">
-                Contact Paul directly — we'll investigate and fix issues as quickly as possible.
-              </p>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-                <div className="inline-flex items-center text-gray-800">
-                  <Mail className="h-5 w-5 mr-2 text-ocean-600" />
-                  <span>Pauljohn.antigo@gmail.com</span>
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Need Help?</h2>
+            <p className="text-lg text-gray-600">
+              Found a bug or need assistance? Contact us directly.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Contact Info */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm">
+              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Mail className="h-6 w-6 text-ocean-600" />
+                Contact Information
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-5 w-5 text-ocean-600" />
+                  <span className="text-gray-800">Pauljohn.antigo@gmail.com</span>
                 </div>
-                <div className="inline-flex items-center text-gray-800">
-                  <Phone className="h-5 w-5 mr-2 text-ocean-600" />
-                  <span>09764859463</span>
+                <div className="flex items-center gap-3">
+                  <Phone className="h-5 w-5 text-ocean-600" />
+                  <span className="text-gray-800">09764859463</span>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-4">Urgent issue or outage? Text or call for the fastest response.</p>
+              <p className="text-sm text-gray-600 mt-6 p-3 bg-blue-50 rounded-lg">
+                <Info className="h-4 w-4 inline mr-1 text-ocean-600" />
+                Urgent issue? Call or text for the fastest response.
+              </p>
             </div>
 
-            {/* Right: What to include */}
-            <div className="bg-gray-50 rounded-xl p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center"><Bug className="h-6 w-6 text-ocean-600 mr-2" /> Help Us Reproduce the Issue</h3>
-              <ul className="space-y-2 text-gray-700">
-                <li className="flex items-start"><div className="w-2 h-2 bg-ocean-500 rounded-full mr-3 mt-2"></div><span>Clear steps to reproduce the problem</span></li>
-                <li className="flex items-start"><div className="w-2 h-2 bg-ocean-500 rounded-full mr-3 mt-2"></div><span>What you expected vs. what actually happened</span></li>
-                <li className="flex items-start"><div className="w-2 h-2 bg-ocean-500 rounded-full mr-3 mt-2"></div><span>Page URL and approximate time it occurred</span></li>
-                <li className="flex items-start"><div className="w-2 h-2 bg-ocean-500 rounded-full mr-3 mt-2"></div><span>Your browser and device (e.g., Chrome on Android)</span></li>
-                <li className="flex items-start"><div className="w-2 h-2 bg-ocean-500 rounded-full mr-3 mt-2"></div><span>Screenshots or a short screen recording</span></li>
+            {/* Bug Report Tips */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm">
+              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Bug className="h-6 w-6 text-ocean-600" />
+                Reporting Issues
+              </h3>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-ocean-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <span>Clear steps to reproduce the problem</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-ocean-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <span>What you expected vs. what happened</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-ocean-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <span>Page URL and time it occurred</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-ocean-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <span>Browser and device (e.g., Chrome on Android)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-ocean-600 rounded-full mt-2 flex-shrink-0"></div>
+                  <span>Screenshots if possible</span>
+                </li>
               </ul>
-              <div className="mt-4 flex items-start text-sm text-gray-600">
-                <Info className="h-4 w-4 text-gray-500 mr-2 mt-0.5" />
-                <span>Please avoid sharing sensitive personal information in screenshots or recordings.</span>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-ocean-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Ready to Experience Digital Municipal Services?
+      <section className="py-20 bg-gradient-to-br from-ocean-600 to-ocean-700">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            Ready to Get Started?
           </h2>
-          <p className="text-xl text-ocean-100 mb-8 max-w-2xl mx-auto">
-            Be among the first Central Luzon residents to try MunLink for your municipal service needs.
+          <p className="text-lg text-white/90 mb-8">
+            Join Zambales residents in experiencing modern digital municipal services.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col xs:flex-row gap-4 justify-center max-w-md mx-auto">
             <Link
-              to="/login"
-              className="inline-flex items-center justify-center px-6 py-3 bg-white text-ocean-600 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              to="/register"
+              className="flex items-center justify-center gap-2 px-8 py-4 bg-white text-ocean-700 rounded-xl font-semibold shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all"
             >
-              Get Started
-              <ArrowRight className="h-4 w-4 ml-2" />
+              <span>Get Started</span>
+              <ArrowRight className="h-5 w-5" />
             </Link>
             <Link
               to="/announcements"
-              className="inline-flex items-center justify-center px-6 py-3 border-2 border-white text-white rounded-lg hover:bg-white hover:text-ocean-600 transition-colors font-medium"
+              className="flex items-center justify-center gap-2 px-8 py-4 border-2 border-white text-white rounded-xl font-semibold hover:bg-white/10 transition-all"
             >
-              Latest Announcements
+              <span>Announcements</span>
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer Info */}
-      <section className="py-12 bg-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <p className="text-gray-600">
-              MunLink Region III - Connecting Communities, Empowering Citizens Across Central Luzon
-            </p>
           </div>
         </div>
       </section>

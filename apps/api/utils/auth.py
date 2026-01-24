@@ -33,7 +33,7 @@ def admin_required(fn):
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        if user.role not in ('superadmin', 'municipal_admin'):
+        if user.role not in ('superadmin', 'provincial_admin', 'municipal_admin', 'barangay_admin'):
             return jsonify({'error': 'Admin access required', 'code': 'ROLE_MISMATCH'}), 403
         
         return fn(*args, **kwargs)
@@ -94,6 +94,34 @@ def fully_verified_required(fn):
     return wrapper
 
 
+def permission_required(permission: str):
+    """Decorator to require specific permission."""
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            verify_jwt_in_request()
+            user_id = get_jwt_identity()
+
+            if not user_id:
+                return jsonify({'error': 'Authentication required'}), 401
+
+            user = User.query.get(user_id)
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            if not user.has_permission(permission):
+                return jsonify({
+                    'error': f'Permission denied: {permission} required',
+                    'code': 'PERMISSION_DENIED'
+                }), 403
+
+            return fn(*args, **kwargs)
+
+        return wrapper
+    return decorator
+
+
 def adult_required(fn):
     """Decorator to require user to be 18 or older."""
     @wraps(fn)
@@ -144,7 +172,7 @@ def municipality_admin_required(municipality_id=None):
             if not user:
                 return jsonify({'error': 'User not found'}), 404
             
-            if user.role not in ('superadmin', 'municipal_admin'):
+            if user.role not in ('superadmin', 'provincial_admin', 'municipal_admin', 'barangay_admin'):
                 return jsonify({'error': 'Admin access required', 'code': 'ROLE_MISMATCH'}), 403
             
             # If specific municipality is required

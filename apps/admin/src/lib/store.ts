@@ -9,6 +9,7 @@ export type User = {
   last_name: string
   role: string
   admin_municipality_id?: number
+  barangay_id?: number
   profile_picture?: string
   email_verified: boolean
   admin_verified: boolean
@@ -16,6 +17,12 @@ export type User = {
   municipality_slug?: string
   admin_municipality_name?: string
   admin_municipality_slug?: string
+  barangay_name?: string
+  barangay_slug?: string
+  mobile_number?: string
+  notify_email_enabled?: boolean
+  notify_sms_enabled?: boolean
+  permissions?: string[]
 }
 
 export type Province = {

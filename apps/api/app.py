@@ -102,7 +102,7 @@ def create_app(config_class=Config):
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob: https:",
-            "connect-src 'self' https://api.sendgrid.com",
+            "connect-src 'self' https://api.sendgrid.com https://api.semaphore.co",
             "frame-ancestors 'none'",
             "base-uri 'self'",
             "form-action 'self'",
@@ -112,25 +112,29 @@ def create_app(config_class=Config):
         return response
     
     # CORS configuration
-    cors_origins = [
-        app.config.get('WEB_URL', 'http://localhost:5173'),
-        app.config.get('ADMIN_URL', 'http://localhost:3001'),
-        # Local development
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://127.0.0.1:5173",
-    ]
-    # Remove duplicates
-    cors_origins = list(dict.fromkeys(cors_origins))
+    if app.config.get('DEBUG', False):
+        # In development, allow all origins for easier local network testing
+        cors_origins = ["*"]
+    else:
+        cors_origins = [
+            app.config.get('WEB_URL', 'http://localhost:5173'),
+            app.config.get('ADMIN_URL', 'http://localhost:3001'),
+            # Local development
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://127.0.0.1:5173",
+        ]
+        # Remove duplicates
+        cors_origins = list(dict.fromkeys(cors_origins))
     
     # Apply CORS globally with Flask-CORS
-    CORS(app, 
+    CORS(app,
          origins=cors_origins,
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-Admin-Secret"],
          supports_credentials=True,
          expose_headers=["Content-Type", "Authorization"])
     
@@ -148,10 +152,12 @@ def create_app(config_class=Config):
     try:
         from apps.api.routes import auth_bp, provinces_bp, municipalities_bp, marketplace_bp, announcements_bp, documents_bp, issues_bp, benefits_bp
         from apps.api.routes.admin import admin_bp
+        from apps.api.routes.superadmin import superadmin_bp
     except ImportError:
         from routes import auth_bp, provinces_bp, municipalities_bp, marketplace_bp, announcements_bp, documents_bp, issues_bp, benefits_bp
         from routes.admin import admin_bp
-    
+        from routes.superadmin import superadmin_bp
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(provinces_bp)
     app.register_blueprint(municipalities_bp)
@@ -161,6 +167,7 @@ def create_app(config_class=Config):
     app.register_blueprint(issues_bp)
     app.register_blueprint(benefits_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(superadmin_bp)
     
     # Health check endpoint
     @app.route('/health', methods=['GET'])

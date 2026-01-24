@@ -1,26 +1,42 @@
-"""Document types and requests routes."""
-from flask import Blueprint, jsonify, request
+"""Document types and requests routes.
+
+SCOPE: Zambales province only, excluding Olongapo City.
+"""
+from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import or_
 
 try:
     from apps.api import db
     from apps.api.models.document import DocumentType, DocumentRequest
     from apps.api.models.user import User
+    from apps.api.models.municipality import Municipality, Barangay
     from apps.api.utils import (
         validate_required_fields,
         ValidationError,
         save_document_request_file,
         fully_verified_required,
     )
+    from apps.api.utils.notifications import queue_document_request_created
+    from apps.api.utils.zambales_scope import (
+        ZAMBALES_MUNICIPALITY_IDS,
+        is_valid_zambales_municipality,
+    )
 except ImportError:
     from __init__ import db
     from models.document import DocumentType, DocumentRequest
     from models.user import User
+    from models.municipality import Municipality, Barangay
     from utils import (
         validate_required_fields,
         ValidationError,
         save_document_request_file,
         fully_verified_required,
+    )
+    from utils.notifications import queue_document_request_created
+    from utils.zambales_scope import (
+        ZAMBALES_MUNICIPALITY_IDS,
+        is_valid_zambales_municipality,
     )
 
 
@@ -31,7 +47,37 @@ documents_bp = Blueprint('documents', __name__, url_prefix='/api/documents')
 def list_document_types():
     """Public list of active document types."""
     try:
-        types = DocumentType.query.filter_by(is_active=True).all()
+        municipality_id = request.args.get('municipality_id', type=int)
+        barangay_id = request.args.get('barangay_id', type=int)
+
+        # Resolve municipality from barangay if only barangay is provided
+        if barangay_id and not municipality_id:
+            try:
+                brgy = Barangay.query.get(barangay_id)
+                if brgy:
+                    municipality_id = brgy.municipality_id
+            except Exception:
+                municipality_id = municipality_id
+
+        query = DocumentType.query.filter_by(is_active=True)
+
+        if barangay_id:
+            query = query.filter(
+                or_(
+                    DocumentType.barangay_id == barangay_id,
+                    DocumentType.municipality_id == municipality_id,
+                    DocumentType.barangay_id.is_(None)
+                )
+            )
+        elif municipality_id:
+            query = query.filter(
+                or_(
+                    DocumentType.municipality_id == municipality_id,
+                    DocumentType.municipality_id.is_(None)
+                )
+            )
+
+        types = query.all()
         return jsonify({
             'types': [t.to_dict() for t in types],
             'count': len(types)
@@ -58,11 +104,32 @@ def create_document_request():
         # Enforce municipality scoping: residents may only request in their registered municipality
         if not user.municipality_id or int(user.municipality_id) != int(data['municipality_id']):
             return jsonify({'error': 'You can only request documents in your registered municipality'}), 403
+        
+        # ZAMBALES SCOPE: Verify municipality is in Zambales (excluding Olongapo)
+        if not is_valid_zambales_municipality(int(data['municipality_id'])):
+            return jsonify({'error': 'Municipality is not available in this system'}), 403
 
         # Validate delivery rules against selected document type
         dt = DocumentType.query.get(int(data['document_type_id']))
         if not dt or not dt.is_active:
             return jsonify({'error': 'Selected document type is not available'}), 400
+
+        # Enforce locality: municipal scope and optional barangay scope
+        target_muni_id = int(data['municipality_id'])
+        if dt.municipality_id and int(dt.municipality_id) != target_muni_id:
+            return jsonify({'error': 'This document is not available in the selected municipality'}), 400
+
+        target_brgy_id = data.get('barangay_id') or getattr(user, 'barangay_id', None)
+        if (dt.authority_level or '').lower() == 'barangay':
+            if not target_brgy_id:
+                return jsonify({'error': 'This document requires a barangay to be selected'}), 400
+            if dt.barangay_id and int(dt.barangay_id) != int(target_brgy_id):
+                try:
+                    brgy = Barangay.query.get(dt.barangay_id)
+                    brgy_name = brgy.name if brgy else 'this barangay'
+                except Exception:
+                    brgy_name = 'this barangay'
+                return jsonify({'error': f'This document is only available in {brgy_name}'}), 400
 
         # Digital is allowed only when the type supports digital AND the fee is zero
         requested_method = (data.get('delivery_method') or '').lower()
@@ -143,6 +210,16 @@ def create_document_request():
 
         db.session.add(req)
         db.session.commit()
+
+        try:
+            queue_document_request_created(user, req, dt.name if dt else 'Document')
+            db.session.commit()
+        except Exception as notify_exc:
+            db.session.rollback()
+            try:
+                current_app.logger.warning("Failed to queue document request notification: %s", notify_exc)
+            except Exception:
+                pass
 
         return jsonify({'message': 'Request created successfully', 'request': req.to_dict()}), 201
 

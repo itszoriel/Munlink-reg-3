@@ -20,35 +20,42 @@ type Announcement = {
 
 export default function AnnouncementsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
-  const selectedProvince = useAppStore((s) => s.selectedProvince)
+  const selectedBarangay = useAppStore((s) => s.selectedBarangay)
   const user = useAppStore((s) => s.user)
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
+  const isAuthBootstrapped = useAppStore((s) => s.isAuthBootstrapped)
   const [priority, setPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all')
   const [hideRead, setHideReadState] = useState<boolean>(getHideRead())
 
-  // Municipality scoping
+  // Municipality and Barangay scoping
   const userMunicipalityId = (user as any)?.municipality_id
-  const effectiveMunicipalityId = isAuthenticated && userMunicipalityId 
-    ? (selectedMunicipality?.id || userMunicipalityId)  // Allow browsing, default to user's
-    : selectedMunicipality?.id
-  const guestLocationComplete = !isAuthenticated && !!selectedProvince?.id && !!selectedMunicipality?.id
-  const shouldFetch = isAuthenticated || guestLocationComplete
-  const isViewingMismatch = !!userMunicipalityId && !!selectedMunicipality?.id && userMunicipalityId !== selectedMunicipality.id
+  const userBarangayId = (user as any)?.barangay_id
+  const verifiedResident = isAuthenticated && (user as any)?.admin_verified && (user as any)?.role === 'resident'
+  const isViewingMismatch = verifiedResident && !!userMunicipalityId && !!selectedMunicipality?.id && userMunicipalityId !== selectedMunicipality.id
+  const browseMunicipalityId = !verifiedResident && selectedMunicipality?.id ? selectedMunicipality.id : undefined
+  const browseBarangayId = !verifiedResident && selectedBarangay?.id ? selectedBarangay.id : undefined
+  const shouldFetch = verifiedResident || !!browseMunicipalityId || !isAuthenticated
 
   const params = useMemo(() => {
     const p: any = { active: true, page: 1, per_page: 20 }
-    if (effectiveMunicipalityId) p.municipality_id = effectiveMunicipalityId
+    if (browseMunicipalityId) {
+      p.municipality_id = browseMunicipalityId
+      p.browse = true
+    }
+    if (browseBarangayId) {
+      p.barangay_id = browseBarangayId
+    }
     return p
-  }, [effectiveMunicipalityId])
+  }, [browseMunicipalityId, browseBarangayId])
 
   // Use cached fetch with filter-specific key
   const { data: announcementsData, loading } = useCachedFetch(
     CACHE_KEYS.ANNOUNCEMENTS,
     () => announcementsApi.getAll(params),
-    { 
-      dependencies: [effectiveMunicipalityId], 
+    {
+      dependencies: [browseMunicipalityId, browseBarangayId, userMunicipalityId, userBarangayId, verifiedResident],
       staleTime: 5 * 60 * 1000,
-      enabled: shouldFetch  // Only fetch when location context is ready
+      enabled: shouldFetch && isAuthBootstrapped  // Wait for auth bootstrap before fetching
     }
   )
 
@@ -99,10 +106,16 @@ export default function AnnouncementsPage() {
         </div>
       )}
 
-      {/* Guest Location Required Message */}
-      {!isAuthenticated && !guestLocationComplete && (
+      {/* Barangay Filter Notice */}
+      {selectedBarangay && (
+        <div className="mb-4 p-3 rounded-lg border border-green-200 bg-green-50 text-sm text-green-900">
+          <strong>Filtering by Barangay:</strong> {selectedBarangay.name}. Showing province-wide, {selectedMunicipality?.name} municipality, and {selectedBarangay.name} barangay announcements.
+        </div>
+      )}
+
+      {!verifiedResident && (
         <div className="mb-4 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
-          <p><strong>Select your location</strong> to view announcements. Use the location selector above to choose your province and municipality.</p>
+          <p><strong>Login and verify your residency</strong> to see municipality and barangay announcements. Province-wide updates are always visible.</p>
         </div>
       )}
 
@@ -129,6 +142,8 @@ export default function AnnouncementsPage() {
                 title={a.title}
                 content={a.content}
                 municipality={a.municipality_name || 'Province-wide'}
+                barangay={(a as any).barangay_name}
+                scope={(a as any).scope as any}
                 priority={a.priority}
                 createdAt={a.created_at}
                 images={a.images}
@@ -157,5 +172,3 @@ export default function AnnouncementsPage() {
     </div>
   )
 }
-
-

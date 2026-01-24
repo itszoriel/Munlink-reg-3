@@ -55,7 +55,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile }: TopHeaderP
   const handleLogout = () => {
     try { sessionStorage.clear() } catch {}
     doLogout()
-    navigate('/login', { replace: true })
+    navigate('/', { replace: true })
   }
 
   const goToProfile = () => {

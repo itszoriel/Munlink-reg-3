@@ -1,6 +1,6 @@
 import os
 from types import SimpleNamespace
-from datetime import datetime
+from datetime import datetime, timezone
 
 from apps.api.app import create_app
 
@@ -21,7 +21,7 @@ def test_generate_document_pdf(tmp_path):
         municipality_id=municipality.id,
         delivery_address='Iba, Zambales',
         purpose='Scholarship',
-        created_at=datetime.utcnow(),
+    created_at=datetime.now(timezone.utc),
     )
     document_type = SimpleNamespace(code='residency', name='Certificate of Residency')
 

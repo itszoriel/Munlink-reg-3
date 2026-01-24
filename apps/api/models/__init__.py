@@ -22,6 +22,9 @@ try:
     from apps.api.models.token_blacklist import TokenBlacklist
     from apps.api.models.audit import AuditLog
     from apps.api.models.refresh_token import RefreshTokenFamily, RefreshToken
+    from apps.api.models.notification import NotificationOutbox
+    from apps.api.models.email_verification_code import EmailVerificationCode
+    from apps.api.models.admin_audit_log import AdminAuditLog, AuditAction
 except ImportError:
     from .user import User
     from .province import Province
@@ -33,6 +36,9 @@ except ImportError:
     from .token_blacklist import TokenBlacklist
     from .audit import AuditLog
     from .refresh_token import RefreshTokenFamily, RefreshToken
+    from .notification import NotificationOutbox
+    from .email_verification_code import EmailVerificationCode
+    from .admin_audit_log import AdminAuditLog, AuditAction
 
 __all__ = [
     'User',
@@ -51,5 +57,8 @@ __all__ = [
     'AuditLog',
     'RefreshTokenFamily',
     'RefreshToken',
+    'NotificationOutbox',
+    'EmailVerificationCode',
+    'AdminAuditLog',
+    'AuditAction',
 ]
-

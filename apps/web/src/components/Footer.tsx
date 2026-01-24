@@ -8,8 +8,8 @@ export default function Footer() {
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <div className="text-xl font-serif font-semibold text-gray-900">MunLink Region III</div>
-              <p className="mt-2 text-gray-600">Connecting residents, services, and local markets across Central Luzon.</p>
+              <div className="text-xl font-serif font-semibold text-gray-900">MunLink Zambales</div>
+              <p className="mt-2 text-gray-600">Connecting residents, services, and local markets across Zambales province.</p>
             </div>
             <div>
               <div className="font-semibold text-gray-900 mb-3">Explore</div>
@@ -29,8 +29,8 @@ export default function Footer() {
             </div>
           </div>
           <div className="mt-10 pt-6 border-t border-white/40 text-sm text-gray-600 flex items-center justify-between">
-            <p>© {year} MunLink Region III. All rights reserved.</p>
-            <p>Serving 7 provinces across Central Luzon.</p>
+            <p>© {year} MunLink Zambales. All rights reserved.</p>
+            <p>Serving 13 municipalities across Zambales province.</p>
           </div>
         </div>
       </div>

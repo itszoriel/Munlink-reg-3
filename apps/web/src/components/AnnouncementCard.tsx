@@ -11,6 +11,8 @@ type Props = {
   title: string
   content: string
   municipality?: string
+  barangay?: string
+  scope?: 'PROVINCE' | 'MUNICIPALITY' | 'BARANGAY'
   priority: Priority
   createdAt?: string
   images?: string[]
@@ -19,8 +21,14 @@ type Props = {
   onClick?: () => void
 }
 
-export default function AnnouncementCard({ id, title, content, municipality, priority, createdAt, images, pinned, href, onClick }: Props) {
+export default function AnnouncementCard({ id, title, content, municipality, barangay, scope, priority, createdAt, images, pinned, href, onClick }: Props) {
   const [read, setRead] = useState<boolean>(isRead(id))
+  const scopeLabel = useMemo(() => {
+    const sc = (scope || '').toUpperCase()
+    if (sc === 'PROVINCE') return 'Province-wide'
+    if (sc === 'BARANGAY') return barangay || 'Barangay'
+    return municipality || 'Municipality'
+  }, [scope, municipality, barangay])
 
   useEffect(() => {
     setRead(isRead(id))
@@ -56,8 +64,8 @@ export default function AnnouncementCard({ id, title, content, municipality, pri
           )}
           {/* Top-left badges */}
           <div className="absolute top-3 left-3 flex items-center gap-2">
-            {municipality && (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-white/90 text-neutral-800 shadow">{municipality}</span>
+            {scopeLabel && (
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-white/90 text-neutral-800 shadow">{scopeLabel}</span>
             )}
             {pinned ? (
               <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-ocean-600 text-white shadow">Pinned</span>

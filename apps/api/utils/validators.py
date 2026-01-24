@@ -86,7 +86,7 @@ def validate_password(password):
     return password
 
 
-def validate_phone(phone):
+def validate_phone(phone, field_name='phone_number'):
     """Validate Philippine phone number."""
     if not phone:
         return None  # Phone is optional
@@ -95,7 +95,7 @@ def validate_phone(phone):
     phone = phone.replace(' ', '').replace('-', '')
     
     if not PHONE_REGEX.match(phone):
-        raise ValidationError('phone_number', 'Invalid Philippine phone number format')
+        raise ValidationError(field_name, 'Invalid Philippine phone number format')
     
     # Normalize to +63 format
     if phone.startswith('09'):

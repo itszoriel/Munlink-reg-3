@@ -32,6 +32,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy'
 function App() {
   const setAuth = useAppStore((s) => s.setAuth)
   const setAuthBootstrapped = useAppStore((s) => s.setAuthBootstrapped)
+  const logout = useAppStore((s) => s.logout)
   useEffect(() => {
     let cancelled = false
     const init = async () => {
@@ -51,9 +52,19 @@ function App() {
             if (!cancelled && resp?.data) {
               setAuth(resp.data, token, '')
             }
-          } catch {}
+          } catch (err: any) {
+            const status = err?.response?.status
+            if (!cancelled && (status === 401 || status === 403)) {
+              logout()
+            }
+          }
+        } else if (!cancelled) {
+          // Clear any stale local session data if refresh/access token is missing
+          logout()
         }
-      } catch {}
+      } catch {
+        if (!cancelled) logout()
+      }
       hasBootstrappedAuth = true
       if (!cancelled) setAuthBootstrapped(true)
     }
@@ -103,4 +114,3 @@ function LegacyDocRedirect() {
   const to = location.pathname.replace('/documents/requests', '/dashboard/requests')
   return <Navigate to={to} replace />
 }
-

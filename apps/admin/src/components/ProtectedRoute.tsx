@@ -13,21 +13,22 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
-      navigate('/login', { replace: true })
+      navigate('/', { replace: true })
       return
     }
 
     // Verify user has admin role
-    if (user.role !== 'municipal_admin' && user.role !== 'admin') {
+    const allowedRoles = ['municipal_admin', 'admin', 'superadmin', 'provincial_admin', 'barangay_admin']
+    if (!allowedRoles.includes(user.role)) {
       console.error('Access denied: User is not an admin')
-      navigate('/login', { replace: true })
+      navigate('/', { replace: true })
     }
   }, [isAuthenticated, user, navigate])
 
-  if (!isAuthenticated || !user || (user.role !== 'municipal_admin' && user.role !== 'admin')) {
+  const allowedRoles = ['municipal_admin', 'admin', 'superadmin', 'provincial_admin', 'barangay_admin']
+  if (!isAuthenticated || !user || !allowedRoles.includes(user.role)) {
     return null
   }
 
   return <>{children}</>
 }
-

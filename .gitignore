@@ -73,3 +73,6 @@ pnpm-lock.yaml
 # NOTE: public/reference/ is NOT ignored - it contains hero background images needed for production
 docs/
 
+
+# Terminal Paste Image folder
+.cp-images/

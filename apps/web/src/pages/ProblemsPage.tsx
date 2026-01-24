@@ -31,6 +31,7 @@ const statusLabel: Record<Problem['status'], string> = {
 
 export default function ProblemsPage() {
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
+  const selectedBarangay = useAppStore((s) => s.selectedBarangay)
   const selectedProvince = useAppStore((s) => s.selectedProvince)
   const user = useAppStore((s) => s.user)
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
@@ -105,6 +106,13 @@ export default function ProblemsPage() {
       {isMismatch && (
         <div className="mb-4 p-3 rounded-lg border border-yellow-300 bg-yellow-50 text-sm text-yellow-900">
           <strong>Viewing {selectedMunicipality?.name}</strong>. You can only submit, edit, or update issues in your registered municipality.
+        </div>
+      )}
+
+      {/* Barangay Filter Notice */}
+      {selectedBarangay && (
+        <div className="mb-4 p-3 rounded-lg border border-green-200 bg-green-50 text-sm text-green-900">
+          <strong>Filtering by Barangay:</strong> {selectedBarangay.name}. Note: Barangay-level filtering for problems is currently in development. Showing all problems in {selectedMunicipality?.name}.
         </div>
       )}
 
@@ -192,7 +200,7 @@ export default function ProblemsPage() {
                   <p className={`text-sm text-gray-700 mt-1 mb-2 ${openId===p.id ? '' : 'line-clamp-2'}`}>{p.description}</p>
                   {openId===p.id && (
                     <div className="mt-2 space-y-2">
-                      <div className="text-xs text-gray-500 break-words">{p.municipality || 'Region III'}{p.category ? ` • ${p.category?.name || p.category}` : ''}</div>
+                      <div className="text-xs text-gray-500 break-words">{p.municipality || 'Zambales'}{p.category ? ` • ${p.category?.name || p.category}` : ''}</div>
                       {!!(p.attachments && p.attachments.length) && (
                         <div className="mt-2 flex gap-2 overflow-x-auto pb-2">
                           {p.attachments.slice(0,5).map((path: string, idx: number) => (

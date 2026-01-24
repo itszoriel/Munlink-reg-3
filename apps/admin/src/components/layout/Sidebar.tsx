@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useAdminStore } from '../../lib/store'
-import { LayoutDashboard, Users, Gift, FileText, AlertTriangle, ShoppingBag, Megaphone, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, Users, Gift, FileText, AlertTriangle, ShoppingBag, Megaphone, BarChart3, Shield } from 'lucide-react'
 import { getBestRegion3Seal } from '@munlink/ui'
 
 interface SidebarProps {
@@ -10,14 +10,15 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { icon: 'dashboard', label: 'Dashboard', path: '/dashboard', badge: null },
-  { icon: 'residents', label: 'Residents', path: '/residents', badge: null },
-  { icon: 'programs', label: 'Programs', path: '/programs', badge: null },
-  { icon: 'requests', label: 'Requests', path: '/requests', badge: null },
-  { icon: 'problems', label: 'Problems', path: '/problems', badge: null },
-  { icon: 'marketplace', label: 'Marketplace', path: '/marketplace', badge: null },
-  { icon: 'announcements', label: 'Announcements', path: '/announcements', badge: null },
-  { icon: 'reports', label: 'Reports', path: '/reports', badge: null },
+  { icon: 'dashboard', label: 'Dashboard', path: '/dashboard', badge: null, superAdminOnly: false },
+  { icon: 'residents', label: 'Residents', path: '/residents', badge: null, superAdminOnly: false },
+  { icon: 'programs', label: 'Programs', path: '/programs', badge: null, superAdminOnly: false },
+  { icon: 'requests', label: 'Requests', path: '/requests', badge: null, superAdminOnly: false },
+  { icon: 'problems', label: 'Problems', path: '/problems', badge: null, superAdminOnly: false },
+  { icon: 'marketplace', label: 'Marketplace', path: '/marketplace', badge: null, superAdminOnly: false },
+  { icon: 'announcements', label: 'Announcements', path: '/announcements', badge: null, superAdminOnly: false },
+  { icon: 'reports', label: 'Reports', path: '/reports', badge: null, superAdminOnly: false },
+  { icon: 'audit', label: 'Audit Log', path: '/superadmin', badge: null, superAdminOnly: true },
 ]
 
 function IconFor(code: string, className = 'w-5 h-5') {
@@ -31,12 +32,24 @@ function IconFor(code: string, className = 'w-5 h-5') {
     case 'marketplace': return <ShoppingBag className={className} aria-hidden="true" />
     case 'announcements': return <Megaphone className={className} aria-hidden="true" />
     case 'reports': return <BarChart3 className={className} aria-hidden="true" />
+    case 'audit': return <Shield className={className} aria-hidden="true" />
     default: return <LayoutDashboard className={className} aria-hidden="true" />
   }
 }
 
 export default function Sidebar({ collapsed, onToggle, className = '' }: SidebarProps) {
   const user = useAdminStore((s) => s.user)
+  const userRole = (user as any)?.role || ''
+  const canManageAnnouncements = !!user && ['municipal_admin', 'superadmin', 'provincial_admin', 'barangay_admin', 'admin'].includes(userRole)
+  const isSuperAdmin = userRole === 'superadmin'
+
+  const visibleNavItems = navItems.filter((item) => {
+    // Filter announcements
+    if (item.path === '/announcements' && !canManageAnnouncements) return false
+    // Filter super admin only items
+    if (item.superAdminOnly && !isSuperAdmin) return false
+    return true
+  })
   
   const seal = getBestRegion3Seal({
     municipality: (user as any)?.admin_municipality_slug || (user as any)?.admin_municipality_name || (user as any)?.municipality_slug || (user as any)?.municipality_name,
@@ -49,7 +62,7 @@ export default function Sidebar({ collapsed, onToggle, className = '' }: Sidebar
           <img src={seal.src} className="w-10 h-10 object-contain" alt={seal.alt} />
         </div>
         <nav className="px-4 py-4 space-y-3">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <div key={item.path} className="relative group">
               <NavLink
                 to={item.path}
@@ -91,7 +104,7 @@ export default function Sidebar({ collapsed, onToggle, className = '' }: Sidebar
         </div>
       </div>
       <nav className="px-4 py-6 space-y-2 flex-1">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

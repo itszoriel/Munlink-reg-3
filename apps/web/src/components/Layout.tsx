@@ -2,15 +2,15 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useRef } from 'react'
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/lib/store'
-import ProvinceSelect from './ProvinceSelect'
 import MunicipalitySelect from './MunicipalitySelect'
+import BarangaySelect from './BarangaySelect'
 import ServicesMenu from './ServicesMenu'
 import { useNavigate } from 'react-router-dom'
 import Footer from './Footer'
 import AuthStatusBanner from './AuthStatusBanner'
 import { Toast } from '@munlink/ui'
 import { mediaUrl } from '@/lib/api'
-import { Menu } from 'lucide-react'
+import { Menu, X, Home as HomeIcon, Bell, ShoppingBag, FileText, AlertCircle, GraduationCap, Info, MapPin, User, LogOut, LayoutDashboard, Store } from 'lucide-react'
 
 export default function Layout() {
   const accountRef = useRef<HTMLDetailsElement>(null)
@@ -20,6 +20,7 @@ export default function Layout() {
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null)
   const role = useAppStore((s) => s.role)
   const user = useAppStore((s) => s.user)
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated)
   const logout = useAppStore((s) => s.logout)
   const navigate = useNavigate()
   const location = useLocation()
@@ -117,10 +118,10 @@ export default function Layout() {
               {/* Location context: Hide on Dashboard */}
               {location.pathname !== '/dashboard' && (
               <div className="flex items-center gap-1 bg-ocean-50/50 rounded-lg px-2 py-1">
-                {/* Province/Municipality selection for browsing - available to all users */}
-                <ProvinceSelect />
-                <span className="text-gray-300">/</span>
+                {/* Municipality/Barangay selection for browsing - available to all users (Province auto-selected to Zambales) */}
                 <MunicipalitySelect />
+                <span className="text-gray-300">/</span>
+                <BarangaySelect />
               </div>
               )}
               
@@ -129,7 +130,7 @@ export default function Layout() {
               <Link to="/about" className="hover:text-ocean-700 transition-colors font-serif px-2 py-1 rounded-lg hover:bg-ocean-50">
                 About
               </Link>
-              {role === 'public' ? (
+              {role === 'public' || !isAuthenticated ? (
                 <>
                   <Link to="/login" className="hover:text-ocean-700 transition-colors font-serif px-3 py-1.5 rounded-lg hover:bg-ocean-50">Login</Link>
                   <Link to="/register" className="bg-ocean-600 text-white font-serif px-3 py-1.5 rounded-lg hover:bg-ocean-700 transition-colors">Register</Link>
@@ -166,41 +167,177 @@ export default function Layout() {
       </nav>
 
       {/* Mobile slide-over menu */}
-      <div className={`fixed inset-0 z-50 lg:hidden ${mobileOpen ? '' : 'hidden'}`}>
-        <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-        <aside className="absolute right-0 top-0 h-full w-[85%] xxs:w-[80%] xs:w-[70%] bg-white p-4 flex flex-col">
-          <div className="px-2 py-3 border-b border-neutral-200">
-            <Link to="/" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Home</Link>
-            <Link to="/announcements" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Announcements</Link>
-            <Link to="/marketplace" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Marketplace</Link>
-            <div className="mt-1 mb-1 px-3 text-xs font-semibold tracking-wide text-neutral-500 uppercase">Services</div>
-            <Link to="/documents" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Documents</Link>
-            <Link to="/problems" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Problems</Link>
-            <Link to="/programs" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">Programs</Link>
-            <Link to="/about" onClick={() => setMobileOpen(false)} className="block px-3 py-2 rounded hover:bg-neutral-50">About</Link>
-            {/* Location context: Hide on Dashboard */}
-            {location.pathname !== '/dashboard' && (
-            <div className="px-3 py-2">
-              {/* Province/Municipality selection for browsing - available to all users */}
-              <div className="space-y-2">
-                <ProvinceSelect />
-                <MunicipalitySelect />
-              </div>
-            </div>
-            )}
+      <div className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" onClick={() => setMobileOpen(false)} />
+        <aside className={`absolute right-0 top-0 h-full w-[85%] xxs:w-[80%] xs:w-[70%] max-w-sm bg-gradient-to-br from-white to-gray-50 shadow-2xl flex flex-col transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+
+          {/* Header with Logo and Close */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200/80 bg-white/80 backdrop-blur-sm">
+            <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
+              <img
+                src="/logos/MunLink%20Logo.png"
+                alt="MunLink Logo"
+                className="h-8 w-8 rounded-full object-cover bg-white border border-gray-200 shadow-sm"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+              <span className="text-lg font-serif font-semibold text-gray-900">MunLink</span>
+            </Link>
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
           </div>
-          <div className="mt-auto p-3 border-t border-neutral-200">
-            {role === 'public' ? (
-              <div className="grid gap-2">
-                <Link to="/login" onClick={() => setMobileOpen(false)} className="btn-primary text-center">Login</Link>
-                <Link to="/register" onClick={() => setMobileOpen(false)} className="btn-secondary text-center">Register</Link>
+
+          {/* Navigation Links */}
+          <div className="flex-1 overflow-y-auto py-4 px-3">
+            <nav className="space-y-1">
+              <Link
+                to="/"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+              >
+                <HomeIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>Home</span>
+              </Link>
+
+              <Link
+                to="/announcements"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+              >
+                <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>Announcements</span>
+              </Link>
+
+              <Link
+                to="/marketplace"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+              >
+                <ShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>Marketplace</span>
+              </Link>
+
+              {/* Services Section */}
+              <div className="pt-3 pb-2">
+                <div className="px-4 py-2 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-2">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                  <span>Services</span>
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                </div>
+              </div>
+
+              <Link
+                to="/documents"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+              >
+                <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>Documents</span>
+              </Link>
+
+              <Link
+                to="/problems"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+              >
+                <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>Problems</span>
+              </Link>
+
+              <Link
+                to="/programs"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+              >
+                <GraduationCap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>Programs</span>
+              </Link>
+
+              <Link
+                to="/about"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+              >
+                <Info className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span>About</span>
+              </Link>
+
+              {/* Location Selectors */}
+              {location.pathname !== '/dashboard' && (
+                <div className="pt-4 pb-2">
+                  <div className="px-4 py-2 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    <span>Filter by Location</span>
+                  </div>
+                  <div className="px-4 py-2 space-y-3">
+                    <div className="bg-white/60 rounded-xl p-3 border border-gray-200/80 shadow-sm">
+                      <MunicipalitySelect />
+                    </div>
+                    <div className="bg-white/60 rounded-xl p-3 border border-gray-200/80 shadow-sm">
+                      <BarangaySelect />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </nav>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-4 border-t border-gray-200/80 bg-white/80 backdrop-blur-sm">
+            {role === 'public' || !isAuthenticated ? (
+              <div className="space-y-2">
+                <Link
+                  to="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-ocean-600 to-ocean-700 hover:from-ocean-700 hover:to-ocean-800 text-white font-semibold rounded-xl shadow-lg shadow-ocean-500/30 active:scale-[0.98] transition-all duration-200"
+                >
+                  <User className="w-4 h-4" />
+                  <span>Login</span>
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white border-2 border-ocean-600 text-ocean-700 font-semibold rounded-xl hover:bg-ocean-50 active:scale-[0.98] transition-all duration-200"
+                >
+                  <span>Register</span>
+                </Link>
               </div>
             ) : (
-              <div className="grid gap-2">
-                <button onClick={() => { setMobileOpen(false); navigate('/dashboard'); }} className="btn-ghost rounded">Dashboard</button>
-                <button onClick={() => { setMobileOpen(false); navigate('/my-marketplace'); }} className="btn-ghost rounded">My Marketplace</button>
-                <button onClick={() => { setMobileOpen(false); navigate('/profile'); }} className="btn-ghost rounded">Profile</button>
-                <button onClick={() => { setMobileOpen(false); logout(); navigate('/login', { replace: true }) }} className="btn-primary rounded">Logout</button>
+              <div className="space-y-2">
+                <button
+                  onClick={() => { setMobileOpen(false); navigate('/dashboard'); }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium"
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  <span>Dashboard</span>
+                </button>
+                <button
+                  onClick={() => { setMobileOpen(false); navigate('/my-marketplace'); }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium"
+                >
+                  <Store className="w-5 h-5" />
+                  <span>My Marketplace</span>
+                </button>
+                <button
+                  onClick={() => { setMobileOpen(false); navigate('/profile'); }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium"
+                >
+                  <User className="w-5 h-5" />
+                  <span>Profile</span>
+                </button>
+                <div className="pt-2 border-t border-gray-200">
+                  <button
+                    onClick={() => { setMobileOpen(false); logout(); navigate('/login', { replace: true }) }}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 active:scale-[0.98] transition-all duration-200"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -224,4 +361,3 @@ export default function Layout() {
     </div>
   )
 }
-

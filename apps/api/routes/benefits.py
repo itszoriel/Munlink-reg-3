@@ -1,4 +1,7 @@
-"""Public/resident Benefits routes (programs and applications)."""
+"""Public/resident Benefits routes (programs and applications).
+
+SCOPE: Zambales province only, excluding Olongapo City.
+"""
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
@@ -14,6 +17,10 @@ try:
         fully_verified_required,
         save_benefit_document,
     )
+    from apps.api.utils.zambales_scope import (
+        ZAMBALES_MUNICIPALITY_IDS,
+        is_valid_zambales_municipality,
+    )
 except ImportError:
     from __init__ import db
     from models.benefit import BenefitProgram, BenefitApplication
@@ -24,6 +31,10 @@ except ImportError:
         ValidationError,
         fully_verified_required,
         save_benefit_document,
+    )
+    from utils.zambales_scope import (
+        ZAMBALES_MUNICIPALITY_IDS,
+        is_valid_zambales_municipality,
     )
 
 
@@ -63,26 +74,24 @@ def list_programs():
 
         query = BenefitProgram.query.filter_by(is_active=True)
         
+        # ZAMBALES SCOPE: Always filter to Zambales municipalities only (excluding Olongapo)
+        query = query.filter(
+            (BenefitProgram.municipality_id.in_(ZAMBALES_MUNICIPALITY_IDS)) |
+            (BenefitProgram.municipality_id.is_(None))  # Include province-wide programs
+        )
+        
         # Apply municipality/province filtering based on authentication
         if is_authenticated:
             # LOGGED-IN USER: Only show programs from their registered municipality
-            # Ignore any municipality_id parameter passed - enforce their own municipality
-            query = query.filter(
-                (BenefitProgram.municipality_id == user_municipality_id) | 
-                (BenefitProgram.municipality_id.is_(None))  # Include province-wide programs
-            )
+            # Verify user is in Zambales first
+            if user_municipality_id and is_valid_zambales_municipality(user_municipality_id):
+                query = query.filter(
+                    (BenefitProgram.municipality_id == user_municipality_id) | 
+                    (BenefitProgram.municipality_id.is_(None))  # Include province-wide programs
+                )
         else:
-            # GUEST: Allow province or municipality filtering for discovery
-            if province_id:
-                # Filter by province - get all municipalities in this province
-                province_municipalities = Municipality.query.filter_by(province_id=province_id).all()
-                province_muni_ids = [m.id for m in province_municipalities]
-                if province_muni_ids:
-                    query = query.filter(
-                        (BenefitProgram.municipality_id.in_(province_muni_ids)) | 
-                        (BenefitProgram.municipality_id.is_(None))
-                    )
-            elif requested_municipality_id:
+            # GUEST: Allow municipality filtering for discovery (Zambales only)
+            if requested_municipality_id and is_valid_zambales_municipality(requested_municipality_id):
                 # Filter by specific municipality (guest browsing)
                 query = query.filter(
                     (BenefitProgram.municipality_id == requested_municipality_id) | 

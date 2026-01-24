@@ -103,7 +103,7 @@ export default function AdminHeader() {
               <button onClick={() => navigate('/profile')} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50">Profile</button>
               <button onClick={openPublicSite} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50">View Public Site</button>
               <div className="my-2 border-t" />
-              <button onClick={() => { logout(); navigate('/login', { replace: true }) }} className="block w-full text-left px-3 py-2 rounded hover:bg-red-50 text-red-700">Logout</button>
+              <button onClick={() => { logout(); navigate('/', { replace: true }) }} className="block w-full text-left px-3 py-2 rounded hover:bg-red-50 text-red-700">Logout</button>
             </div>
           )}
         </div>

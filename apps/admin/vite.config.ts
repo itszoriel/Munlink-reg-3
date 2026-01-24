@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   publicDir: path.resolve(__dirname, '../../public'),
   server: {
+    host: 'localhost', // Restrict to local machine
     port: 3001,
     fs: {
       allow: [path.resolve(__dirname, '../../..')],
@@ -24,5 +25,4 @@ export default defineConfig({
     },
   },
 })
-
 

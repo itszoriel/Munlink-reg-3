@@ -19,6 +19,8 @@ class DocumentType(db.Model):
     
     # Issuing Authority
     authority_level = db.Column(db.String(20), nullable=False)  # municipal, barangay
+    municipality_id = db.Column(db.Integer, db.ForeignKey('municipalities.id'), nullable=True)
+    barangay_id = db.Column(db.Integer, db.ForeignKey('barangays.id'), nullable=True)
     
     # Requirements
     requirements = db.Column(db.JSON, nullable=True)  # List of required fields/documents
@@ -42,6 +44,11 @@ class DocumentType(db.Model):
     
     # Relationships
     requests = db.relationship('DocumentRequest', backref='document_type', lazy='dynamic')
+    __table_args__ = (
+        Index('idx_document_type_authority_level', 'authority_level'),
+        Index('idx_document_type_municipality', 'municipality_id'),
+        Index('idx_document_type_barangay', 'barangay_id'),
+    )
     
     def __repr__(self):
         return f'<DocumentType {self.name}>'
@@ -54,6 +61,8 @@ class DocumentType(db.Model):
             'code': self.code,
             'description': self.description,
             'authority_level': self.authority_level,
+            'municipality_id': self.municipality_id,
+            'barangay_id': self.barangay_id,
             'requirements': self.requirements,
             'fee': float(self.fee) if self.fee else 0.00,
             'processing_days': self.processing_days,

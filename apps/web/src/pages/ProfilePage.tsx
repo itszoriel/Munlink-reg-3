@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from 'react'
+﻿import { useEffect, useState, useRef } from 'react'
 import { X } from 'lucide-react'
 import { authApi, mediaUrl, transferApi, showToast, municipalityApi } from '@/lib/api'
-import { ProfileCard, Form, FormField, Input, Button } from '@munlink/ui'
+import { Form, FormField, Input, Button } from '@munlink/ui'
 import { getProvinces, getMunicipalities, getMunicipalityById } from '@/lib/locations'
 import SafeImage from '@/components/SafeImage'
 import { useAppStore } from '@/lib/store'
@@ -13,6 +13,10 @@ type Profile = {
   username?: string
   email?: string
   phone?: string
+  mobile?: string
+  notify_email_enabled?: boolean
+  notify_sms_enabled?: boolean
+  sms_provider_status?: any
   profile_picture?: string
   province_id?: number
   province_name?: string
@@ -51,6 +55,16 @@ export default function ProfilePage() {
     form.province_name
   ].filter(Boolean).join(', ')
 
+  const smsStatus = form.sms_provider_status || {}
+  const smsUnavailableReason = smsStatus && smsStatus.available === false ? (smsStatus.reason || 'unavailable') : null
+  const smsReasonCopy = smsUnavailableReason === 'semaphore_no_credits'
+    ? 'SMS temporarily unavailable: Semaphore credits are depleted.'
+    : smsUnavailableReason === 'semaphore_not_approved'
+      ? 'SMS temporarily unavailable until the provider account is approved.'
+      : smsUnavailableReason === 'sms_disabled'
+        ? 'SMS is disabled in this environment.'
+        : smsUnavailableReason
+
   useEffect(() => {
     let cancelled = false
     const load = async () => {
@@ -82,17 +96,21 @@ export default function ProfilePage() {
         // For barangay_name, use API data directly (comes from database relationship)
         const barangayName = data.barangay_name || ''
         
-        if (!cancelled) {
-          setForm({
-            first_name: data.first_name || '',
-            last_name: data.last_name || '',
-            username: data.username || '',
-            email: data.email || '',
-            phone: data.phone_number || '',
-            profile_picture: data.profile_picture || '',
-            province_id: provinceId,
-            province_name: provinceName,
-            municipality_id: data.municipality_id,
+          if (!cancelled) {
+            setForm({
+              first_name: data.first_name || '',
+              last_name: data.last_name || '',
+              username: data.username || '',
+              email: data.email || '',
+              phone: data.phone_number || '',
+              mobile: data.mobile_number || '',
+              notify_email_enabled: data.notify_email_enabled !== false,
+              notify_sms_enabled: !!data.notify_sms_enabled,
+              sms_provider_status: data.sms_provider_status || null,
+              profile_picture: data.profile_picture || '',
+              province_id: provinceId,
+              province_name: provinceName,
+              municipality_id: data.municipality_id,
             municipality_name: data.municipality_name,
             barangay_id: data.barangay_id,
             barangay_name: barangayName,
@@ -111,7 +129,13 @@ export default function ProfilePage() {
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setForm((f) => ({ ...f, [name]: value }))
+    setForm((f) => {
+      const next: any = { ...f, [name]: value }
+      if (name === 'mobile' && !value) {
+        next.notify_sms_enabled = false
+      }
+      return next
+    })
   }
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -127,6 +151,9 @@ export default function ProfilePage() {
       if (form.username) payload.username = form.username
       if (form.email) payload.email = form.email
       if (form.phone !== undefined) payload.phone_number = form.phone
+      if (form.mobile !== undefined) payload.mobile_number = form.mobile
+      if (form.notify_email_enabled !== undefined) payload.notify_email_enabled = form.notify_email_enabled
+      if (form.notify_sms_enabled !== undefined) payload.notify_sms_enabled = form.notify_sms_enabled && !!form.mobile && !smsUnavailableReason
       // Barangay is not editable in profile - only through transfer request
       await authApi.updateProfile(payload)
       setOk('Profile updated')
@@ -223,9 +250,9 @@ export default function ProfilePage() {
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Profile Picture Section */}
         <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4">Profile Picture</h3>
-          <div className="flex items-center gap-6">
-            <div className="relative">
+          <h3 className="text-lg font-semibold mb-4">Profile</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+            <div className="relative self-start">
               <SafeImage
                 src={form.profile_picture ? mediaUrl(form.profile_picture) : undefined}
                 alt="Profile"
@@ -241,9 +268,21 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-            <div className="flex-1">
-              <p className="text-sm text-gray-600 mb-2">
-                {form.profile_picture ? 'Your profile picture is displayed across the platform.' : 'Upload a profile picture to personalize your account.'}
+            <div className="flex-1 space-y-2">
+              <div>
+                <p className="text-xl font-semibold text-gray-900">
+                  {`${form.first_name || ''} ${form.last_name || ''}`.trim() || form.username || 'My Profile'}
+                </p>
+                {form.email && <p className="text-sm text-gray-600">{form.email}</p>}
+                {(form.mobile || form.phone) && (
+                  <p className="text-sm text-gray-600">{form.mobile || form.phone}</p>
+                )}
+                <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-ocean-50 text-ocean-700 border border-ocean-100">
+                  Resident
+                </div>
+              </div>
+              <p className="text-sm text-gray-600">
+                {form.profile_picture ? 'This photo is displayed across the platform.' : 'Upload a profile picture to personalize your account.'}
               </p>
               <input
                 ref={profilePhotoInputRef}
@@ -263,19 +302,6 @@ export default function ProfilePage() {
               </button>
             </div>
           </div>
-        </div>
-
-        {/* Profile Info Card */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold mb-4">Profile Information</h3>
-          <ProfileCard
-            role="resident"
-            name={`${form.first_name || ''} ${form.last_name || ''}`.trim() || (form.username || 'My Profile')}
-            email={form.email}
-            phone={form.phone}
-            avatarUrl={form.profile_picture ? mediaUrl(form.profile_picture) : undefined}
-            editable={false}
-          />
         </div>
 
         {error && <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
@@ -347,11 +373,53 @@ export default function ProfilePage() {
           <FormField label="Email">
             <Input name="email" type="email" value={form.email || ''} onChange={onChange} disabled={loading || saving} />
           </FormField>
+          <FormField label="Mobile (SMS)">
+            <Input name="mobile" value={form.mobile || ''} onChange={onChange} disabled={loading || saving} placeholder="09XXXXXXXXX" />
+            <p className="text-xs text-gray-500 mt-1">Optional — add a mobile number to enable SMS notifications.</p>
+          </FormField>
           <FormField label="Phone">
             <Input name="phone" value={form.phone || ''} onChange={onChange} disabled={loading || saving} />
           </FormField>
+          
+          <div className="col-span-full border rounded-lg p-4 space-y-3">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-800">Notification Preferences</h4>
+              <p className="text-xs text-gray-600">Manage email and SMS alerts for announcements and document requests.</p>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Email notifications</p>
+                <p className="text-xs text-gray-600">Recommended for important updates.</p>
+              </div>
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={form.notify_email_enabled ?? true}
+                onChange={(e) => setForm((f) => ({ ...f, notify_email_enabled: e.target.checked }))}
+                disabled={loading || saving}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t pt-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900">SMS notifications</p>
+                <p className="text-xs text-gray-600">
+                  {form.mobile ? 'Get SMS alerts about announcements and requests.' : 'Add a mobile number to enable SMS alerts.'}
+                </p>
+                {smsReasonCopy && (
+                  <p className="text-xs text-red-600 mt-1">{smsReasonCopy}</p>
+                )}
+              </div>
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={!!form.notify_sms_enabled && !!form.mobile}
+                onChange={(e) => setForm((f) => ({ ...f, notify_sms_enabled: e.target.checked }))}
+                disabled={loading || saving || !form.mobile || !!smsUnavailableReason}
+              />
+            </div>
+          </div>
           <div className="col-span-full">
-            <Button type="submit" disabled={saving || loading}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+            <Button type="submit" disabled={saving || loading}>{saving ? 'Saving...' : 'Save Changes'}</Button>
           </div>
         </Form>
       </div>
@@ -455,3 +523,5 @@ export default function ProfilePage() {
     </div>
   )
 }
+
+

@@ -8,7 +8,8 @@ import { DataTable, Modal, Button, EmptyState } from '@munlink/ui'
 import { X, Check, RotateCcw, Pause, ExternalLink, Hourglass } from 'lucide-react'
 import TransferRequestCard from '../components/transfers/TransferRequestCard'
 import TransferRequestModal from '../components/transfers/TransferRequestModal'
-import SafeImage from '../components/SafeImage'
+import { WatermarkedImageViewer } from '../components/WatermarkedImageViewer'
+import { ViewIDReasonModal } from '../components/ViewIDReasonModal'
 
 export default function Residents() {
   const location = useLocation()
@@ -469,10 +470,23 @@ export default function Residents() {
 
 // Detail modal embedded for simplicity
 function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userId: number; basic: any; onClose: () => void; onStatusChange: (id: number, status: 'verified' | 'pending' | 'suspended') => void }) {
+  const currentUser = useAdminStore((s) => s.user)
   const [data, setData] = useState<any>(basic)
   const [loading, setLoading] = useState(true) // Start with loading to show skeleton
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | null>(null)
+
+  // Watermarked viewer state
+  const [viewingDoc, setViewingDoc] = useState<{
+    type: 'id_front' | 'id_back' | 'selfie',
+    reason: string
+  } | null>(null)
+  const [showReasonModal, setShowReasonModal] = useState<{
+    type: 'id_front' | 'id_back' | 'selfie'
+  } | null>(null)
+
+  // Permission check
+  const hasIdViewPermission = currentUser?.permissions?.includes('residents:id_view') ?? false
 
   // Derive current status from latest data (use basic immediately for buttons)
   const status: 'verified' | 'pending' | 'suspended' = ((): any => {
@@ -482,7 +496,7 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
     if (u?.admin_verified) return 'verified'
     return 'pending'
   })()
-  
+
   const hasData = !loading && data
 
   useEffect(() => {
@@ -532,6 +546,14 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
     } finally {
       setActionLoading(null)
     }
+  }
+
+  const handleConfirmView = (reason: string, notes: string) => {
+    if (!showReasonModal) return
+
+    const fullReason = notes ? `${reason} - ${notes}` : reason
+    setViewingDoc({ type: showReasonModal.type, reason: fullReason })
+    setShowReasonModal(null)
   }
 
   return (
@@ -611,26 +633,113 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
 
             <div className="mt-6">
               <h4 className="text-sm font-semibold mb-3">ID Verification</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {data?.valid_id_front && (
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-2">Front</p>
-                    <SafeImage src={mediaUrl(data.valid_id_front)} alt="ID Front" className="w-full h-44 sm:h-48 object-cover rounded border" fallbackIcon="document" />
-                  </div>
-                )}
-                {data?.valid_id_back && (
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-2">Back</p>
-                    <SafeImage src={mediaUrl(data.valid_id_back)} alt="ID Back" className="w-full h-44 sm:h-48 object-cover rounded border" fallbackIcon="document" />
-                  </div>
-                )}
-                {data?.selfie_with_id && (
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-2">Selfie</p>
-                    <SafeImage src={mediaUrl(data.selfie_with_id)} alt="Selfie with ID" className="w-full h-44 sm:h-48 object-cover rounded border" fallbackIcon="user" />
-                  </div>
-                )}
-                {!data?.valid_id_front && !data?.valid_id_back && (
+              <div className="space-y-4">
+                {/* ID Front */}
+                <div>
+                  <label className="block text-xs text-neutral-600 mb-2">ID Front</label>
+                  {viewingDoc?.type === 'id_front' ? (
+                    <WatermarkedImageViewer
+                      userId={userId}
+                      docType="id_front"
+                      reason={viewingDoc.reason}
+                      municipalityName={data?.municipality_name || 'Unknown'}
+                      residentId={userId}
+                      onError={(err) => {
+                        console.error('Failed to load ID front:', err)
+                        setViewingDoc(null)
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {data?.valid_id_front && hasIdViewPermission && (
+                        <button
+                          onClick={() => setShowReasonModal({ type: 'id_front' })}
+                          className="px-4 py-2 text-sm font-medium text-ocean-600 border border-ocean-600 rounded-lg hover:bg-ocean-50 transition-colors"
+                        >
+                          View ID Front
+                        </button>
+                      )}
+                      {data?.valid_id_front && !hasIdViewPermission && (
+                        <span className="text-sm text-neutral-400">No permission to view ID documents</span>
+                      )}
+                      {!data?.valid_id_front && (
+                        <span className="text-sm text-neutral-500">Not uploaded</span>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* ID Back */}
+                <div>
+                  <label className="block text-xs text-neutral-600 mb-2">ID Back</label>
+                  {viewingDoc?.type === 'id_back' ? (
+                    <WatermarkedImageViewer
+                      userId={userId}
+                      docType="id_back"
+                      reason={viewingDoc.reason}
+                      municipalityName={data?.municipality_name || 'Unknown'}
+                      residentId={userId}
+                      onError={(err) => {
+                        console.error('Failed to load ID back:', err)
+                        setViewingDoc(null)
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {data?.valid_id_back && hasIdViewPermission && (
+                        <button
+                          onClick={() => setShowReasonModal({ type: 'id_back' })}
+                          className="px-4 py-2 text-sm font-medium text-ocean-600 border border-ocean-600 rounded-lg hover:bg-ocean-50 transition-colors"
+                        >
+                          View ID Back
+                        </button>
+                      )}
+                      {data?.valid_id_back && !hasIdViewPermission && (
+                        <span className="text-sm text-neutral-400">No permission to view ID documents</span>
+                      )}
+                      {!data?.valid_id_back && (
+                        <span className="text-sm text-neutral-500">Not uploaded</span>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Selfie with ID */}
+                <div>
+                  <label className="block text-xs text-neutral-600 mb-2">Selfie with ID</label>
+                  {viewingDoc?.type === 'selfie' ? (
+                    <WatermarkedImageViewer
+                      userId={userId}
+                      docType="selfie"
+                      reason={viewingDoc.reason}
+                      municipalityName={data?.municipality_name || 'Unknown'}
+                      residentId={userId}
+                      onError={(err) => {
+                        console.error('Failed to load selfie:', err)
+                        setViewingDoc(null)
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {data?.selfie_with_id && hasIdViewPermission && (
+                        <button
+                          onClick={() => setShowReasonModal({ type: 'selfie' })}
+                          className="px-4 py-2 text-sm font-medium text-ocean-600 border border-ocean-600 rounded-lg hover:bg-ocean-50 transition-colors"
+                        >
+                          View Selfie
+                        </button>
+                      )}
+                      {data?.selfie_with_id && !hasIdViewPermission && (
+                        <span className="text-sm text-neutral-400">No permission to view ID documents</span>
+                      )}
+                      {!data?.selfie_with_id && (
+                        <span className="text-sm text-neutral-500">Not uploaded</span>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {!data?.valid_id_front && !data?.valid_id_back && !data?.selfie_with_id && (
                   <p className="text-sm text-neutral-500">No ID documents uploaded.</p>
                 )}
               </div>
@@ -638,6 +747,14 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
           </>
         )}
       </div>
+
+      {/* Reason Modal for viewing ID/Selfie */}
+      <ViewIDReasonModal
+        isOpen={!!showReasonModal}
+        docType={showReasonModal?.type || 'id_front'}
+        onClose={() => setShowReasonModal(null)}
+        onConfirm={handleConfirmView}
+      />
     </Modal>
   )
 }

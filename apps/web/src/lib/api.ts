@@ -1,5 +1,6 @@
 import axios from 'axios'
 
+// Local-only: rely on explicit env or default to localhost
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 export const api = axios.create({
@@ -422,4 +423,3 @@ export const stopKeepAlive = () => {
 }
 
 export default api
-

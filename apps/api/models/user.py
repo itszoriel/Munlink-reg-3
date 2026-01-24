@@ -29,6 +29,9 @@ class User(db.Model):
     
     # Contact
     phone_number = db.Column(db.String(15), nullable=True)
+    mobile_number = db.Column(db.String(20), nullable=True)
+    notify_email_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    notify_sms_enabled = db.Column(db.Boolean, default=False, nullable=False)
     
     # Birth Information
     date_of_birth = db.Column(db.Date, nullable=True)
@@ -50,7 +53,14 @@ class User(db.Model):
     
     # Admin-specific fields
     admin_municipality_id = db.Column(db.Integer, db.ForeignKey('municipalities.id'), nullable=True)
-    
+    admin_barangay_id = db.Column(db.Integer, db.ForeignKey('barangays.id'), nullable=True)
+
+    # Permissions (JSON array of permission strings)
+    permissions = db.Column(db.JSON, nullable=True, default=list)
+
+    # Account creation tracking
+    created_via = db.Column(db.String(50), nullable=True)  # 'setup_script', 'admin_panel', 'self_registration'
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -87,6 +97,7 @@ class User(db.Model):
             'municipality_id': self.municipality_id,
             'barangay_id': self.barangay_id,
             'phone_number': self.phone_number if include_sensitive else None,
+            'mobile_number': self.mobile_number if include_sensitive else None,
             'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
             'role': self.role,
             'email_verified': self.email_verified,
@@ -95,6 +106,8 @@ class User(db.Model):
             'profile_picture': self.profile_picture,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
+            'notify_email_enabled': bool(self.notify_email_enabled if self.notify_email_enabled is not None else True),
+            'notify_sms_enabled': bool(self.notify_sms_enabled if self.notify_sms_enabled is not None else False),
         }
         # Include verification files for privileged contexts
         if include_sensitive:
@@ -106,6 +119,8 @@ class User(db.Model):
                 data['selfie_with_id'] = self.selfie_with_id
             if self.proof_of_residency is not None:
                 data['proof_of_residency'] = self.proof_of_residency
+            # Include permissions for admin users
+            data['permissions'] = self.permissions or []
         
         # Add municipality data if requested
         if include_municipality and self.municipality:
@@ -152,3 +167,11 @@ class User(db.Model):
         else:
             return 'resident_unverified'
 
+    def has_permission(self, permission: str) -> bool:
+        """Check if user has a specific permission."""
+        if not self.permissions:
+            return False
+        # Superadmin wildcard
+        if '*' in self.permissions:
+            return True
+        return permission in self.permissions

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { announcementsApi, mediaUrl } from '@/lib/api'
 
@@ -8,9 +8,13 @@ type Announcement = {
   content: string
   images?: string[]
   municipality_name?: string
+  barangay_name?: string
+  scope?: string
   priority?: 'high'|'medium'|'low'
   created_at?: string
   external_url?: string
+  pinned?: boolean
+  pinned_until?: string
 }
 
 export default function AnnouncementDetailPage() {
@@ -18,6 +22,20 @@ export default function AnnouncementDetailPage() {
   const [a, setA] = useState<Announcement | null>(null)
   const [loading, setLoading] = useState(true)
   const [idx, setIdx] = useState(0)
+  const scopeLabel = useMemo(() => {
+    if (!a) return ''
+    const sc = (a as any)?.scope
+    const upper = (sc || '').toString().toUpperCase()
+    if (upper === 'PROVINCE') return 'Province-wide'
+    if (upper === 'BARANGAY') return (a as any).barangay_name || 'Barangay'
+    return a.municipality_name || 'Municipality'
+  }, [a])
+  const isPinned = useMemo(() => {
+    if (!(a as any)?.pinned) return false
+    const until = (a as any)?.pinned_until
+    if (!until) return true
+    return new Date(until).getTime() > Date.now()
+  }, [a])
 
   useEffect(() => {
     let cancelled = false
@@ -47,11 +65,11 @@ export default function AnnouncementDetailPage() {
       <div className="mb-4"><Link to="/announcements" className="text-sm text-ocean-700 hover:underline">← Back to Announcements</Link></div>
       {loading ? (
         <div className="h-64 rounded-xl bg-neutral-100" />
-      ) : !a ? (
-        <div className="text-neutral-600">Announcement not found.</div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="relative w-full aspect-[4/3] bg-neutral-100 rounded-xl overflow-hidden">
+        ) : !a ? (
+          <div className="text-neutral-600">Announcement not found.</div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="relative w-full aspect-[4/3] bg-neutral-100 rounded-xl overflow-hidden">
             {images[safeIdx] ? (
               <img src={mediaUrl(images[safeIdx])} alt={a.title} className="w-full h-full object-cover" />
             ) : (
@@ -83,7 +101,10 @@ export default function AnnouncementDetailPage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-neutral-900 mb-2">{a.title}</h1>
-            {a.municipality_name && (<div className="text-sm text-neutral-600 mb-2">{a.municipality_name}</div>)}
+            <div className="flex items-center gap-2 mb-2">
+              {scopeLabel && (<span className="px-3 py-1 rounded-full bg-ocean-50 text-ocean-800 text-xs font-semibold uppercase">{scopeLabel}</span>)}
+              {isPinned && (<span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold uppercase">Pinned</span>)}
+            </div>
             {a.created_at && (<div className="text-xs text-neutral-500 mb-4">{new Date(a.created_at).toLocaleString()}</div>)}
             <div className="prose max-w-none whitespace-pre-wrap">{a.content}</div>
             {a.external_url && (

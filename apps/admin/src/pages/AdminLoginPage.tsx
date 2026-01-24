@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { authApi, handleApiError } from '../lib/api'
 import { useAdminStore } from '../lib/store'
-import { Users, FileText, ClipboardList, BarChart3 } from 'lucide-react'
+import { Users, FileText, ClipboardList, BarChart3, ArrowLeft } from 'lucide-react'
 
 const provinces = ['aurora', 'bataan', 'bulacan', 'nueva-ecija', 'pampanga', 'tarlac', 'zambales']
 
@@ -34,13 +34,18 @@ export default function AdminLoginPage() {
     try {
       const res = await authApi.adminLogin(formData)
       const { user, access_token, refresh_token } = res
-      
-      if (user.role !== 'municipal_admin' && user.role !== 'admin') {
-        setError('This account is not authorized for admin access.')
+
+      const validAdminRoles = ['municipal_admin', 'barangay_admin', 'provincial_admin', 'admin']
+      if (!validAdminRoles.includes(user.role)) {
+        const isSuper = user.role === 'superadmin'
+        setError(isSuper
+          ? 'Super admin login requires 2FA. Please use the Super Admin login page.'
+          : 'This account is not authorized for admin access.'
+        )
         setLoading(false)
         return
       }
-      
+
       setAuth(user, access_token, refresh_token)
       navigate('/dashboard')
     } catch (err: any) {
@@ -256,7 +261,7 @@ export default function AdminLoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </span>
-              
+
               {/* Loading spinner */}
               {loading && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -267,13 +272,24 @@ export default function AdminLoginPage() {
                 </div>
               )}
             </button>
+
+            {/* Back to Role Selector */}
+            <div className="mt-6 text-center">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-ocean-600 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to role selection</span>
+              </Link>
+            </div>
           </form>
           </div>
           
           {/* Decorative elements */}
           <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between text-xs text-slate-400">
             <span>© 2026 MunLink</span>
-            <span>Region III — Central Luzon</span>
+            <span>Zambales Province</span>
           </div>
         </div>
       </div>

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { getProvinces, getMunicipalities } from '@/lib/locations'
+import { getProvinces, getMunicipalities, getBarangaysByMunicipalitySlug } from '@/lib/locations'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+
+type AdminRole = 'provincial_admin' | 'municipal_admin' | 'barangay_admin'
 
 // Province seals for visual feedback
 const provinceSealMap: Record<string, string> = {
@@ -19,14 +21,17 @@ export default function AdminRegisterPage() {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+    mobile_number: '',
     password: '',
     confirm_password: '',
     first_name: '',
     middle_name: '',
     last_name: '',
     admin_secret: '',
+    admin_role: 'municipal_admin' as AdminRole,
     admin_province_id: '',
     admin_municipality_slug: '',
+    admin_barangay_id: '',
   })
   const [uploads, setUploads] = useState<{ profile_picture?: File | null; valid_id_front?: File | null; valid_id_back?: File | null }>({})
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -41,6 +46,11 @@ export default function AdminRegisterPage() {
   const municipalities = useMemo(
     () => formData.admin_province_id ? getMunicipalities(Number(formData.admin_province_id)) : [],
     [formData.admin_province_id]
+  )
+
+  const barangays = useMemo(
+    () => formData.admin_municipality_slug ? getBarangaysByMunicipalitySlug(formData.admin_municipality_slug) : [],
+    [formData.admin_municipality_slug]
   )
 
   // Get the selected province seal
@@ -148,7 +158,7 @@ export default function AdminRegisterPage() {
         )}
       </div>
       <h1 className="text-3xl font-bold text-center mb-2 text-ocean-700">Create Admin Account</h1>
-      <p className="text-center text-sm text-gray-600 mb-6">MunLink Region III — Central Luzon</p>
+      <p className="text-center text-sm text-gray-600 mb-6">MunLink Zambales</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
         {success && <div className="rounded-md border border-green-200 bg-green-50 text-green-700 px-3 py-2 text-sm">{success}</div>}
@@ -177,6 +187,11 @@ export default function AdminRegisterPage() {
         <div>
           <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
           <input name="email" type="email" className="input-field" value={formData.email} onChange={(e)=>setFormData({...formData, email:e.target.value})} required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Mobile Number <span className="text-gray-400">(optional)</span></label>
+          <input name="mobile_number" type="tel" className="input-field" value={formData.mobile_number} onChange={(e)=>setFormData({...formData, mobile_number:e.target.value})} placeholder="09XXXXXXXXX" />
+          <p className="text-xs text-gray-500 mt-1">Optional — used for SMS notifications.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -237,16 +252,54 @@ export default function AdminRegisterPage() {
             {uploads.valid_id_back && (<img className="mt-2 h-24 w-auto rounded border" src={uploads.valid_id_back ? URL.createObjectURL(uploads.valid_id_back) : ''} alt="Valid ID Back" />)}
           </div>
         </div>
-        {/* Admin Assignment Location */}
+        {/* Admin Role and Assignment */}
         <div className="border-t pt-4 mt-2">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Admin Assignment <span className="text-gray-400 font-normal">(optional)</span></h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Admin Role and Assignment</h3>
+
+          {/* Role Selection */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Admin Role <span className="text-red-500">*</span></label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.admin_role === 'municipal_admin' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                <input
+                  type="radio"
+                  name="admin_role"
+                  value="municipal_admin"
+                  checked={formData.admin_role === 'municipal_admin'}
+                  onChange={(e) => setFormData({ ...formData, admin_role: e.target.value as AdminRole, admin_barangay_id: '' })}
+                  className="mr-3 h-4 w-4"
+                />
+                <div>
+                  <div className="font-medium text-gray-900">Municipal Admin</div>
+                  <div className="text-xs text-gray-600">Manage entire municipality</div>
+                </div>
+              </label>
+              <label className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.admin_role === 'barangay_admin' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                <input
+                  type="radio"
+                  name="admin_role"
+                  value="barangay_admin"
+                  checked={formData.admin_role === 'barangay_admin'}
+                  onChange={(e) => setFormData({ ...formData, admin_role: e.target.value as AdminRole })}
+                  className="mr-3 h-4 w-4"
+                />
+                <div>
+                  <div className="font-medium text-gray-900">Barangay Admin</div>
+                  <div className="text-xs text-gray-600">Manage specific barangay</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Location Assignment */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Province</label>
+              <label className="block text-sm font-medium mb-1">Province <span className="text-red-500">*</span></label>
               <select
                 className="input-field"
                 value={formData.admin_province_id}
-                onChange={(e) => setFormData({ ...formData, admin_province_id: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, admin_province_id: e.target.value, admin_municipality_slug: '', admin_barangay_id: '' })}
+                required
               >
                 <option value="">— Select Province —</option>
                 {provinces.map(p => (
@@ -255,13 +308,14 @@ export default function AdminRegisterPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Municipality</label>
+              <label className="block text-sm font-medium mb-1">Municipality <span className="text-red-500">*</span></label>
               <select
                 name="admin_municipality_slug"
                 className="input-field"
                 value={formData.admin_municipality_slug}
-                onChange={(e)=>setFormData({...formData, admin_municipality_slug:e.target.value})}
+                onChange={(e)=>setFormData({...formData, admin_municipality_slug:e.target.value, admin_barangay_id: ''})}
                 disabled={!formData.admin_province_id}
+                required
               >
                 <option value="">{!formData.admin_province_id ? 'Select province first' : '— Select Municipality —'}</option>
                 {municipalities.map(m => (
@@ -269,6 +323,27 @@ export default function AdminRegisterPage() {
                 ))}
               </select>
             </div>
+
+            {/* Barangay Selection - only for barangay_admin */}
+            {formData.admin_role === 'barangay_admin' && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Barangay <span className="text-red-500">*</span></label>
+                <select
+                  name="admin_barangay_id"
+                  className="input-field"
+                  value={formData.admin_barangay_id}
+                  onChange={(e)=>setFormData({...formData, admin_barangay_id:e.target.value})}
+                  disabled={!formData.admin_municipality_slug}
+                  required={formData.admin_role === 'barangay_admin'}
+                >
+                  <option value="">{!formData.admin_municipality_slug ? 'Select municipality first' : '— Select Barangay —'}</option>
+                  {barangays.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">This admin will only manage this specific barangay</p>
+              </div>
+            )}
           </div>
         </div>
         <div>

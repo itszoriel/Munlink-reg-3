@@ -1,5 +1,5 @@
 /**
- * SEO Component for MunLink Region 3
+ * SEO Component for MunLink Zambales
  * 
  * Provides meta tags for search engine optimization, social sharing,
  * and answer engine optimization (AEO).
@@ -25,8 +25,8 @@ interface SEOProps {
 }
 
 const BASE_URL = 'https://munlink-web-y9lj.onrender.com'
-const DEFAULT_TITLE = 'MunLink Region 3 - Digital Municipal Services'
-const DEFAULT_DESCRIPTION = 'MunLink Region 3 is a digital governance platform connecting residents of Central Luzon (Region III) with their municipal government services. Request documents, report issues, access benefit programs, and more.'
+const DEFAULT_TITLE = 'MunLink Zambales - Digital Municipal Services'
+const DEFAULT_DESCRIPTION = 'MunLink Zambales is a digital governance platform connecting residents of Zambales province with their municipal government services. Request documents, report issues, access benefit programs, and more.'
 const DEFAULT_IMAGE = '/logos/MunLink Logo.png'
 
 /**
@@ -68,7 +68,7 @@ export default function SEO({
   type = 'website',
   noIndex = false,
 }: SEOProps) {
-  const fullTitle = title ? `${title} | MunLink Region 3` : DEFAULT_TITLE
+  const fullTitle = title ? `${title} | MunLink Zambales` : DEFAULT_TITLE
   const fullUrl = url ? `${BASE_URL}${url}` : BASE_URL
   const fullImage = image.startsWith('http') ? image : `${BASE_URL}${image}`
 
@@ -96,7 +96,7 @@ export default function SEO({
     setMetaTag('og:title', fullTitle, true)
     setMetaTag('og:description', description, true)
     setMetaTag('og:image', fullImage, true)
-    setMetaTag('og:site_name', 'MunLink Region 3', true)
+    setMetaTag('og:site_name', 'MunLink Zambales', true)
     setMetaTag('og:locale', 'en_PH', true)
     
     // Twitter
@@ -107,10 +107,10 @@ export default function SEO({
     setMetaTag('twitter:image', fullImage)
     
     // Additional SEO tags
-    setMetaTag('application-name', 'MunLink Region 3')
+    setMetaTag('application-name', 'MunLink Zambales')
     setMetaTag('theme-color', '#1e40af')
-    setMetaTag('geo.region', 'PH-03')
-    setMetaTag('geo.placename', 'Central Luzon, Philippines')
+    setMetaTag('geo.region', 'PH-ZMB')
+    setMetaTag('geo.placename', 'Zambales, Philippines')
     
   }, [fullTitle, description, fullUrl, fullImage, type, noIndex])
 
@@ -123,7 +123,7 @@ export function HomeSEO() {
   return (
     <SEO
       title="Home"
-      description="MunLink Region 3 - Your digital gateway to municipal services in Central Luzon. Access government documents, announcements, community marketplace, and more."
+      description="MunLink Zambales - Your digital gateway to municipal services in Zambales province. Access government documents, announcements, community marketplace, and more."
       url="/"
     />
   )
@@ -133,7 +133,7 @@ export function AnnouncementsSEO() {
   return (
     <SEO
       title="Municipal Announcements"
-      description="Stay informed with the latest announcements and updates from municipalities across Central Luzon Region III. Official government notices, events, and news."
+      description="Stay informed with the latest announcements and updates from municipalities across Zambales province. Official government notices, events, and news."
       url="/announcements"
     />
   )
@@ -143,7 +143,7 @@ export function MarketplaceSEO() {
   return (
     <SEO
       title="Community Marketplace"
-      description="Buy, sell, donate, or lend items within your municipality. A trusted community marketplace for residents of Central Luzon Region III."
+      description="Buy, sell, donate, or lend items within your municipality. A trusted community marketplace for residents of Zambales province."
       url="/marketplace"
     />
   )
@@ -153,7 +153,7 @@ export function AboutSEO() {
   return (
     <SEO
       title="About MunLink"
-      description="Learn about MunLink Region 3 - a digital governance platform serving the 7 provinces and 129 municipalities of Central Luzon, Philippines."
+      description="Learn about MunLink Zambales - a digital governance platform serving the 13 municipalities of Zambales province, Philippines."
       url="/about"
     />
   )

@@ -1,5 +1,5 @@
 /**
- * MunLink Region III - Admin API Client
+ * MunLink Zambales - Admin API Client
  * Centralized API client with authentication and error handling
  */
 import axios from 'axios'
@@ -10,10 +10,10 @@ import { useAdminStore } from './store'
 declare const process: any
 
 // API Configuration
+// Local-only: rely on explicit env or default to localhost
 const API_BASE_URL =
   (import.meta as any).env?.VITE_API_BASE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
-  (typeof process !== 'undefined' ? (process as any).env?.NEXT_PUBLIC_API_URL : undefined) ||
   'http://localhost:5000'
 
 // Create axios instance with longer timeout for admin operations
@@ -66,10 +66,10 @@ apiClient.interceptors.response.use(
           return apiClient(originalRequest)
         }
       } catch (refreshError) {
-        // Refresh failed, redirect to login
+        // Refresh failed, redirect to portal
         const { logout } = useAdminStore.getState()
         logout()
-        window.location.href = '/login'
+        window.location.href = '/'
       }
     }
 
@@ -80,7 +80,7 @@ apiClient.interceptors.response.use(
         if (data?.code === 'ROLE_MISMATCH') {
           const { logout } = useAdminStore.getState()
           logout()
-          window.location.href = '/login'
+          window.location.href = '/'
           return Promise.reject(error)
         }
       } catch {}
@@ -134,7 +134,7 @@ export const authApi = {
   },
   getProfile: async (): Promise<ApiResponse<any>> =>
     apiClient.get('/api/auth/profile').then(res => res.data),
-  updateProfile: async (data: Partial<{ first_name: string; middle_name?: string; last_name: string; suffix?: string; phone_number?: string }>): Promise<ApiResponse<any>> =>
+  updateProfile: async (data: Partial<{ first_name: string; middle_name?: string; last_name: string; suffix?: string; phone_number?: string; mobile_number?: string }>): Promise<ApiResponse<any>> =>
     apiClient.put('/api/auth/profile', data).then(res => res.data),
   uploadProfilePhoto: async (file: File): Promise<ApiResponse<any>> => {
     const form = new FormData()
@@ -191,6 +191,13 @@ export const userApi = {
     if (files.selfie_with_id) form.append('selfie_with_id', files.selfie_with_id)
     return apiClient.post(`/api/admin/users/${userId}/verification-docs`, form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data)
   },
+
+  // Get resident document (secure, with audit)
+  getResidentDocument: (userId: number, docType: string, reason: string) =>
+    apiClient.get(`/api/admin/residents/${userId}/documents/${docType}`, {
+      params: { reason },
+      responseType: 'blob'  // Important for binary image data
+    }).then(res => res.data),
 }
 
 // Issue Management API
@@ -282,6 +289,14 @@ export const announcementApi = {
     content: string
     priority: 'high' | 'medium' | 'low'
     external_url?: string
+    scope?: 'PROVINCE' | 'MUNICIPALITY' | 'BARANGAY'
+    municipality_id?: number
+    barangay_id?: number
+    status?: 'PUBLISHED' | 'DRAFT' | 'ARCHIVED'
+    publish_at?: string
+    expire_at?: string
+    pinned?: boolean
+    pinned_until?: string
   }): Promise<ApiResponse> =>
     apiClient.post('/api/admin/announcements', data).then(res => res.data),
 
@@ -310,6 +325,14 @@ export const announcementApi = {
     content?: string
     priority?: 'high' | 'medium' | 'low'
     is_active?: boolean
+    status?: 'PUBLISHED' | 'DRAFT' | 'ARCHIVED'
+    scope?: 'PROVINCE' | 'MUNICIPALITY' | 'BARANGAY'
+    municipality_id?: number
+    barangay_id?: number
+    publish_at?: string
+    expire_at?: string
+    pinned?: boolean
+    pinned_until?: string
     images?: string[]
     external_url?: string
   }): Promise<ApiResponse> =>
@@ -322,8 +345,11 @@ export const announcementApi = {
   // Get announcement statistics
   getAnnouncementStats: (): Promise<ApiResponse<{
     total_announcements: number
+    published_announcements: number
     active_announcements: number
-    high_priority: number
+    draft_announcements: number
+    archived_announcements: number
+    pinned_active: number
   }>> =>
     apiClient.get('/api/admin/announcements/stats').then(res => res.data),
 }
@@ -534,4 +560,128 @@ export const exportAdminApi = {
 export const auditAdminApi = {
   list: (params: { entity_type?: string; entity_id?: number; actor_role?: string; action?: string; from?: string; to?: string; page?: number; per_page?: number } = {}): Promise<ApiResponse<{ logs: any[]; page: number; pages: number; per_page: number; total: number }>> =>
     apiClient.get('/api/admin/audit', { params }).then(res => res.data),
+}
+
+// =============================================================================
+// SUPER ADMIN API (2FA Authentication + Audit Log)
+// =============================================================================
+
+export interface SuperAdminLoginResponse {
+  message: string
+  session_id: string
+  expires_in: number
+}
+
+export interface SuperAdmin2FAResponse {
+  message: string
+  access_token: string
+  refresh_token: string
+  user: any
+}
+
+export interface AuditLogEntry {
+  id: number
+  admin_id: number | null
+  admin_email: string
+  admin_role?: string | null
+  action: string
+  resource_type: string | null
+  resource_id: number | null
+  ip_address: string | null
+  user_agent: string | null
+  details: Record<string, any> | null
+  created_at: string
+}
+
+export interface AuditLogPagination {
+  page: number
+  per_page: number
+  total: number
+  pages: number
+  has_next: boolean
+  has_prev: boolean
+  next_page?: number | null
+  prev_page?: number | null
+}
+
+export const superAdminApi = {
+  /**
+   * Step 1: Login with email and password, receive 2FA code via email
+   */
+  login: async (email: string, password: string): Promise<SuperAdminLoginResponse> => {
+    const res = await apiClient.post('/api/auth/superadmin/login', { email, password })
+    return res.data
+  },
+
+  /**
+   * Step 2: Verify 2FA code and get tokens
+   */
+  verify2FA: async (sessionId: string, code: string): Promise<SuperAdmin2FAResponse> => {
+    const res = await apiClient.post('/api/auth/superadmin/verify-2fa', {
+      session_id: sessionId,
+      code: code
+    })
+    return res.data
+  },
+
+  /**
+   * Resend 2FA code
+   */
+  resendCode: async (sessionId: string): Promise<SuperAdminLoginResponse> => {
+    const res = await apiClient.post('/api/auth/superadmin/resend-code', {
+      session_id: sessionId
+    })
+    return res.data
+  },
+
+  /**
+   * Get list of all admin accounts (requires JWT auth as super admin)
+   */
+  getAdmins: async (params: { page?: number; per_page?: number } = {}): Promise<{ admins: any[]; pagination?: AuditLogPagination }> => {
+    const res = await apiClient.get('/api/superadmin/admins', {
+      params: {
+        page: params.page || 1,
+        per_page: params.per_page || 10
+      }
+    })
+    return res.data
+  },
+
+  /**
+   * Get audit log entries (requires JWT auth as super admin)
+   */
+  getAuditLog: async (params: {
+    page?: number
+    per_page?: number
+    action?: string
+    start_date?: string
+    end_date?: string
+    search?: string
+  } = {}): Promise<{ audit_logs: AuditLogEntry[]; pagination: AuditLogPagination }> => {
+    const res = await apiClient.get('/api/superadmin/audit-log', { params })
+    return res.data
+  },
+
+  /**
+   * Get available action types for filtering
+   */
+  getAuditActions: async (): Promise<{ actions: string[] }> => {
+    const res = await apiClient.get('/api/superadmin/audit-log/actions')
+    return res.data
+  },
+
+  /**
+   * Export audit log as CSV
+   */
+  exportAuditLog: (params: {
+    start_date?: string
+    end_date?: string
+    action?: string
+  } = {}): string => {
+    const searchParams = new URLSearchParams()
+    if (params.start_date) searchParams.append('start_date', params.start_date)
+    if (params.end_date) searchParams.append('end_date', params.end_date)
+    if (params.action) searchParams.append('action', params.action)
+    return `${API_BASE_URL}/api/superadmin/audit-log/export?${searchParams.toString()}`
+  }
 }

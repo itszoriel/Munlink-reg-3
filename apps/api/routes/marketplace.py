@@ -1,4 +1,7 @@
-"""Marketplace routes for items, transactions, and messages."""
+"""Marketplace routes for items, transactions, and messages.
+
+SCOPE: Zambales province only, excluding Olongapo City.
+"""
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timezone, timedelta
@@ -23,6 +26,10 @@ from apps.api.utils import (
     TransitionError,
 )
 from apps.api.utils.storage_handler import save_marketplace_image
+from apps.api.utils.zambales_scope import (
+    ZAMBALES_MUNICIPALITY_IDS,
+    is_valid_zambales_municipality,
+)
 
 marketplace_bp = Blueprint('marketplace', __name__, url_prefix='/api/marketplace')
 
@@ -73,6 +80,7 @@ def list_items():
         # Municipality Scoping Enforcement:
         # - Guests without municipality_id get empty results (no global data)
         # - Logged-in users default to their municipality if no filter provided
+        # - ZAMBALES SCOPE: Only allow Zambales municipalities (excluding Olongapo)
         effective_municipality_id = municipality_id
         if not effective_municipality_id:
             if is_authenticated and user_municipality_id:
@@ -88,6 +96,17 @@ def list_items():
                     'pages': 0,
                     'message': 'Please select a municipality to view marketplace items'
                 }), 200
+        
+        # ZAMBALES SCOPE: Verify municipality is valid
+        if not is_valid_zambales_municipality(effective_municipality_id):
+            return jsonify({
+                'items': [],
+                'total': 0,
+                'page': page,
+                'per_page': per_page,
+                'pages': 0,
+                'message': 'Municipality is not available in this system'
+            }), 200
         
         # Build query with enforced municipality scoping
         query = Item.query.filter_by(is_active=True, municipality_id=effective_municipality_id)
@@ -173,6 +192,10 @@ def create_item():
             return jsonify({'error': 'User not found'}), 404
         
         data = request.get_json(silent=True) or {}
+
+        # Age gate: under 18 cannot list items
+        if user.is_under_18():
+            return jsonify({'error': 'You must be 18 or older to list items'}), 403
         
         # Validate required fields
         required_fields = ['title', 'description', 'category', 'condition', 'transaction_type']
@@ -194,8 +217,13 @@ def create_item():
         # Require resident to have a registered municipality
         if not user.municipality_id:
             return jsonify({'error': 'Set your municipality in your profile before posting items'}), 400
+        
+        # ZAMBALES SCOPE: Verify municipality is in Zambales (excluding Olongapo)
+        if not is_valid_zambales_municipality(user.municipality_id):
+            return jsonify({'error': 'Your municipality is not available in this system'}), 403
 
-        # Create item (force user's municipality/barangay)
+        # Create item (force user's municipality/barangay); auto-approve for residents
+        now = datetime.utcnow()
         item = Item(
             user_id=user_id,
             title=data['title'],
@@ -210,7 +238,9 @@ def create_item():
             barangay_id=user.barangay_id,
             pickup_location=data.get('pickup_location'),
             images=[],
-            status='pending'
+            status='available',
+            approved_by=user_id,
+            approved_at=now
         )
         
         db.session.add(item)
@@ -400,6 +430,8 @@ def create_transaction():
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
+        if user.is_under_18():
+            return jsonify({'error': 'You must be 18 or older to initiate transactions'}), 403
         
         data = request.get_json()
         

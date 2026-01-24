@@ -45,14 +45,17 @@ export default function ProtectedRoute({ children, allow, showGate = true }: Pro
     gateStatus = 'pendingApproval'
   }
 
-  // If role is allowed, check verification status
-  if (allow.includes(role)) {
-    // For 'public' role routes, don't require verification
-    if (allow.includes('public')) {
-      return children
-    }
-    return children
+  const isPublicAllowed = allow.includes('public')
+  const roleAllowed = allow.includes(role)
+  if (!roleAllowed && !isPublicAllowed && gateStatus === 'allowed') {
+    gateStatus = 'notLoggedIn'
   }
+
+  const canProceed =
+    (isPublicAllowed && role === 'public') ||
+    (roleAllowed && gateStatus === 'allowed')
+
+  if (canProceed) return children
 
   // If not showing gate, just redirect
   if (!showGate) {

@@ -45,7 +45,7 @@ export default function LoginPage() {
     { icon: FileText, label: 'Request Documents', desc: 'Get certificates and permits online' },
     { icon: ShoppingBag, label: 'Marketplace', desc: 'Buy and sell within your community' },
     { icon: Users, label: 'Programs', desc: 'Apply for government assistance' },
-    { icon: MapPin, label: '7 Provinces', desc: 'Serving all of Central Luzon' },
+    { icon: MapPin, label: '13 Municipalities', desc: 'Serving all of Zambales' },
   ]
 
   return (
@@ -102,7 +102,7 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            Region III — Central Luzon
+            Lalawigan ng Zambales
           </motion.p>
           <motion.p 
             className="text-white/80 max-w-md mb-10 drop-shadow"
@@ -151,7 +151,7 @@ export default function LoginPage() {
               />
             </div>
             <h1 className="text-2xl font-serif font-bold text-gray-900">MunLink</h1>
-            <p className="text-gray-600 text-sm">Region III — Central Luzon</p>
+            <p className="text-gray-600 text-sm">Zambales Province</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">

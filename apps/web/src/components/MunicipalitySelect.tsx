@@ -9,6 +9,7 @@ export default function MunicipalitySelect() {
   const selected = useAppStore((s) => s.selectedMunicipality)
   const selectedProvince = useAppStore((s) => s.selectedProvince)
   const setMunicipality = useAppStore((s) => s.setMunicipality)
+  const setBarangay = useAppStore((s) => s.setBarangay)
   // Use static data - no API call needed, instant load
   const municipalities = useMemo(
     () => getMunicipalities(selectedProvince?.id),
@@ -26,10 +27,6 @@ export default function MunicipalitySelect() {
       } catch {}
     }
   }, [setMunicipality])
-
-  useEffect(() => {
-    if (selected) localStorage.setItem('munlink:selectedMunicipality', JSON.stringify(selected))
-  }, [selected])
 
   // Close this dropdown when another location dropdown opens
   useEffect(() => {
@@ -79,6 +76,14 @@ export default function MunicipalitySelect() {
     setIsOpen(false)
   }, [setMunicipality])
 
+  const handleClear = useCallback(() => {
+    setMunicipality(undefined)
+    setBarangay(undefined)
+    localStorage.removeItem('munlink:selectedMunicipality')
+    localStorage.removeItem('munlink:selectedBarangay')
+    setIsOpen(false)
+  }, [setMunicipality, setBarangay])
+
   const filtered = useMemo(() =>
     municipalities.filter(m => m.name.toLowerCase().includes(query.toLowerCase())),
     [municipalities, query]
@@ -109,6 +114,15 @@ export default function MunicipalitySelect() {
             className="input-field mb-2"
             autoFocus
           />
+          {/* Clear selection option */}
+          {selected && (
+            <button
+              onClick={handleClear}
+              className="w-full text-left px-3 py-2 rounded hover:bg-red-50 text-red-600 text-sm mb-1 border-b"
+            >
+              ✕ Clear selection
+            </button>
+          )}
           <ul className="max-h-64 overflow-auto" role="listbox">
             {filtered.map(m => (
               <li key={m.id} role="option" aria-selected={selected?.id === m.id}>

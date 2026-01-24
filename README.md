@@ -106,6 +106,7 @@ npm run dev
 - **Separate permissions**: Viewing ID/selfie images requires `residents:id_view` permission, distinct from `residents:approve`
 - **Admin roles**: By default, all admin roles have both permissions. Superadmins can revoke `id_view` for specific admins if needed
 - **Graceful degradation**: Admins without `id_view` can still approve/reject residents based on other verification criteria
+- **Consistent enforcement**: All admin interfaces (UserVerificationList, Residents page) enforce the same privacy controls - no viewing without reason + audit logging
 
 ### Audit Logging
 - Every ID/selfie view is logged to `admin_audit_logs` with:

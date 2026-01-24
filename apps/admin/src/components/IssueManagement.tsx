@@ -1,5 +1,5 @@
 /**
- * MunLink Region 3 - Issue Management Component
+ * MunLink Zambales - Issue Management Component
  * Component for managing and responding to issues
  */
 import { useState, useEffect } from 'react'

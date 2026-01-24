@@ -16,6 +16,7 @@ from apps.api.models.municipality import Municipality, Barangay
 from apps.api.models.document import DocumentType
 from apps.api.models.issue import IssueCategory
 from apps.api.models.benefit import BenefitProgram
+from apps.api.scripts.seed_lgu_document_types import seed_lgu_document_types
 from datetime import datetime
 import json
 from pathlib import Path
@@ -619,6 +620,7 @@ def main():
             seed_municipalities()
             seed_document_types()
             seed_issue_categories()
+            seed_lgu_document_types()
             # Seed a few benefit programs if none exist
             print("Seeding benefit programs...")
             if BenefitProgram.query.count() == 0:

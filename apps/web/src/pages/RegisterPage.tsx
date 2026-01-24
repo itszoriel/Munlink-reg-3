@@ -3,21 +3,14 @@ import { Link } from 'react-router-dom'
 import { authApi } from '@/lib/api'
 import { getProvinces, getMunicipalities, getBarangaysByMunicipalitySlug } from '@/lib/locations'
 
-// Province seals for visual feedback (use absolute paths from public folder)
-const provinceSealMap: Record<string, string> = {
-  'aurora': '/logos/provinces/aurora.png',
-  'bataan': '/logos/provinces/bataan.png',
-  'bulacan': '/logos/provinces/bulacan.png',
-  'nueva-ecija': '/logos/provinces/nueva-ecija.png',
-  'pampanga': '/logos/provinces/pampanga.png',
-  'tarlac': '/logos/provinces/tarlac.png',
-  'zambales': '/logos/provinces/zambales.png',
-}
+// Zambales province seal
+const zambalesSeal = '/logos/provinces/zambales.png'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+    mobileNumber: '',
     password: '',
     confirmPassword: '',
     firstName: '',
@@ -50,9 +43,8 @@ export default function RegisterPage() {
     [formData.municipality]
   )
 
-  // Get the selected province seal
-  const selectedProvince = provinces.find(p => p.id === Number(formData.province))
-  const provinceSeal = selectedProvince?.slug ? provinceSealMap[selectedProvince.slug] : null
+  // Zambales is the only province - always show its seal
+  const _selectedProvince = provinces.find(p => p.id === Number(formData.province))
 
   // Reset municipality and barangay when province changes
   useEffect(() => {
@@ -94,9 +86,10 @@ export default function RegisterPage() {
         middle_name: formData.middleName || undefined,
         last_name: formData.lastName,
         date_of_birth: formData.dateOfBirth,
-        municipality_slug: formData.municipality,
-        barangay_id: Number(formData.barangay_id),
       }
+      if (formData.mobileNumber) payload.mobile_number = formData.mobileNumber
+      payload.municipality_slug = formData.municipality
+      payload.barangay_id = Number(formData.barangay_id)
       const res = await authApi.register(payload, {
         profile_picture: uploads.profile_picture || undefined,
         valid_id_front: uploads.valid_id_front || undefined,
@@ -115,30 +108,17 @@ export default function RegisterPage() {
     <div className="min-h-[calc(100vh-200px)] py-12 px-4">
       <div className="card max-w-2xl mx-auto">
         <div className="w-full flex justify-center pt-6">
-          {provinceSeal ? (
-            <img
-              src={provinceSeal}
-              alt={`${selectedProvince?.name} Seal`}
-              className="h-16 w-16 object-contain opacity-90 transition-all duration-300"
-            />
-          ) : (
-            <div className="flex gap-1">
-              {Object.entries(provinceSealMap).slice(0, 7).map(([slug, src]) => (
-                <img
-                  key={slug}
-                  src={src}
-                  alt={`${slug} seal`}
-                  className="h-8 w-8 object-contain opacity-60"
-                />
-              ))}
-            </div>
-          )}
+          <img
+            src={zambalesSeal}
+            alt="Zambales Provincial Seal"
+            className="h-16 w-16 object-contain opacity-90"
+          />
         </div>
         <h2 className="text-fluid-3xl font-serif font-semibold text-center mb-2 text-ocean-700">
           Create Account
         </h2>
         <p className="text-center text-sm text-gray-600 mb-6">
-          Join MunLink Region III — serving 7 provinces across Central Luzon
+          Join MunLink Zambales — serving 13 municipalities across Zambales province
         </p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -196,6 +176,18 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
             />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Mobile Number <span className="text-gray-400 text-xs">(optional — used for SMS notifications)</span></label>
+            <input
+              type="tel"
+              className="input-field"
+              value={formData.mobileNumber}
+              onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+              placeholder="09XXXXXXXXX"
+            />
+            <p className="text-xs text-gray-500 mt-1">Add a mobile number if you want to receive SMS alerts.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -286,7 +278,8 @@ export default function RegisterPage() {
           
           {/* Location Section */}
           <div className="border-t pt-4 mt-2">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Location</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">Location <span className="text-red-500">*</span></h3>
+            <p className="text-xs text-gray-500 mb-3">Select your province, municipality, and barangay</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Province <span className="text-red-500">*</span></label>
@@ -415,4 +408,3 @@ export default function RegisterPage() {
     </div>
   )
 }
-
