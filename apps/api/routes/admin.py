@@ -596,10 +596,8 @@ def get_resident_document(user_id, doc_type):
     if not reason:
         return jsonify({'error': 'Reason parameter required'}), 400
 
-    # Get admin context
-    admin_municipality_id = require_admin_municipality()
-    if isinstance(admin_municipality_id, tuple):  # Error response
-        return admin_municipality_id
+    # Get admin context (allow None for superadmins)
+    admin_municipality_id = get_admin_municipality_id()
 
     # Get resident
     user = User.query.get(user_id)
@@ -611,6 +609,8 @@ def get_resident_document(user_id, doc_type):
 
     # Validate municipality scope (unless superadmin)
     if current_user.role != 'superadmin':
+        if not admin_municipality_id:
+            return jsonify({'error': 'Admin access required'}), 403
         if user.municipality_id != admin_municipality_id:
             return jsonify({'error': 'Access denied: user not in your municipality'}), 403
 

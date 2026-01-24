@@ -34,6 +34,7 @@ class PrivacyTestConfig(Config):
 def test_id_view_permission_required():
     """Test that residents:id_view permission is required to view ID documents."""
     app = create_app(PrivacyTestConfig)
+    client = app.test_client()
 
     with app.app_context():
         db.create_all()
@@ -93,31 +94,32 @@ def test_id_view_permission_required():
         admin_no_perm_id = admin_no_perm.id
         admin_with_perm_id = admin_with_perm.id
 
-    client = app.test_client()
+        # Create tokens within app context
+        token_no_perm = create_access_token(identity=str(admin_no_perm_id), additional_claims={'role': 'municipal_admin'})
+        token_with_perm = create_access_token(identity=str(admin_with_perm_id), additional_claims={'role': 'municipal_admin'})
 
-    # Test 1: Admin WITHOUT permission should be denied
-    token_no_perm = create_access_token(identity=str(admin_no_perm_id), additional_claims={'role': 'municipal_admin'})
-    response = client.get(
-        f'/api/admin/residents/{resident_id}/documents/id_front',
-        query_string={'reason': 'Initial verification review'},
-        headers={'Authorization': f'Bearer {token_no_perm}'}
-    )
-    assert response.status_code == 403
-    assert b'residents:id_view required' in response.data
+        # Test 1: Admin WITHOUT permission should be denied
+        response = client.get(
+            f'/api/admin/residents/{resident_id}/documents/id_front',
+            query_string={'reason': 'Initial verification review'},
+            headers={'Authorization': f'Bearer {token_no_perm}'}
+        )
+        assert response.status_code == 403
+        assert b'residents:id_view required' in response.data
 
-    # Test 2: Admin WITH permission but no reason should be denied
-    token_with_perm = create_access_token(identity=str(admin_with_perm_id), additional_claims={'role': 'municipal_admin'})
-    response = client.get(
-        f'/api/admin/residents/{resident_id}/documents/id_front',
-        headers={'Authorization': f'Bearer {token_with_perm}'}
-    )
-    assert response.status_code == 400
-    assert b'Reason parameter required' in response.data
+        # Test 2: Admin WITH permission but no reason should be denied
+        response = client.get(
+            f'/api/admin/residents/{resident_id}/documents/id_front',
+            headers={'Authorization': f'Bearer {token_with_perm}'}
+        )
+        assert response.status_code == 400
+        assert b'Reason parameter required' in response.data
 
 
 def test_audit_logging_on_id_view():
     """Test that viewing ID documents creates audit log entries."""
     app = create_app(PrivacyTestConfig)
+    client = app.test_client()
 
     with app.app_context():
         db.create_all()
@@ -159,18 +161,16 @@ def test_audit_logging_on_id_view():
         # Verify no audit logs exist initially
         assert AdminAuditLog.query.count() == 0
 
-    client = app.test_client()
-    token = create_access_token(identity=str(admin_id), additional_claims={'role': 'superadmin'})
+        token = create_access_token(identity=str(admin_id), additional_claims={'role': 'superadmin'})
 
-    # Attempt to view ID (will fail because URL domain not in ALLOWED_FILE_DOMAINS, but should still log)
-    response = client.get(
-        f'/api/admin/residents/{resident_id}/documents/id_front',
-        query_string={'reason': 'Initial verification review'},
-        headers={'Authorization': f'Bearer {token}'}
-    )
+        # Attempt to view ID (will fail because URL domain not in ALLOWED_FILE_DOMAINS, but should still log)
+        response = client.get(
+            f'/api/admin/residents/{resident_id}/documents/id_front',
+            query_string={'reason': 'Initial verification review'},
+            headers={'Authorization': f'Bearer {token}'}
+        )
 
-    # Check audit log was created
-    with app.app_context():
+        # Check audit log was created
         audit_logs = AdminAuditLog.query.all()
         assert len(audit_logs) == 1
 
@@ -188,6 +188,7 @@ def test_audit_logging_on_id_view():
 def test_path_traversal_protection():
     """Test that path traversal attempts are blocked when serving local files."""
     app = create_app(PrivacyTestConfig)
+    client = app.test_client()
 
     with app.app_context():
         db.create_all()
@@ -227,23 +228,23 @@ def test_path_traversal_protection():
         resident_id = resident.id
         admin_id = admin.id
 
-    client = app.test_client()
-    token = create_access_token(identity=str(admin_id), additional_claims={'role': 'superadmin'})
+        token = create_access_token(identity=str(admin_id), additional_claims={'role': 'superadmin'})
 
-    # Attempt to access file (should be blocked by path traversal protection)
-    response = client.get(
-        f'/api/admin/residents/{resident_id}/documents/id_front',
-        query_string={'reason': 'Test path traversal'},
-        headers={'Authorization': f'Bearer {token}'}
-    )
+        # Attempt to access file (should be blocked by path traversal protection)
+        response = client.get(
+            f'/api/admin/residents/{resident_id}/documents/id_front',
+            query_string={'reason': 'Test path traversal'},
+            headers={'Authorization': f'Bearer {token}'}
+        )
 
-    assert response.status_code == 403
-    assert b'Invalid file path' in response.data
+        assert response.status_code == 403
+        assert b'Invalid file path' in response.data
 
 
 def test_municipality_scope_enforcement():
     """Test that admins can only view documents from residents in their municipality."""
     app = create_app(PrivacyTestConfig)
+    client = app.test_client()
 
     with app.app_context():
         db.create_all()
@@ -286,23 +287,23 @@ def test_municipality_scope_enforcement():
         resident_id = resident_muni_1.id
         admin_id = admin_muni_2.id
 
-    client = app.test_client()
-    token = create_access_token(identity=str(admin_id), additional_claims={'role': 'municipal_admin'})
+        token = create_access_token(identity=str(admin_id), additional_claims={'role': 'municipal_admin'})
 
-    # Admin from Municipality 2 tries to access resident from Municipality 1
-    response = client.get(
-        f'/api/admin/residents/{resident_id}/documents/id_front',
-        query_string={'reason': 'Cross-municipality test'},
-        headers={'Authorization': f'Bearer {token}'}
-    )
+        # Admin from Municipality 2 tries to access resident from Municipality 1
+        response = client.get(
+            f'/api/admin/residents/{resident_id}/documents/id_front',
+            query_string={'reason': 'Cross-municipality test'},
+            headers={'Authorization': f'Bearer {token}'}
+        )
 
-    assert response.status_code == 403
-    assert b'not in your municipality' in response.data
+        assert response.status_code == 403
+        assert b'not in your municipality' in response.data
 
 
 def test_superadmin_cross_municipality_access():
     """Test that superadmins CAN access documents across municipalities."""
     app = create_app(PrivacyTestConfig)
+    client = app.test_client()
 
     with app.app_context():
         db.create_all()
@@ -342,24 +343,24 @@ def test_superadmin_cross_municipality_access():
         resident_id = resident.id
         superadmin_id = superadmin.id
 
-    client = app.test_client()
-    token = create_access_token(identity=str(superadmin_id), additional_claims={'role': 'superadmin'})
+        token = create_access_token(identity=str(superadmin_id), additional_claims={'role': 'superadmin'})
 
-    # Superadmin should be able to access resident documents from any municipality
-    response = client.get(
-        f'/api/admin/residents/{resident_id}/documents/id_front',
-        query_string={'reason': 'Superadmin audit review'},
-        headers={'Authorization': f'Bearer {token}'}
-    )
+        # Superadmin should be able to access resident documents from any municipality
+        response = client.get(
+            f'/api/admin/residents/{resident_id}/documents/id_front',
+            query_string={'reason': 'Superadmin audit review'},
+            headers={'Authorization': f'Bearer {token}'}
+        )
 
-    # Should NOT be blocked by municipality scope (but may be blocked by domain validation)
-    # The key is that we don't get a "not in your municipality" error
-    assert response.status_code != 403 or b'not in your municipality' not in response.data
+        # Should NOT be blocked by municipality scope (but may be blocked by domain validation)
+        # The key is that we don't get a "not in your municipality" error
+        assert response.status_code != 403 or b'not in your municipality' not in response.data
 
 
 def test_document_type_validation():
     """Test that only valid document types are accepted."""
     app = create_app(PrivacyTestConfig)
+    client = app.test_client()
 
     with app.app_context():
         db.create_all()
@@ -397,27 +398,26 @@ def test_document_type_validation():
         resident_id = resident.id
         admin_id = admin.id
 
-    client = app.test_client()
-    token = create_access_token(identity=str(admin_id), additional_claims={'role': 'superadmin'})
+        token = create_access_token(identity=str(admin_id), additional_claims={'role': 'superadmin'})
 
-    # Valid document types: id_front, id_back, selfie
-    valid_types = ['id_front', 'id_back', 'selfie']
-    for doc_type in valid_types:
-        response = client.get(
-            f'/api/admin/residents/{resident_id}/documents/{doc_type}',
-            query_string={'reason': 'Type validation test'},
-            headers={'Authorization': f'Bearer {token}'}
-        )
-        # May fail for other reasons, but NOT because of invalid type
-        assert response.status_code != 400 or b'Invalid document type' not in response.data
+        # Valid document types: id_front, id_back, selfie
+        valid_types = ['id_front', 'id_back', 'selfie']
+        for doc_type in valid_types:
+            response = client.get(
+                f'/api/admin/residents/{resident_id}/documents/{doc_type}',
+                query_string={'reason': 'Type validation test'},
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            # May fail for other reasons, but NOT because of invalid type
+            assert response.status_code != 400 or b'Invalid document type' not in response.data
 
-    # Invalid document types
-    invalid_types = ['password_hash', 'profile_picture', '../../../etc/passwd', 'random']
-    for doc_type in invalid_types:
-        response = client.get(
-            f'/api/admin/residents/{resident_id}/documents/{doc_type}',
-            query_string={'reason': 'Type validation test'},
-            headers={'Authorization': f'Bearer {token}'}
-        )
-        assert response.status_code == 400
-        assert b'Invalid document type' in response.data
+        # Invalid document types (avoid path separators which Flask routes handle differently)
+        invalid_types = ['password_hash', 'profile_picture', 'admin_notes', 'random']
+        for doc_type in invalid_types:
+            response = client.get(
+                f'/api/admin/residents/{resident_id}/documents/{doc_type}',
+                query_string={'reason': 'Type validation test'},
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            assert response.status_code == 400, f'Expected 400 for {doc_type}, got {response.status_code}: {response.data.decode()}'
+            assert b'Invalid document type' in response.data
