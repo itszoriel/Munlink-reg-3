@@ -1,6 +1,8 @@
 """
-MunLink Region 3 - Authentication Routes
+MunLink Zambales - Authentication Routes
 User registration, login, email verification
+
+SCOPE: Zambales province only, excluding Olongapo City.
 
 Security: Critical endpoints have rate limiting applied to prevent:
 - Brute force attacks on login
@@ -23,6 +25,7 @@ from flask_jwt_extended import (
     unset_jwt_cookies,
 )
 from datetime import datetime, timedelta
+from apps.api.utils.sms_provider import get_provider_status
 try:
     from apps.api import db
 except ImportError:
@@ -57,9 +60,21 @@ try:
 except ImportError:
     from models.user import User
 try:
-    from apps.api.models.municipality import Municipality
+    from apps.api.models.municipality import Municipality, Barangay
 except ImportError:
-    from models.municipality import Municipality
+    from models.municipality import Municipality, Barangay
+try:
+    from apps.api.utils.zambales_scope import (
+        ZAMBALES_MUNICIPALITY_IDS,
+        ZAMBALES_MUNICIPALITY_SLUGS,
+        is_valid_zambales_municipality,
+    )
+except ImportError:
+    from utils.zambales_scope import (
+        ZAMBALES_MUNICIPALITY_IDS,
+        ZAMBALES_MUNICIPALITY_SLUGS,
+        is_valid_zambales_municipality,
+    )
 try:
     from apps.api.models.transfer import TransferRequest
 except ImportError:
@@ -137,6 +152,7 @@ def register():
         middle_name = validate_name(data.get('middle_name'), 'middle_name') if data.get('middle_name') else None
         suffix = data.get('suffix')
         phone_number = validate_phone(data.get('phone_number'))
+        mobile_number = validate_phone(data.get('mobile_number'), 'mobile_number')
         municipality_slug = data.get('municipality_slug')
         barangay_id_raw = data.get('barangay_id')
         
@@ -144,8 +160,15 @@ def register():
         municipality_id = None
         municipality_obj = None
         if municipality_slug:
+            # ZAMBALES SCOPE: Only allow Zambales municipalities (excluding Olongapo)
+            if municipality_slug.lower() not in ZAMBALES_MUNICIPALITY_SLUGS:
+                return jsonify({'error': 'Registration is only available for Zambales municipalities'}), 400
+            
             municipality_obj = Municipality.query.filter_by(slug=municipality_slug).first()
             if municipality_obj:
+                # Double-check with ID validation
+                if not is_valid_zambales_municipality(municipality_obj.id):
+                    return jsonify({'error': 'Registration is only available for Zambales municipalities'}), 400
                 municipality_id = municipality_obj.id
             else:
                 current_app.logger.warning(f"Registration: Municipality not found for slug '{municipality_slug}'")
@@ -153,10 +176,7 @@ def register():
         # Validate barangay_id belongs to municipality if both provided
         barangay_id = None
         if barangay_id_raw is not None and str(barangay_id_raw).strip() != '':
-            try:
-                from apps.api.models.municipality import Barangay
-            except ImportError:
-                from models.municipality import Barangay
+            # Barangay is now imported at module level
             try:
                 bid = int(barangay_id_raw)
             except Exception:
@@ -193,6 +213,9 @@ def register():
             suffix=suffix,
             date_of_birth=date_of_birth,
             phone_number=phone_number,
+            mobile_number=mobile_number,
+            notify_email_enabled=True,
+            notify_sms_enabled=False,
             municipality_id=municipality_id,
             barangay_id=barangay_id,
             role='resident'
@@ -296,6 +319,10 @@ def login():
         # Check if account is active
         if not user.is_active:
             return jsonify({'error': 'Account is deactivated'}), 403
+
+        # Super admins must use the dedicated 2FA flow
+        if user.role == 'superadmin':
+            return jsonify({'error': 'Super admin login requires 2FA. Please use the super admin login flow.', 'code': 'SUPERADMIN_LOGIN_REQUIRED'}), 403
         
         # Update last login
         user.last_login = datetime.utcnow()
@@ -701,15 +728,34 @@ def admin_register():
         first_name = validate_name(data['first_name'], 'first_name')
         middle_name = validate_name(data.get('middle_name'), 'middle_name') if data.get('middle_name') else None
         last_name = validate_name(data['last_name'], 'last_name')
+        mobile_number = validate_phone(data.get('mobile_number'), 'mobile_number')
 
         admin_municipality_id = data.get('admin_municipality_id')
         admin_municipality_slug = data.get('admin_municipality_slug')
+        admin_role = data.get('admin_role', 'municipal_admin')
+        admin_barangay_id = data.get('admin_barangay_id')
+
+        # Validate admin role
+        valid_admin_roles = ['municipal_admin', 'barangay_admin', 'provincial_admin', 'superadmin']
+        if admin_role not in valid_admin_roles:
+            return jsonify({'error': f'Invalid admin role. Must be one of: {", ".join(valid_admin_roles)}'}), 400
 
         if admin_municipality_slug and not admin_municipality_id:
             mun = Municipality.query.filter_by(slug=admin_municipality_slug).first()
             if not mun:
                 return jsonify({'error': 'Invalid municipality slug'}), 400
             admin_municipality_id = mun.id
+
+        # Validate barangay for barangay_admin
+        if admin_role == 'barangay_admin':
+            if not admin_barangay_id:
+                return jsonify({'error': 'Barangay ID is required for barangay_admin role'}), 400
+            barangay = Barangay.query.get(admin_barangay_id)
+            if not barangay:
+                return jsonify({'error': 'Invalid barangay ID'}), 400
+            # Ensure barangay belongs to the selected municipality
+            if admin_municipality_id and barangay.municipality_id != int(admin_municipality_id):
+                return jsonify({'error': 'Barangay does not belong to the selected municipality'}), 400
 
         # Check if user already exists
         if User.query.filter_by(username=username).first():
@@ -726,12 +772,23 @@ def admin_register():
             email=email,
             password_hash=password_hash,
             first_name=first_name,
+            middle_name=middle_name,
             last_name=last_name,
-            role='municipal_admin',
+            mobile_number=mobile_number,
+            role=admin_role,
             email_verified=True,
             admin_verified=True,
             admin_municipality_id=admin_municipality_id,
+            admin_barangay_id=int(admin_barangay_id) if admin_barangay_id else None,
         )
+
+        # Assign default permissions based on role
+        if admin_role == 'superadmin':
+            user.permissions = ['*']  # Wildcard - all permissions
+        elif admin_role in ('municipal_admin', 'provincial_admin', 'barangay_admin'):
+            user.permissions = ['residents:approve', 'residents:id_view']
+        else:
+            user.permissions = []  # No permissions for unknown roles
 
         db.session.add(user)
         db.session.flush()
@@ -760,6 +817,16 @@ def admin_register():
             user.valid_id_back = save_verification_document(id_back, user.id, municipality_slug, 'valid_id_back', user_type='admins')
 
         db.session.commit()
+
+        # Send welcome email with terms and privacy policy PDF
+        admin_full_name = f"{first_name} {last_name}"
+        try:
+            from apps.api.utils.email_sender import send_admin_welcome_email
+            send_admin_welcome_email(email, admin_full_name, admin_role)
+            current_app.logger.info(f"Admin welcome email sent to {email}")
+        except Exception as email_error:
+            # Log the error but don't fail registration
+            current_app.logger.warning(f"Failed to send admin welcome email to {email}: {email_error}")
 
         return jsonify({
             'message': 'Admin account created successfully',
@@ -914,8 +981,17 @@ def get_profile():
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
+
+        profile_data = user.to_dict(include_sensitive=True, include_municipality=True)
+        try:
+            profile_data['sms_provider_status'] = get_provider_status()
+        except Exception:
+            profile_data['sms_provider_status'] = {
+                'provider': current_app.config.get('SMS_PROVIDER', 'disabled'),
+                'available': False,
+            }
         
-        return jsonify(user.to_dict(include_sensitive=True, include_municipality=True)), 200
+        return jsonify(profile_data), 200
     
     except Exception as e:
         return jsonify({'error': 'Failed to get profile', 'details': str(e)}), 500
@@ -933,6 +1009,11 @@ def update_profile():
             return jsonify({'error': 'User not found'}), 404
         
         data = request.get_json()
+
+        def _to_bool(value):
+            if isinstance(value, bool):
+                return value
+            return str(value).lower() in ('1', 'true', 'yes', 'on')
         
         # Update allowed fields
         if 'first_name' in data:
@@ -949,13 +1030,26 @@ def update_profile():
         
         if 'phone_number' in data:
             user.phone_number = validate_phone(data['phone_number'])
+
+        if 'mobile_number' in data:
+            mobile_raw = data.get('mobile_number')
+            mobile_value = validate_phone(mobile_raw, 'mobile_number') if mobile_raw else None
+            user.mobile_number = mobile_value
+            if not mobile_value:
+                user.notify_sms_enabled = False
+
+        if 'notify_email_enabled' in data:
+            user.notify_email_enabled = _to_bool(data.get('notify_email_enabled'))
+
+        if 'notify_sms_enabled' in data:
+            desired_sms = _to_bool(data.get('notify_sms_enabled'))
+            if desired_sms and not user.mobile_number:
+                return jsonify({'error': 'Add a mobile number before enabling SMS notifications'}), 400
+            user.notify_sms_enabled = desired_sms
         
         # Location updates
         if 'barangay_id' in data:
-            try:
-                from apps.api.models.municipality import Barangay
-            except ImportError:
-                from models.municipality import Barangay
+            # Barangay is now imported at module level
             bid = data.get('barangay_id')
             try:
                 bid_int = int(bid) if bid is not None else None
@@ -1197,6 +1291,13 @@ def request_transfer():
             return jsonify({'error': 'Your current municipality is not set'}), 400
         if int(user.municipality_id) == to_municipality_id:
             return jsonify({'error': 'You are already in this municipality'}), 400
+        
+        # ZAMBALES SCOPE: Only allow transfers within Zambales (excluding Olongapo)
+        if not is_valid_zambales_municipality(to_municipality_id):
+            return jsonify({'error': 'Transfers are only available to Zambales municipalities'}), 400
+        if not is_valid_zambales_municipality(user.municipality_id):
+            return jsonify({'error': 'Your current municipality is not available in this system'}), 400
+        
         # Validate both current and target municipalities exist
         if not Municipality.query.get(user.municipality_id):
             return jsonify({'error': 'Your current municipality record no longer exists'}), 400
@@ -1205,7 +1306,7 @@ def request_transfer():
             return jsonify({'error': 'Target municipality not found'}), 404
         # Validate barangay belongs to target municipality if provided
         if to_barangay_id:
-            from apps.api.models.municipality import Barangay
+            # Barangay is now imported at module level
             barangay = Barangay.query.get(to_barangay_id)
             if not barangay:
                 return jsonify({'error': 'Target barangay not found'}), 404
@@ -1267,3 +1368,247 @@ def request_transfer():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to submit transfer', 'details': str(e)}), 500
+
+
+# =============================================================================
+# SUPER ADMIN AUTHENTICATION (2FA)
+# =============================================================================
+
+@auth_bp.route('/superadmin/login', methods=['POST'])
+@_limit("5 per 15 minutes")  # Strict rate limiting for super admin
+def superadmin_login():
+    """
+    Step 1 of super admin login: Verify email and password, then send 2FA code.
+
+    Request body:
+        - email: Super admin email
+        - password: Super admin password
+
+    Returns:
+        - session_id: Temporary session for 2FA verification
+        - message: Success message
+    """
+    try:
+        from apps.api.models.email_verification_code import EmailVerificationCode
+        from apps.api.utils.email_2fa import send_2fa_code
+        from apps.api.utils.admin_audit import log_superadmin_login_attempt
+    except ImportError:
+        from models.email_verification_code import EmailVerificationCode
+        from utils.email_2fa import send_2fa_code
+        from utils.admin_audit import log_superadmin_login_attempt
+
+    try:
+        data = request.get_json()
+        email = (data.get('email') or '').strip().lower()
+        password = data.get('password') or ''
+
+        if not email or not password:
+            return jsonify({'error': 'Email and password are required'}), 400
+
+        # Find user by email
+        user = User.query.filter_by(email=email).first()
+
+        if not user:
+            log_superadmin_login_attempt(email, success=False, error_reason='User not found')
+            return jsonify({'error': 'Invalid email or password'}), 401
+
+        # Check if user is a super admin
+        if user.role != 'superadmin':
+            log_superadmin_login_attempt(email, success=False, error_reason='Not a super admin')
+            return jsonify({'error': 'This account is not authorized for super admin access'}), 403
+
+        # Verify password
+        if not verify_password(password, user.password_hash):
+            log_superadmin_login_attempt(email, success=False, error_reason='Invalid password')
+            return jsonify({'error': 'Invalid email or password'}), 401
+
+        # Check if account is active
+        if not user.is_active:
+            log_superadmin_login_attempt(email, success=False, error_reason='Account disabled')
+            return jsonify({'error': 'Account is disabled'}), 403
+
+        # Create 2FA verification code
+        verification = EmailVerificationCode.create_for_user(
+            user_id=user.id,
+            purpose='2fa_login',
+            expiry_minutes=10
+        )
+
+        # Get IP address for email
+        ip_address = request.headers.get('X-Forwarded-For', '').split(',')[0].strip()
+        if not ip_address:
+            ip_address = request.headers.get('X-Real-IP') or request.remote_addr
+
+        # Send 2FA code via email
+        try:
+            send_2fa_code(email, verification.code, ip_address)
+        except Exception as e:
+            current_app.logger.error(f"Failed to send 2FA email: {e}")
+            return jsonify({'error': 'Failed to send verification code. Please try again.'}), 500
+
+        current_app.logger.info(f"Super admin 2FA code sent to {email}")
+
+        return jsonify({
+            'message': 'Verification code sent to your email',
+            'session_id': verification.session_id,
+            'expires_in': 600  # 10 minutes in seconds
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Super admin login error: {e}")
+        return jsonify({'error': 'Login failed. Please try again.'}), 500
+
+
+@auth_bp.route('/superadmin/verify-2fa', methods=['POST'])
+@_limit("10 per 15 minutes")  # Allow some retries for mistyped codes
+def superadmin_verify_2fa():
+    """
+    Step 2 of super admin login: Verify 2FA code and issue tokens.
+
+    Request body:
+        - session_id: The session ID from step 1
+        - code: The 6-digit verification code
+
+    Returns:
+        - access_token: JWT access token
+        - refresh_token: JWT refresh token
+        - user: User data
+    """
+    try:
+        from apps.api.models.email_verification_code import EmailVerificationCode
+        from apps.api.utils.admin_audit import log_superadmin_login_attempt, log_superadmin_2fa_failed
+    except ImportError:
+        from models.email_verification_code import EmailVerificationCode
+        from utils.admin_audit import log_superadmin_login_attempt, log_superadmin_2fa_failed
+
+    try:
+        data = request.get_json()
+        session_id = (data.get('session_id') or '').strip()
+        code = (data.get('code') or '').strip()
+
+        if not session_id or not code:
+            return jsonify({'error': 'Session ID and code are required'}), 400
+
+        # Verify the code
+        success, error_message, verification = EmailVerificationCode.verify(
+            session_id=session_id,
+            code=code,
+            purpose='2fa_login',
+            max_attempts=3
+        )
+
+        if not success:
+            # Log failed 2FA attempt
+            if verification:
+                user = User.query.get(verification.user_id)
+                if user:
+                    log_superadmin_2fa_failed(user.email, error_message)
+            return jsonify({'error': error_message}), 401
+
+        # Get the user
+        user = User.query.get(verification.user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Double-check super admin role
+        if user.role != 'superadmin':
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        # Update last login
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+
+        # Log successful login
+        log_superadmin_login_attempt(user.email, success=True)
+
+        # Generate tokens
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)
+
+        # Build response
+        response = jsonify({
+            'message': 'Login successful',
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'user': user.to_dict(include_sensitive=True, include_municipality=True)
+        })
+
+        # Set refresh token as httpOnly cookie
+        set_refresh_cookies(response, refresh_token)
+
+        return response, 200
+
+    except Exception as e:
+        current_app.logger.error(f"Super admin 2FA verification error: {e}")
+        return jsonify({'error': 'Verification failed. Please try again.'}), 500
+
+
+@auth_bp.route('/superadmin/resend-code', methods=['POST'])
+@_limit("3 per hour")  # Strict limit on resending codes
+def superadmin_resend_code():
+    """
+    Resend 2FA verification code for super admin login.
+
+    Request body:
+        - session_id: The original session ID
+
+    Returns:
+        - session_id: New session ID (invalidates old one)
+        - message: Success message
+    """
+    try:
+        from apps.api.models.email_verification_code import EmailVerificationCode
+        from apps.api.utils.email_2fa import send_2fa_code
+    except ImportError:
+        from models.email_verification_code import EmailVerificationCode
+        from utils.email_2fa import send_2fa_code
+
+    try:
+        data = request.get_json()
+        old_session_id = (data.get('session_id') or '').strip()
+
+        if not old_session_id:
+            return jsonify({'error': 'Session ID is required'}), 400
+
+        # Find the old verification code
+        old_verification = EmailVerificationCode.query.filter_by(
+            session_id=old_session_id,
+            purpose='2fa_login'
+        ).first()
+
+        if not old_verification:
+            return jsonify({'error': 'Invalid session'}), 400
+
+        # Get the user
+        user = User.query.get(old_verification.user_id)
+        if not user or user.role != 'superadmin':
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        # Create new verification code (this invalidates the old one)
+        verification = EmailVerificationCode.create_for_user(
+            user_id=user.id,
+            purpose='2fa_login',
+            expiry_minutes=10
+        )
+
+        # Get IP address
+        ip_address = request.headers.get('X-Forwarded-For', '').split(',')[0].strip()
+        if not ip_address:
+            ip_address = request.headers.get('X-Real-IP') or request.remote_addr
+
+        # Send new code
+        try:
+            send_2fa_code(user.email, verification.code, ip_address)
+        except Exception as e:
+            current_app.logger.error(f"Failed to resend 2FA email: {e}")
+            return jsonify({'error': 'Failed to send verification code'}), 500
+
+        return jsonify({
+            'message': 'New verification code sent',
+            'session_id': verification.session_id,
+            'expires_in': 600
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Resend 2FA code error: {e}")
+        return jsonify({'error': 'Failed to resend code'}), 500

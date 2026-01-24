@@ -1,5 +1,5 @@
 """
-MunLink Region 3 - Configuration
+MunLink Zambales - Configuration
 Application configuration management
 """
 import os
@@ -58,7 +58,13 @@ def get_database_url():
     - Handles URL scheme conversion (postgres:// -> postgresql://)
     - Adds connection parameters for better reliability
     """
-    url = os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR}/munlink_region3.db')
+    url = os.getenv('DATABASE_URL')
+
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is required. "
+            "Please set it in your .env file with your Supabase connection string."
+        )
     
     # Handle Heroku/Render style postgres:// URLs (SQLAlchemy requires postgresql://)
     if url.startswith('postgres://'):
@@ -212,7 +218,13 @@ class Config:
     ALLOWED_EXTENSIONS = set(
         os.getenv('ALLOWED_EXTENSIONS', 'pdf,jpg,jpeg,png,doc,docx').split(',')
     )
-    
+    # Allowed file domains for secure document serving (prevents open redirect)
+    ALLOWED_FILE_DOMAINS = [
+        domain.strip()
+        for domain in os.getenv('ALLOWED_FILE_DOMAINS', '').split(',')
+        if domain.strip()
+    ]
+
     # Email Configuration
     # SendGrid API (for production on Render where SMTP is blocked)
     SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
@@ -223,6 +235,13 @@ class Config:
     SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
     # Sender email address (used by both SendGrid and SMTP)
     FROM_EMAIL = os.getenv('FROM_EMAIL', '')
+
+    # SMS / Notifications
+    SMS_PROVIDER = os.getenv('SMS_PROVIDER', 'disabled')  # semaphore | console | disabled
+    SEMAPHORE_API_KEY = os.getenv('SEMAPHORE_API_KEY', '')
+    SEMAPHORE_SENDERNAME = os.getenv('SEMAPHORE_SENDERNAME', '')
+    SEMAPHORE_BASE_URL = os.getenv('SEMAPHORE_BASE_URL', 'https://api.semaphore.co')
+    SMS_CAPABILITY_CACHE_SECONDS = int(os.getenv('SMS_CAPABILITY_CACHE_SECONDS', 90))
     
     # QR Codes
     # Default to WEB_URL + /verify, or use QR_BASE_URL if set
@@ -230,7 +249,8 @@ class Config:
     QR_EXPIRY_DAYS = int(os.getenv('QR_EXPIRY_DAYS', 30))
     
     # Application
-    APP_NAME = os.getenv('APP_NAME', 'MunLink Region III')
+    # Default name aligns with Zambales-only scope; override via APP_NAME env if needed
+    APP_NAME = os.getenv('APP_NAME', 'MunLink Zambales')
     
     # Frontend URLs (for CORS and QR codes)
     # Note: WEB_URL is used for email verification links and QR codes

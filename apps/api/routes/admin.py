@@ -1,16 +1,18 @@
 """
-MunLink Region III - Admin Routes
+MunLink Zambales - Admin Routes
 Admin-specific operations with municipality scoping
+
+SCOPE: Zambales province only, excluding Olongapo City.
 """
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, case
 from datetime import datetime, timedelta
 import os
 import jwt
 from apps.api import db
 from apps.api.models.user import User
-from apps.api.models.municipality import Municipality
+from apps.api.models.municipality import Municipality, Barangay
 from apps.api.models.issue import Issue, IssueCategory
 from apps.api.models.marketplace import Item as MarketplaceItem
 from apps.api.models.marketplace import Transaction as MarketplaceTransaction
@@ -22,9 +24,14 @@ from apps.api.models.announcement import Announcement
 from apps.api.models.transfer import TransferRequest
 from apps.api.utils.storage_handler import save_announcement_image, save_verification_document
 from apps.api.utils.validators import ValidationError
-from apps.api.utils.email_sender import send_user_status_email, send_document_request_status_email
+from apps.api.utils.email_sender import send_user_status_email
 from apps.api.models.audit import AuditLog
 from apps.api.utils.audit import log_action as log_generic_action
+from apps.api.utils.admin_audit import (
+    log_resident_verified,
+    log_resident_rejected,
+)
+from apps.api.utils.notifications import queue_document_status_change, queue_announcement_notifications
 from apps.api.utils.qr_utils import (
     generate_pickup_code,
     hash_code,
@@ -35,8 +42,17 @@ from apps.api.utils.qr_utils import (
     encrypt_code,
     get_municipality_slug,
 )
+from apps.api.utils.zambales_scope import (
+    ZAMBALES_MUNICIPALITY_IDS,
+    is_valid_zambales_municipality,
+    validate_municipality_in_zambales,
+    validate_shared_municipalities,
+)
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
+ADMIN_ROLES = ('superadmin', 'provincial_admin', 'municipal_admin', 'barangay_admin')
+ANNOUNCEMENT_SCOPES = {'PROVINCE', 'MUNICIPALITY', 'BARANGAY'}
+ANNOUNCEMENT_STATUSES = {'DRAFT', 'PUBLISHED', 'ARCHIVED'}
 
 @admin_bp.before_request
 def enforce_admin_role():
@@ -57,7 +73,7 @@ def enforce_admin_role():
         verify_jwt_in_request()
         claims = get_jwt() or {}
         role = claims.get('role')
-        if role not in ('superadmin', 'municipal_admin'):
+        if role not in ADMIN_ROLES:
             current_app.logger.warning(f"Admin access denied: role={role}")
             return jsonify({'error': 'Forbidden', 'code': 'ROLE_MISMATCH'}), 403
     except NoAuthorizationError:
@@ -80,7 +96,11 @@ def enforce_admin_role():
         return jsonify({'error': 'Authentication failed', 'code': 'AUTH_ERROR'}), 401
 
 def get_admin_municipality_id():
-    """Get the municipality ID for the current admin user."""
+    """Get the municipality ID for the current admin user.
+    
+    ZAMBALES SCOPE: Returns None if admin's municipality is outside Zambales
+    or is Olongapo (excluded).
+    """
     # get_jwt_identity returns whatever was used as identity when creating
     # the token. We cast to int for DB lookup.
     identity = get_jwt_identity()
@@ -92,13 +112,19 @@ def get_admin_municipality_id():
     print(f"DEBUG: JWT identity: {user_id}")  # Debug line
     user = User.query.get(user_id)
     print(f"DEBUG: User found: {user.username if user else 'None'}, Role: {user.role if user else 'None'}")  # Debug line
-    
-    if not user or user.role not in ['superadmin', 'municipal_admin']:
+
+    if not user or user.role not in ADMIN_ROLES:
         print(f"DEBUG: User validation failed - user: {user}, role: {user.role if user else 'None'}")  # Debug line
         return None
-    
-    print(f"DEBUG: Admin municipality ID: {user.admin_municipality_id}")  # Debug line
-    return user.admin_municipality_id
+
+    admin_muni_id = user.admin_municipality_id
+    print(f"DEBUG: Admin municipality ID: {admin_muni_id}")  # Debug line
+
+    # ZAMBALES SCOPE: Validate admin's municipality is in Zambales (excluding Olongapo)
+    if admin_muni_id and not is_valid_zambales_municipality(admin_muni_id):
+        print(f"DEBUG: Admin municipality {admin_muni_id} is outside Zambales scope")
+        return None
+    return admin_muni_id
 
 def require_admin_municipality():
     """Decorator to ensure admin has municipality scope."""
@@ -106,6 +132,158 @@ def require_admin_municipality():
     if not municipality_id:
         return jsonify({'error': 'Admin access required'}), 403
     return municipality_id
+
+
+def _get_staff_context():
+    """Return the current admin user and scoped identifiers."""
+    try:
+        user_id = int(get_jwt_identity())
+    except Exception:
+        return None
+    user = User.query.get(user_id)
+    if not user:
+        return None
+    role_lower = (user.role or '').lower()
+    ctx = {
+        'user': user,
+        'role': user.role,
+        'role_lower': role_lower,
+        'is_super': role_lower == 'superadmin',
+        'is_provincial': role_lower == 'provincial_admin',
+        'municipality_id': user.admin_municipality_id if user.admin_municipality_id and is_valid_zambales_municipality(user.admin_municipality_id) else None,
+        'barangay_id': user.admin_barangay_id,
+    }
+    if ctx['barangay_id']:
+        brgy = Barangay.query.get(ctx['barangay_id'])
+        if not brgy or not is_valid_zambales_municipality(brgy.municipality_id):
+            ctx['barangay_id'] = None
+        elif ctx['municipality_id'] and brgy.municipality_id != ctx['municipality_id']:
+            ctx['barangay_id'] = None
+    return ctx
+
+
+def _parse_datetime(value, field_name):
+    if value in (None, '', False):
+        return None
+    if isinstance(value, datetime):
+        return value
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        raise ValidationError(f'Invalid {field_name} datetime format')
+
+
+def _normalize_scope(scope_value: str) -> str:
+    scope = (scope_value or 'MUNICIPALITY').upper()
+    if scope not in ANNOUNCEMENT_SCOPES:
+        raise ValidationError('Invalid scope for announcement')
+    return scope
+
+
+def _normalize_status(status_value: str = None, is_active_value: bool = None) -> str:
+    if status_value:
+        status = status_value.upper()
+    elif is_active_value is not None:
+        status = 'PUBLISHED' if is_active_value else 'DRAFT'
+    else:
+        status = 'PUBLISHED'
+    if status not in ANNOUNCEMENT_STATUSES:
+        raise ValidationError('Invalid status for announcement')
+    return status
+
+
+def _validate_target_location(scope: str, municipality_id: int = None, barangay_id: int = None):
+    """Normalize and validate target location within Zambales."""
+    if scope == 'PROVINCE':
+        return None, None
+    if scope == 'MUNICIPALITY':
+        if not municipality_id:
+            raise ValidationError('municipality_id is required for municipality-scoped announcements')
+        validate_municipality_in_zambales(municipality_id)
+        return municipality_id, None
+    if scope == 'BARANGAY':
+        if not barangay_id:
+            raise ValidationError('barangay_id is required for barangay-scoped announcements')
+        brgy = Barangay.query.get(barangay_id)
+        if not brgy or not is_valid_zambales_municipality(brgy.municipality_id):
+            raise ValidationError('Barangay must be within Zambales')
+        if municipality_id and municipality_id != brgy.municipality_id:
+            raise ValidationError('Barangay must belong to the specified municipality')
+        return brgy.municipality_id, brgy.id
+    raise ValidationError('Invalid scope for announcement')
+
+
+def _enforce_scope_permission(ctx, scope: str, municipality_id: int, barangay_id: int):
+    """Return (allowed: bool, response_if_denied)."""
+    if not ctx:
+        return False, (jsonify({'error': 'Admin access required'}), 403)
+
+    # Superadmin can create any type of announcement
+    if ctx['is_super']:
+        return True, None
+
+    # Provincial admin can create province-wide announcements only
+    if ctx['is_provincial']:
+        if scope != 'PROVINCE':
+            return False, (jsonify({'error': 'Provincial admins can only create province-wide announcements'}), 403)
+        return True, None
+
+    # Non-provincial admins cannot create province-wide announcements
+    if scope == 'PROVINCE':
+        return False, (jsonify({'error': 'Only provincial admins can create province-wide announcements'}), 403)
+
+    # Municipal admin can create municipality announcements only
+    if ctx['role_lower'] == 'municipal_admin':
+        if not ctx['municipality_id']:
+            return False, (jsonify({'error': 'Admin municipality scope is required'}), 403)
+        if municipality_id != ctx['municipality_id']:
+            return False, (jsonify({'error': 'Announcement not in your municipality'}), 403)
+        if scope != 'MUNICIPALITY':
+            return False, (jsonify({'error': 'Municipal admins can only post municipality announcements'}), 403)
+        return True, None
+
+    # Barangay admin can create barangay announcements only
+    if ctx['role_lower'] == 'barangay_admin':
+        if not ctx['barangay_id']:
+            return False, (jsonify({'error': 'Barangay assignment is required for this action'}), 403)
+        if scope != 'BARANGAY' or barangay_id != ctx['barangay_id']:
+            return False, (jsonify({'error': 'Barangay admins can only post to their assigned barangay'}), 403)
+        return True, None
+
+    return False, (jsonify({'error': 'Forbidden'}), 403)
+
+
+def _announcement_query_for_staff(ctx):
+    """Base query filtered to Zambales scope and staff permissions."""
+    base_filters = [or_(Announcement.scope == 'PROVINCE', Announcement.municipality_id.in_(ZAMBALES_MUNICIPALITY_IDS))]
+    q = Announcement.query.filter(and_(*base_filters))
+
+    # Superadmin can see all announcements
+    if not ctx or ctx.get('is_super'):
+        return q
+
+    # Provincial admin can see province-wide announcements only
+    if ctx.get('is_provincial'):
+        return q.filter(Announcement.scope == 'PROVINCE')
+
+    # Municipal admin can see municipality and barangay announcements in their municipality
+    if ctx['role_lower'] == 'municipal_admin':
+        if not ctx['municipality_id']:
+            return Announcement.query.filter(Announcement.id == -1)
+        return q.filter(
+            or_(
+                and_(Announcement.scope == 'MUNICIPALITY', Announcement.municipality_id == ctx['municipality_id']),
+                and_(Announcement.scope == 'BARANGAY', Announcement.municipality_id == ctx['municipality_id']),
+            )
+        )
+
+    # Barangay admin can see barangay announcements in their barangay only
+    if ctx['role_lower'] == 'barangay_admin':
+        if not ctx['barangay_id']:
+            return Announcement.query.filter(Announcement.id == -1)
+        return q.filter(and_(Announcement.scope == 'BARANGAY', Announcement.barangay_id == ctx['barangay_id']))
+
+    return Announcement.query.filter(Announcement.id == -1)
 
 # User Verification Endpoints
 @admin_bp.route('/users/<int:user_id>', methods=['GET'])
@@ -143,16 +321,19 @@ def get_user_detail(user_id):
 @admin_bp.route('/users/pending', methods=['GET'])
 @jwt_required()
 def get_pending_users():
-    """Get unverified users for admin's municipality."""
+    """Get unverified users for admin's municipality.
+    
+    ZAMBALES SCOPE: Only returns users from Zambales municipalities (excluding Olongapo).
+    """
     try:
         municipality_id = get_admin_municipality_id()
-        # If admin has no municipality scope, treat as province-level admin and show all
-        base_filters = [
+        # ZAMBALES SCOPE: Always filter to Zambales municipalities only
+        filters = [
             User.role == 'resident',
             User.admin_verified == False,
             User.is_active == True,
+            User.municipality_id.in_(ZAMBALES_MUNICIPALITY_IDS),  # Zambales scope
         ]
-        filters = base_filters.copy()
         if municipality_id:
             filters.append(User.municipality_id == municipality_id)
 
@@ -162,16 +343,6 @@ def get_pending_users():
             .order_by(User.created_at.desc())
             .all()
         )
-
-        # Fallback: if scoped query returns none but dashboard shows pending,
-        # try without municipality scope to avoid mismatches in early setups.
-        if not pending_users and municipality_id:
-            pending_users = (
-                User.query
-                .filter(and_(*base_filters))
-                .order_by(User.created_at.desc())
-                .all()
-            )
 
         users_data = [u.to_dict(include_sensitive=True, include_municipality=True) for u in pending_users]
         return jsonify({'users': users_data, 'count': len(users_data)}), 200
@@ -187,6 +358,11 @@ def verify_user(user_id):
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):  # Error response
             return municipality_id
+
+        current_admin = User.query.get(get_jwt_identity())
+        if current_admin and current_admin.permissions:
+            if 'residents:approve' not in current_admin.permissions and '*' not in current_admin.permissions:
+                return jsonify({'error': 'Permission denied: residents:approve required', 'code': 'PERMISSION_DENIED'}), 403
         
         user = User.query.get(user_id)
         if not user:
@@ -211,6 +387,18 @@ def verify_user(user_id):
                 send_user_status_email(user.email, approved=True)
         except Exception:
             pass
+
+        # Audit log (best-effort)
+        try:
+            log_resident_verified(
+                admin_id=current_admin.id if current_admin else None,
+                resident_id=user.id,
+                resident_name=f"{user.first_name} {user.last_name}",
+                municipality_id=user.municipality_id,
+                barangay_id=user.barangay_id,
+            )
+        except Exception:
+            pass
         
         return jsonify({
             'message': 'User verified successfully',
@@ -230,8 +418,15 @@ def reject_user(user_id):
         if isinstance(municipality_id, tuple):  # Error response
             return municipality_id
         
+        current_admin = User.query.get(get_jwt_identity())
+        if current_admin and current_admin.permissions:
+            if 'residents:approve' not in current_admin.permissions and '*' not in current_admin.permissions:
+                return jsonify({'error': 'Permission denied: residents:approve required', 'code': 'PERMISSION_DENIED'}), 403
+        
         data = request.get_json(silent=True) or {}
-        reason = data.get('reason', 'Verification rejected')
+        reason = (data.get('reason') or '').strip()
+        if not reason:
+            return jsonify({'error': 'Reason is required to reject a user'}), 400
         
         user = User.query.get(user_id)
         if not user:
@@ -253,6 +448,17 @@ def reject_user(user_id):
         try:
             if user.email:
                 send_user_status_email(user.email, approved=False, reason=reason)
+        except Exception:
+            pass
+
+        # Audit log (best-effort)
+        try:
+            log_resident_rejected(
+                admin_id=current_admin.id if current_admin else None,
+                resident_id=user.id,
+                resident_name=f"{user.first_name} {user.last_name}",
+                reason=reason
+            )
         except Exception:
             pass
         
@@ -344,6 +550,137 @@ def admin_upload_user_verification_docs(user_id: int):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to upload verification documents', 'details': str(e)}), 500
+
+
+@admin_bp.route('/residents/<int:user_id>/documents/<string:doc_type>', methods=['GET'])
+@jwt_required()
+def get_resident_document(user_id, doc_type):
+    """
+    Securely serve resident verification documents.
+
+    Requires:
+    - Admin authentication
+    - residents:id_view permission
+    - Municipality scope match
+    - Audit logging
+
+    Query params:
+    - reason (required): Why the admin is viewing this document
+    """
+    from flask import send_file
+    from apps.api.utils.auth import permission_required
+    from apps.api.utils.admin_audit import log_resident_id_viewed
+    from apps.api.models.municipality import Municipality
+    import os
+
+    # Check permission first
+    user_id_jwt = get_jwt_identity()
+    current_user = User.query.get(user_id_jwt)
+
+    if not current_user:
+        return jsonify({'error': 'User not found'}), 404
+
+    if not current_user.has_permission('residents:id_view'):
+        return jsonify({
+            'error': 'Permission denied: residents:id_view required',
+            'code': 'PERMISSION_DENIED'
+        }), 403
+
+    # Validate doc_type
+    valid_types = ['id_front', 'id_back', 'selfie']
+    if doc_type not in valid_types:
+        return jsonify({'error': f'Invalid document type. Must be one of: {valid_types}'}), 400
+
+    # Require reason
+    reason = request.args.get('reason', '').strip()
+    if not reason:
+        return jsonify({'error': 'Reason parameter required'}), 400
+
+    # Get admin context
+    admin_municipality_id = require_admin_municipality()
+    if isinstance(admin_municipality_id, tuple):  # Error response
+        return admin_municipality_id
+
+    # Get resident
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    if user.role != 'resident':
+        return jsonify({'error': 'User is not a resident'}), 400
+
+    # Validate municipality scope (unless superadmin)
+    if current_user.role != 'superadmin':
+        if user.municipality_id != admin_municipality_id:
+            return jsonify({'error': 'Access denied: user not in your municipality'}), 403
+
+    # Get file path
+    doc_field_map = {
+        'id_front': 'valid_id_front',
+        'id_back': 'valid_id_back',
+        'selfie': 'selfie_with_id'
+    }
+    file_path = getattr(user, doc_field_map[doc_type], None)
+
+    if not file_path:
+        return jsonify({'error': f'No {doc_type} document found for this user'}), 404
+
+    # Log access to audit trail
+    municipality = Municipality.query.get(user.municipality_id)
+    log_resident_id_viewed(
+        admin_id=current_user.id,
+        admin_email=current_user.email,
+        resident_id=user.id,
+        resident_name=f"{user.first_name} {user.last_name}",
+        document_type=doc_type,
+        reason=reason,
+        municipality_id=user.municipality_id,
+        municipality_name=municipality.name if municipality else 'Unknown',
+        req=request
+    )
+
+    # Serve file
+    # If Supabase URL, redirect to it
+    if file_path.startswith(('http://', 'https://')):
+        from flask import redirect
+        from urllib.parse import urlparse
+
+        # Validate URL domain against allowed storage providers
+        parsed = urlparse(file_path)
+        allowed_domains = current_app.config.get('ALLOWED_FILE_DOMAINS', [])
+
+        if allowed_domains and parsed.netloc not in allowed_domains:
+            current_app.logger.warning(f"Blocked redirect to untrusted domain: {parsed.netloc}")
+            return jsonify({'error': 'Invalid file URL'}), 403
+
+        return redirect(file_path)
+
+    # If local file, serve it
+    upload_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+    upload_dir_abs = os.path.abspath(upload_dir)
+    full_path = os.path.abspath(os.path.join(upload_dir, file_path))
+
+    # Validate path is within upload directory (prevent path traversal)
+    if not full_path.startswith(upload_dir_abs + os.sep):
+        current_app.logger.warning(f"Path traversal attempt detected: {file_path}")
+        return jsonify({'error': 'Invalid file path'}), 403
+
+    if not os.path.exists(full_path):
+        return jsonify({'error': 'File not found on server'}), 404
+
+    # Determine MIME type
+    mime_types = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp'
+    }
+    ext = file_path.split('.')[-1].lower()
+    mime_type = mime_types.get(ext, 'application/octet-stream')
+
+    return send_file(full_path, mimetype=mime_type)
+
 
 @admin_bp.route('/users/verified', methods=['GET'])
 @jwt_required()
@@ -818,8 +1155,10 @@ def reject_marketplace_item(item_id):
         if isinstance(municipality_id, tuple):  # Error response
             return municipality_id
         
-        data = request.get_json()
-        reason = data.get('reason', 'Item rejected by admin')
+        data = request.get_json() or {}
+        reason = (data.get('reason') or '').strip()
+        if not reason:
+            return jsonify({'error': 'Reason is required to reject a marketplace item'}), 400
         
         item = MarketplaceItem.query.get(item_id)
         if not item:
@@ -903,33 +1242,41 @@ def get_marketplace_stats():
 def get_announcements():
     """Get all announcements for municipality."""
     try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):  # Error response
-            return municipality_id
-        
-        # Check if Announcement model exists
-        try:
-            announcements = Announcement.query.filter(
-                Announcement.municipality_id == municipality_id
-            ).order_by(Announcement.created_at.desc()).all()
-            
-            announcements_data = []
-            for announcement in announcements:
-                announcement_data = announcement.to_dict()
-                announcements_data.append(announcement_data)
-            
-            return jsonify({
-                'announcements': announcements_data,
-                'count': len(announcements_data)
-            }), 200
-        except Exception as model_error:
-            # If model doesn't exist or table doesn't exist, return empty list
-            return jsonify({
-                'announcements': [],
-                'count': 0,
-                'message': 'No announcements available yet'
-            }), 200
-        
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+
+        now = datetime.utcnow()
+        status_param = request.args.get('status')
+        scope_param = request.args.get('scope')
+
+        query = _announcement_query_for_staff(ctx)
+        if scope_param:
+            scope = _normalize_scope(scope_param)
+            query = query.filter(Announcement.scope == scope)
+        if status_param:
+            status = _normalize_status(status_param)
+            query = query.filter(Announcement.status == status)
+
+        pinned_active = and_(
+            Announcement.pinned == True,
+            or_(Announcement.pinned_until == None, Announcement.pinned_until > now)
+        )
+        publish_order = func.coalesce(Announcement.publish_at, Announcement.created_at)
+
+        announcements = query.order_by(
+            case((pinned_active, 0), else_=1),
+            publish_order.desc(),
+            Announcement.created_at.desc(),
+        ).all()
+
+        announcements_data = [a.to_dict() for a in announcements]
+
+        return jsonify({
+            'announcements': announcements_data,
+            'count': len(announcements_data)
+        }), 200
+
     except Exception as e:
         return jsonify({'error': 'Failed to get announcements', 'details': str(e)}), 500
 
@@ -938,50 +1285,126 @@ def get_announcements():
 def create_announcement():
     """Create new announcement."""
     try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):  # Error response
-            return municipality_id
-        
-        data = request.get_json()
-        title = data.get('title')
-        content = data.get('content')
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+
+        # Handle both JSON and FormData (for image uploads)
+        is_multipart = request.content_type and 'multipart/form-data' in request.content_type
+        if is_multipart:
+            data = request.form.to_dict()
+            # Convert string booleans to actual booleans for FormData
+            if 'pinned' in data:
+                data['pinned'] = data['pinned'].lower() in ('true', '1', 'yes')
+        else:
+            data = request.get_json() or {}
+
+        title = (data.get('title') or '').strip()
+        content = (data.get('content') or '').strip()
         priority = data.get('priority', 'medium')
         external_url = data.get('external_url')
-        
+        scope = _normalize_scope(data.get('scope'))
+        municipality_id = data.get('municipality_id')
+        barangay_id = data.get('barangay_id')
+        status = _normalize_status(data.get('status'), data.get('is_active'))
+        publish_at = _parse_datetime(data.get('publish_at'), 'publish_at')
+        expire_at = _parse_datetime(data.get('expire_at'), 'expire_at')
+        pinned = bool(data.get('pinned', False))
+        pinned_until = _parse_datetime(data.get('pinned_until'), 'pinned_until')
+        shared_with_municipalities = data.get('shared_with_municipalities', [])
+
         if not title or not content:
             return jsonify({'error': 'Title and content are required'}), 400
-        
+
         if priority not in ['high', 'medium', 'low']:
             return jsonify({'error': 'Invalid priority level'}), 400
-        
-        # Create announcement (set external_url only if column exists)
+
+        # Validate shared municipalities (Zambales-only enforcement)
+        if shared_with_municipalities:
+            try:
+                validate_shared_municipalities(shared_with_municipalities, raise_error=True)
+            except ValueError as e:
+                return jsonify({'error': str(e)}), 400
+
+        if scope == 'MUNICIPALITY' and not municipality_id:
+            municipality_id = ctx.get('municipality_id')
+        if scope == 'BARANGAY':
+            if not barangay_id:
+                barangay_id = ctx.get('barangay_id')
+            if not municipality_id:
+                municipality_id = ctx.get('municipality_id')
+
+        municipality_id, barangay_id = _validate_target_location(scope, municipality_id, barangay_id)
+        allowed, denial = _enforce_scope_permission(ctx, scope, municipality_id, barangay_id)
+        if not allowed:
+            return denial
+
+        now = datetime.utcnow()
+        # Default publish_at for published announcements
+        if status == 'PUBLISHED' and not publish_at:
+            publish_at = now
+
+        is_active_flag = status == 'PUBLISHED'
+        if publish_at and publish_at > now:
+            is_active_flag = False
+        if expire_at and expire_at <= now:
+            is_active_flag = False
+
         announcement = Announcement(
             title=title,
             content=content,
+            scope=scope,
             municipality_id=municipality_id,
-            created_by=get_jwt_identity(),
+            barangay_id=barangay_id,
+            created_by=ctx['user'].id,
+            created_by_staff_id=ctx['user'].id,
             priority=priority,
-            is_active=True,
-            images=[]
+            images=[],
+            external_url=external_url,
+            pinned=pinned,
+            pinned_until=pinned_until,
+            status=status,
+            publish_at=publish_at,
+            expire_at=expire_at,
+            shared_with_municipalities=shared_with_municipalities if shared_with_municipalities else None,
+            is_active=is_active_flag,
         )
-        try:
-            from sqlalchemy import inspect as _sa_inspect
-            insp = _sa_inspect(db.engine)
-            cols = {c['name'] for c in insp.get_columns('announcements')}
-            if 'external_url' in cols and external_url is not None:
-                announcement.external_url = external_url
-        except Exception:
-            # Fail-safe: ignore if inspector fails (older SQLite schema)
-            pass
-        
+
         db.session.add(announcement)
+        db.session.flush()  # Flush to get announcement ID before handling images
+
+        # Handle image uploads if present (FormData only)
+        if is_multipart and 'images' in request.files:
+            image_files = request.files.getlist('images')
+            saved_images = []
+            for img_file in image_files:
+                if img_file and img_file.filename:
+                    try:
+                        img_path = save_announcement_image(img_file)
+                        saved_images.append(img_path)
+                    except Exception as img_err:
+                        current_app.logger.warning(f"Failed to save announcement image: {img_err}")
+            if saved_images:
+                announcement.images = saved_images
+
         db.session.commit()
-        
+
+        try:
+            if status == 'PUBLISHED':
+                queue_announcement_notifications(announcement)
+                db.session.commit()
+        except Exception as notify_exc:
+            db.session.rollback()
+            current_app.logger.warning("Failed to queue announcement notifications: %s", notify_exc)
+
         return jsonify({
             'message': 'Announcement created successfully',
             'announcement': announcement.to_dict()
         }), 201
-        
+
+    except ValidationError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to create announcement', 'details': str(e)}), 500
@@ -991,20 +1414,37 @@ def create_announcement():
 def update_announcement(announcement_id):
     """Update announcement."""
     try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):  # Error response
-            return municipality_id
-        
-        data = request.get_json(silent=True) or {}
-        
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+
+        # Handle both JSON and FormData (for image uploads)
+        is_multipart = request.content_type and 'multipart/form-data' in request.content_type
+        if is_multipart:
+            data = request.form.to_dict()
+            # Convert string booleans to actual booleans for FormData
+            if 'pinned' in data:
+                data['pinned'] = data['pinned'].lower() in ('true', '1', 'yes')
+        else:
+            data = request.get_json(silent=True) or {}
+
         announcement = Announcement.query.get(announcement_id)
         if not announcement:
             return jsonify({'error': 'Announcement not found'}), 404
-        
-        if announcement.municipality_id != municipality_id:
-            return jsonify({'error': 'Announcement not in your municipality'}), 403
-        
-        # Update fields
+
+        prev_status = (announcement.status or '').upper()
+        prev_publish_at = announcement.publish_at
+
+        scope = _normalize_scope(data.get('scope', announcement.scope))
+        municipality_id = data.get('municipality_id', announcement.municipality_id)
+        barangay_id = data.get('barangay_id', announcement.barangay_id)
+        municipality_id, barangay_id = _validate_target_location(scope, municipality_id, barangay_id)
+        allowed, denial = _enforce_scope_permission(ctx, scope, municipality_id, barangay_id)
+        if not allowed:
+            return denial
+
+        now = datetime.utcnow()
+
         if 'title' in data:
             announcement.title = data['title']
         if 'content' in data:
@@ -1014,29 +1454,85 @@ def update_announcement(announcement_id):
                 announcement.priority = data['priority']
             else:
                 return jsonify({'error': 'Invalid priority level'}), 400
-        if 'is_active' in data:
-            announcement.is_active = data['is_active']
         if 'external_url' in data:
-            try:
-                from sqlalchemy import inspect as _sa_inspect
-                insp = _sa_inspect(db.engine)
-                cols = {c['name'] for c in insp.get_columns('announcements')}
-                if 'external_url' in cols:
-                    announcement.external_url = data['external_url']
-            except Exception:
-                # Ignore when column isn't present yet
-                pass
+            announcement.external_url = data['external_url']
         if 'images' in data and isinstance(data['images'], list):
             announcement.images = data['images']
-        
+        if 'pinned' in data:
+            announcement.pinned = bool(data['pinned'])
+        if 'pinned_until' in data:
+            announcement.pinned_until = _parse_datetime(data.get('pinned_until'), 'pinned_until')
+        if 'shared_with_municipalities' in data:
+            shared_with_municipalities = data.get('shared_with_municipalities', [])
+            # Validate shared municipalities (Zambales-only enforcement)
+            try:
+                validate_shared_municipalities(shared_with_municipalities, raise_error=True)
+                announcement.shared_with_municipalities = shared_with_municipalities if shared_with_municipalities else None
+            except ValueError as e:
+                return jsonify({'error': str(e)}), 400
+
+        publish_at = announcement.publish_at
+        expire_at = announcement.expire_at
+        if 'publish_at' in data:
+            publish_at = _parse_datetime(data.get('publish_at'), 'publish_at')
+        if 'expire_at' in data:
+            expire_at = _parse_datetime(data.get('expire_at'), 'expire_at')
+
+        status = _normalize_status(data.get('status', announcement.status), data.get('is_active') if 'is_active' in data else None)
+        if status == 'PUBLISHED' and not publish_at:
+            publish_at = now
+        is_active_flag = status == 'PUBLISHED'
+        if publish_at and publish_at > now:
+            is_active_flag = False
+        if expire_at and expire_at <= now:
+            is_active_flag = False
+
+        announcement.scope = scope
+        announcement.municipality_id = municipality_id
+        announcement.barangay_id = barangay_id
+        announcement.status = status
+        announcement.publish_at = publish_at
+        announcement.expire_at = expire_at
+        announcement.is_active = is_active_flag
+        announcement.created_by_staff_id = announcement.created_by_staff_id or ctx['user'].id
         announcement.updated_at = datetime.utcnow()
+
+        # Handle image uploads if present (FormData only)
+        if is_multipart and 'images' in request.files:
+            image_files = request.files.getlist('images')
+            saved_images = list(announcement.images) if announcement.images else []
+            for img_file in image_files:
+                if img_file and img_file.filename:
+                    try:
+                        img_path = save_announcement_image(img_file)
+                        saved_images.append(img_path)
+                    except Exception as img_err:
+                        current_app.logger.warning(f"Failed to save announcement image: {img_err}")
+            if saved_images:
+                announcement.images = saved_images
+
         db.session.commit()
-        
+
+        try:
+            if announcement.status == 'PUBLISHED':
+                now_ts = datetime.utcnow()
+                publish_target = announcement.publish_at or now_ts
+                became_live = prev_status != 'PUBLISHED' or (prev_publish_at and prev_publish_at > now and publish_target <= now_ts)
+                if became_live:
+                    queue_announcement_notifications(announcement)
+                    db.session.commit()
+        except Exception as notify_exc:
+            db.session.rollback()
+            current_app.logger.warning("Failed to queue announcement notifications on update: %s", notify_exc)
+
         return jsonify({
             'message': 'Announcement updated successfully',
             'announcement': announcement.to_dict()
         }), 200
-        
+
+    except ValidationError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to update announcement', 'details': str(e)}), 500
@@ -1046,15 +1542,21 @@ def update_announcement(announcement_id):
 def upload_announcement_image(announcement_id):
     """Upload images for an announcement (max 5)."""
     try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):  # Error response
-            return municipality_id
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
 
         announcement = Announcement.query.get(announcement_id)
         if not announcement:
             return jsonify({'error': 'Announcement not found'}), 404
-        if announcement.municipality_id != municipality_id:
-            return jsonify({'error': 'Announcement not in your municipality'}), 403
+        allowed, denial = _enforce_scope_permission(
+            ctx,
+            _normalize_scope(announcement.scope),
+            announcement.municipality_id,
+            announcement.barangay_id,
+        )
+        if not allowed:
+            return denial
 
         if 'file' not in request.files:
             return jsonify({'error': 'No file uploaded'}), 400
@@ -1066,8 +1568,10 @@ def upload_announcement_image(announcement_id):
             return jsonify({'error': 'Maximum images reached (5)'}), 400
 
         # Municipality slug
-        municipality = Municipality.query.get(municipality_id)
-        municipality_slug = municipality.slug if municipality else 'unknown'
+        municipality_slug = 'zambales'
+        if announcement.municipality_id:
+            municipality = Municipality.query.get(announcement.municipality_id)
+            municipality_slug = municipality.slug if municipality else 'zambales'
 
         rel_path = save_announcement_image(file, announcement_id, municipality_slug)
         images.append(rel_path)
@@ -1085,22 +1589,30 @@ def upload_announcement_image(announcement_id):
 def upload_announcement_images(announcement_id):
     """Upload multiple images for an announcement (max 5 total). Accepts multiple 'file' parts."""
     try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):  # Error response
-            return municipality_id
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
 
         announcement = Announcement.query.get(announcement_id)
         if not announcement:
             return jsonify({'error': 'Announcement not found'}), 404
-        if announcement.municipality_id != municipality_id:
-            return jsonify({'error': 'Announcement not in your municipality'}), 403
+        allowed, denial = _enforce_scope_permission(
+            ctx,
+            _normalize_scope(announcement.scope),
+            announcement.municipality_id,
+            announcement.barangay_id,
+        )
+        if not allowed:
+            return denial
 
         if not request.files:
             return jsonify({'error': 'No files uploaded'}), 400
 
         # Municipality slug
-        municipality = Municipality.query.get(municipality_id)
-        municipality_slug = municipality.slug if municipality else 'unknown'
+        municipality_slug = 'zambales'
+        if announcement.municipality_id:
+            municipality = Municipality.query.get(announcement.municipality_id)
+            municipality_slug = municipality.slug if municipality else 'zambales'
 
         images = announcement.images or []
         saved_paths = []
@@ -1130,17 +1642,23 @@ def upload_announcement_images(announcement_id):
 def delete_announcement(announcement_id):
     """Delete announcement."""
     try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):  # Error response
-            return municipality_id
-        
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+
         announcement = Announcement.query.get(announcement_id)
         if not announcement:
             return jsonify({'error': 'Announcement not found'}), 404
-        
-        if announcement.municipality_id != municipality_id:
-            return jsonify({'error': 'Announcement not in your municipality'}), 403
-        
+
+        allowed, denial = _enforce_scope_permission(
+            ctx,
+            _normalize_scope(announcement.scope),
+            announcement.municipality_id,
+            announcement.barangay_id,
+        )
+        if not allowed:
+            return denial
+
         db.session.delete(announcement)
         db.session.commit()
         
@@ -1157,36 +1675,35 @@ def delete_announcement(announcement_id):
 def get_announcement_stats():
     """Get announcement statistics."""
     try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):  # Error response
-            return municipality_id
-        
-        # Count announcements by status
-        total_announcements = Announcement.query.filter(
-            Announcement.municipality_id == municipality_id
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+
+        now = datetime.utcnow()
+        q = _announcement_query_for_staff(ctx)
+        total_announcements = q.count()
+        published = q.filter(Announcement.status == 'PUBLISHED').count()
+        draft = q.filter(Announcement.status == 'DRAFT').count()
+        archived = q.filter(Announcement.status == 'ARCHIVED').count()
+        active_announcements = q.filter(
+            Announcement.status == 'PUBLISHED',
+            or_(Announcement.publish_at == None, Announcement.publish_at <= now),
+            or_(Announcement.expire_at == None, Announcement.expire_at > now),
         ).count()
-        
-        active_announcements = Announcement.query.filter(
-            and_(
-                Announcement.municipality_id == municipality_id,
-                Announcement.is_active == True
-            )
+        pinned_active = q.filter(
+            Announcement.pinned == True,
+            or_(Announcement.pinned_until == None, Announcement.pinned_until > now)
         ).count()
-        
-        high_priority = Announcement.query.filter(
-            and_(
-                Announcement.municipality_id == municipality_id,
-                Announcement.priority == 'high',
-                Announcement.is_active == True
-            )
-        ).count()
-        
+
         return jsonify({
             'total_announcements': total_announcements,
+            'published_announcements': published,
             'active_announcements': active_announcements,
-            'high_priority': high_priority
+            'draft_announcements': draft,
+            'archived_announcements': archived,
+            'pinned_active': pinned_active,
         }), 200
-        
+
     except Exception as e:
         return jsonify({'error': 'Failed to get announcement statistics', 'details': str(e)}), 500
 
@@ -1199,6 +1716,7 @@ def get_dashboard_stats():
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):  # Error response
             return municipality_id
+        now = datetime.utcnow()
         
         # Initialize stats with default values
         stats = {
@@ -1250,10 +1768,13 @@ def get_dashboard_stats():
         try:
             # Announcements statistics
             announcements = Announcement.query.filter(
-                and_(
-                    Announcement.municipality_id == municipality_id,
-                    Announcement.is_active == True
-                )
+                or_(
+                    and_(Announcement.scope == 'MUNICIPALITY', Announcement.municipality_id == municipality_id),
+                    and_(Announcement.scope == 'BARANGAY', Announcement.municipality_id == municipality_id),
+                ),
+                Announcement.status == 'PUBLISHED',
+                or_(Announcement.publish_at == None, Announcement.publish_at <= now),
+                or_(Announcement.expire_at == None, Announcement.expire_at > now),
             ).count()
             stats['announcements'] = announcements
         except Exception:
@@ -2042,6 +2563,19 @@ def generate_document_request_pdf(request_id: int):
             pass
         db.session.commit()
 
+        try:
+            queue_document_status_change(
+                user,
+                req,
+                doc_type.name if hasattr(doc_type, 'name') else 'Document',
+                'ready',
+                None
+            )
+            db.session.commit()
+        except Exception as notify_exc:
+            db.session.rollback()
+            current_app.logger.warning("Failed to queue document ready notification: %s", notify_exc)
+
         return jsonify({'message': 'Document generated', 'url': f"/uploads/{rel_path}", 'request': req.to_dict()}), 200
     except Exception as e:
         db.session.rollback()
@@ -2345,28 +2879,22 @@ def update_document_request_status(request_id: int):
         except Exception:
             db.session.rollback()
 
-        # Email notifications (best-effort)
+        # Queue notifications (best-effort)
         try:
             user = User.query.get(req.user_id)
             doc_type = DocumentType.query.get(req.document_type_id)
-            if user and user.email and doc_type:
-                if new_status == 'processing' and prev_status == 'pending':
-                    send_document_request_status_email(
-                        user.email,
-                        doc_type.name if hasattr(doc_type, 'name') else 'Document',
-                        (req.created_at.isoformat() if req.created_at else ''),
-                        approved=True,
-                    )
-                if new_status == 'rejected':
-                    send_document_request_status_email(
-                        user.email,
-                        doc_type.name if hasattr(doc_type, 'name') else 'Document',
-                        (req.created_at.isoformat() if req.created_at else ''),
-                        approved=False,
-                        reason=req.rejection_reason or notes or ''
-                    )
-        except Exception:
-            pass
+            if user and doc_type:
+                queue_document_status_change(
+                    user,
+                    req,
+                    doc_type.name if hasattr(doc_type, 'name') else 'Document',
+                    new_status,
+                    req.rejection_reason or notes or ''
+                )
+                db.session.commit()
+        except Exception as notify_exc:
+            db.session.rollback()
+            current_app.logger.warning("Failed to queue document status notification: %s", notify_exc)
 
         return jsonify({'message': 'Status updated', 'request': req.to_dict()}), 200
     except Exception as e:
@@ -2421,11 +2949,18 @@ def admin_ready_for_pickup(request_id: int):
         try:
             user = User.query.get(req.user_id)
             doc_type = DocumentType.query.get(req.document_type_id)
-            if user and getattr(user, 'email', None):
-                # Reuse existing email helper with a simple message
-                send_user_status_email(user.email, approved=True)
-        except Exception:
-            pass
+            if user and doc_type:
+                queue_document_status_change(
+                    user,
+                    req,
+                    doc_type.name if hasattr(doc_type, 'name') else 'Document',
+                    'ready',
+                    None
+                )
+                db.session.commit()
+        except Exception as notify_exc:
+            db.session.rollback()
+            current_app.logger.warning("Failed to queue ready-for-pickup notification: %s", notify_exc)
 
         return jsonify({
             'message': 'Marked ready for pickup',
@@ -2826,6 +3361,9 @@ def admin_audit_meta():
 @jwt_required()
 def admin_export_entity(entity: str, fmt: str):
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
             return municipality_id
@@ -2843,6 +3381,7 @@ def admin_export_entity(entity: str, fmt: str):
 
         # Build dataset by entity
         et = entity.lower()
+        now = datetime.utcnow()
         if et == 'users':
             users = User.query.filter(and_(User.municipality_id == municipality_id, User.role == 'resident')).all()
             headers = ['ID','Name','Email','Phone','Verified','Joined']
@@ -2869,9 +3408,20 @@ def admin_export_entity(entity: str, fmt: str):
             headers = ['ID','Title','Status','Created']
             rows = [[i.id, i.title, i.status, (i.created_at.isoformat()[:19].replace('T',' ') if i.created_at else '')] for i in items]
         elif et == 'announcements':
-            items = Announcement.query.filter(Announcement.municipality_id == municipality_id).all()
-            headers = ['ID','Title','Active','Created']
-            rows = [[a.id, a.title, 'Yes' if getattr(a,'is_active',False) else 'No', (a.created_at.isoformat()[:10] if getattr(a,'created_at',None) else '')] for a in items]
+            items = _announcement_query_for_staff(ctx).all()
+            headers = ['ID','Title','Scope','Status','Active Now','Created','Publish At','Expire At']
+            for a in items:
+                is_active_now = (a.status or '').upper() == 'PUBLISHED' and (not a.publish_at or a.publish_at <= now) and (not a.expire_at or a.expire_at > now)
+                rows.append([
+                    a.id,
+                    a.title,
+                    a.scope,
+                    (a.status or '').upper(),
+                    'Yes' if is_active_now else 'No',
+                    (a.created_at.isoformat()[:10] if getattr(a,'created_at',None) else ''),
+                    (a.publish_at.isoformat()[:10] if getattr(a,'publish_at',None) else ''),
+                    (a.expire_at.isoformat()[:10] if getattr(a,'expire_at',None) else ''),
+                ])
         elif et == 'audit':
             items = AuditLog.query.filter(AuditLog.municipality_id == municipality_id).order_by(AuditLog.created_at.desc()).limit(1000).all()
             headers = ['Time','Actor','Role','Entity','Entity ID','Action']
@@ -2922,9 +3472,10 @@ def admin_export_entity(entity: str, fmt: str):
 @jwt_required()
 def admin_cleanup():
     try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):
-            return municipality_id
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+        municipality_id = ctx.get('municipality_id')
         payload = request.get_json(silent=True) or {}
         entity = (payload.get('entity') or '').lower()
         confirm = payload.get('confirm')
@@ -2953,18 +3504,21 @@ def admin_cleanup():
             path.write_text(json.dumps(items, default=str, ensure_ascii=False, indent=2), encoding='utf-8')
 
         if entity == 'announcements':
-            q = Announcement.query.filter(Announcement.municipality_id == municipality_id)
+            q = _announcement_query_for_staff(ctx)
             if cutoff:
                 q = q.filter(Announcement.created_at <= cutoff)
             items = q.all()
             if archive and items:
-                zpath = out_dir / f"announcements-{municipality_id}-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.json"
+                muni_fragment = str(ctx.get('municipality_id') or 'province')
+                zpath = out_dir / f"announcements-{muni_fragment}-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.json"
                 _write_json(zpath, [getattr(i,'to_dict',lambda: {})() if hasattr(i,'to_dict') else {'id': i.id, 'title': i.title} for i in items])
                 archived_url = str(zpath.relative_to(base)).replace('\\','/')
             for i in items:
                 db.session.delete(i)
             deleted = len(items)
         elif entity == 'requests':
+            if not municipality_id:
+                return jsonify({'error': 'Municipality scope required for this cleanup'}), 403
             q = DocumentRequest.query.filter(DocumentRequest.municipality_id == municipality_id)
             if cutoff:
                 q = q.filter(DocumentRequest.created_at <= cutoff)
@@ -3112,4 +3666,3 @@ def admin_update_transaction_status(tx_id: int):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to update transaction status', 'details': str(e)}), 500
-
