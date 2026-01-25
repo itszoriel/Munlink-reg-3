@@ -107,7 +107,7 @@ export default function SuperAdminLoginPage() {
 
     try {
       const response = await superAdminApi.verify2FA(sessionId, codeToVerify)
-      const { user, access_token, refresh_token } = response
+      const { user, access_token } = response
 
       // Verify this is actually a super admin
       if (user.role !== 'superadmin') {

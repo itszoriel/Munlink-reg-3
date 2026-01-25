@@ -53,7 +53,7 @@ type AdminState = {
   bootstrapAuth: () => Promise<void>
 }
 
-export const useAdminStore = create<AdminState>((set, get) => {
+export const useAdminStore = create<AdminState>((set) => {
   // Load user from localStorage on init (tokens managed by api.ts layer)
   const storedUser = typeof window !== 'undefined' ? localStorage.getItem('admin:user') : null
 

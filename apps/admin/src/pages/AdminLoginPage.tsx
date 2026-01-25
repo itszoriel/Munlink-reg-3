@@ -33,7 +33,7 @@ export default function AdminLoginPage() {
     setLoading(true)
     try {
       const res = await authApi.adminLogin(formData)
-      const { user, access_token, refresh_token } = res
+      const { user, access_token } = res
 
       const validAdminRoles = ['municipal_admin', 'barangay_admin', 'provincial_admin', 'admin']
       if (!validAdminRoles.includes(user.role)) {

@@ -30,7 +30,7 @@ export default function BarangayAdminLoginPage() {
     setLoading(true)
     try {
       const res = await authApi.adminLogin(formData)
-      const { user, access_token, refresh_token } = res
+      const { user, access_token } = res
 
       // Only allow barangay_admin role
       if (user.role !== 'barangay_admin') {
