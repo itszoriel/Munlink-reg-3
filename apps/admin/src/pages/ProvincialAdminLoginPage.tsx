@@ -39,7 +39,7 @@ export default function ProvincialAdminLoginPage() {
         return
       }
 
-      setAuth(user, access_token, refresh_token)
+      setAuth(user, access_token)
       navigate('/provincial/dashboard')
     } catch (err: any) {
       setError(handleApiError(err))

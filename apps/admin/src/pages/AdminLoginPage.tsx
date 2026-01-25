@@ -46,7 +46,7 @@ export default function AdminLoginPage() {
         return
       }
 
-      setAuth(user, access_token, refresh_token)
+      setAuth(user, access_token)
       navigate('/dashboard')
     } catch (err: any) {
       setError(handleApiError(err))

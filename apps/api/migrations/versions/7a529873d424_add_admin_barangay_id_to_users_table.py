@@ -7,6 +7,7 @@ Create Date: 2026-01-17 13:06:26.776618
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -23,8 +24,17 @@ def upgrade():
                existing_type=sa.VARCHAR(length=20),
                nullable=False)
 
+    # Check if constraint exists before trying to drop it
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    constraints = [c['name'] for c in inspector.get_unique_constraints('municipalities')]
+    has_old_constraint = 'uq_municipality_province_name' in constraints
+
     with op.batch_alter_table('municipalities', schema=None) as batch_op:
-        batch_op.drop_constraint(batch_op.f('uq_municipality_province_name'), type_='unique')
+        # Only drop if it exists
+        if has_old_constraint:
+            batch_op.drop_constraint('uq_municipality_province_name', type_='unique')
+        # Create unique constraint on name column
         batch_op.create_unique_constraint(None, ['name'])
 
     with op.batch_alter_table('refresh_token_families', schema=None) as batch_op:

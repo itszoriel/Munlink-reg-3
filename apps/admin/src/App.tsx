@@ -38,7 +38,14 @@ import RoleSelector from './pages/RoleSelector'
 
 export default function App() {
   const isAuthenticated = useAdminStore((s) => s.isAuthenticated)
+  const isAuthBootstrapped = useAdminStore((s) => s.isAuthBootstrapped)
+  const bootstrapAuth = useAdminStore((s) => s.bootstrapAuth)
   const navigate = useNavigate()
+
+  // Bootstrap auth on mount (restore session from httpOnly cookie + sessionStorage)
+  useEffect(() => {
+    bootstrapAuth()
+  }, [bootstrapAuth])
 
   // Prevent accessing private routes after logout via back button/history cache
   useEffect(() => {
@@ -56,6 +63,18 @@ export default function App() {
       window.removeEventListener('popstate', recheckAuth)
     }
   }, [navigate])
+
+  // Show nothing while bootstrapping to prevent flash of unauthenticated state
+  if (!isAuthBootstrapped) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-ocean-50 to-white">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ocean-600 border-r-transparent"></div>
+          <p className="mt-4 text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-ocean-50 to-white">

@@ -39,7 +39,7 @@ export default function BarangayAdminLoginPage() {
         return
       }
 
-      setAuth(user, access_token, refresh_token)
+      setAuth(user, access_token)
       navigate('/barangay/dashboard')
     } catch (err: any) {
       setError(handleApiError(err))

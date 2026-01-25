@@ -134,12 +134,12 @@ def get_engine_options():
             options.update({
                 'poolclass': NullPool,  # Don't pool connections - let Supabase pooler handle it
                 'connect_args': {
-                    'connect_timeout': 15,      # 15 second connection timeout (reduced for faster retry)
+                    'connect_timeout': 30,      # 30 second connection timeout (increased for Render->Supabase)
                     'keepalives': 1,            # Enable TCP keepalives
-                    'keepalives_idle': 5,       # Start keepalives sooner (was 10)
-                    'keepalives_interval': 3,   # More frequent keepalives (was 5)
-                    'keepalives_count': 5,      # More retries (was 3)
-                    'options': '-c statement_timeout=60000',  # 60 second query timeout (increased)
+                    'keepalives_idle': 30,      # Start keepalives after 30s idle
+                    'keepalives_interval': 10,  # Send keepalive every 10s
+                    'keepalives_count': 5,      # Try 5 times before giving up
+                    'options': '-c statement_timeout=60000',  # 60 second query timeout
                     'application_name': 'munlink-api',  # For connection tracking in Supabase
                 }
             })

@@ -45,8 +45,8 @@ type AdminState = {
   refreshToken?: string
   isAuthenticated: boolean
   isAuthBootstrapped: boolean
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void
-  setTokens: (accessToken: string, refreshToken?: string) => void
+  setAuth: (user: User, accessToken: string) => void
+  setTokens: (accessToken: string) => void
   logout: () => void
   updateUser: (user: User) => void
   setAuthBootstrapped: (v: boolean) => void
@@ -54,11 +54,9 @@ type AdminState = {
 }
 
 export const useAdminStore = create<AdminState>((set, get) => {
-  // Load from localStorage on init
-  const storedToken = typeof window !== 'undefined' ? localStorage.getItem('admin:access_token') : null
-  const storedRefreshToken = typeof window !== 'undefined' ? localStorage.getItem('admin:refresh_token') : null
+  // Load user from localStorage on init (tokens managed by api.ts layer)
   const storedUser = typeof window !== 'undefined' ? localStorage.getItem('admin:user') : null
-  
+
   let initialUser: User | undefined
   try {
     initialUser = storedUser ? JSON.parse(storedUser) : undefined
@@ -68,38 +66,33 @@ export const useAdminStore = create<AdminState>((set, get) => {
 
   return {
     user: initialUser,
-    accessToken: storedToken || undefined,
-    refreshToken: storedRefreshToken || undefined,
-    isAuthenticated: !!storedToken && !!initialUser,
+    accessToken: undefined,
+    refreshToken: undefined,
+    isAuthenticated: false, // Will be set by bootstrapAuth
     isAuthBootstrapped: false,
-    setAuth: (user, accessToken, refreshToken) => {
+    setAuth: (user, accessToken) => {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('admin:access_token', accessToken)
-        localStorage.setItem('admin:refresh_token', refreshToken)
         localStorage.setItem('admin:user', JSON.stringify(user))
       }
-      set({ user, accessToken, refreshToken, isAuthenticated: true, isAuthBootstrapped: true })
+      // Hydrate access token in api layer (refresh token is httpOnly cookie)
+      import('./api').then(({ setAccessToken }) => setAccessToken(accessToken))
+      set({ user, accessToken, isAuthenticated: true, isAuthBootstrapped: true })
     },
-    setTokens: (accessToken, refreshToken) => {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('admin:access_token', accessToken)
-        if (refreshToken) {
-          localStorage.setItem('admin:refresh_token', refreshToken)
-        }
-      }
+    setTokens: (accessToken) => {
+      // Update in-memory token via api layer
+      import('./api').then(({ setAccessToken }) => setAccessToken(accessToken))
       set((state) => ({
         accessToken,
-        refreshToken: refreshToken ?? state.refreshToken,
         isAuthenticated: !!accessToken && !!state.user,
       }))
     },
     logout: () => {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('admin:access_token')
-        localStorage.removeItem('admin:refresh_token')
         localStorage.removeItem('admin:user')
         try { sessionStorage.clear() } catch {}
       }
+      // Clear tokens in api layer
+      import('./api').then(({ clearAccessToken }) => clearAccessToken())
       set({ user: undefined, accessToken: undefined, refreshToken: undefined, isAuthenticated: false, isAuthBootstrapped: true })
     },
     updateUser: (user) => {
@@ -115,26 +108,33 @@ export const useAdminStore = create<AdminState>((set, get) => {
         return
       }
 
-      const { accessToken } = get()
-      if (!accessToken) {
-        set({ isAuthBootstrapped: true, isAuthenticated: false, user: undefined })
-        return
-      }
-
       try {
-        const { authApi } = await import('./api')
-        const resp = await authApi.getProfile()
-        if (resp?.data) {
-          const user = resp.data as User
-          localStorage.setItem('admin:user', JSON.stringify(user))
-          set({ user, isAuthenticated: true })
+        // Use cookie-based auth bootstrap from api layer
+        const { bootstrapAuth: apiBootstrap } = await import('./api')
+        const hasAuth = await apiBootstrap()
+
+        if (hasAuth) {
+          // We have a valid token, fetch user profile
+          const { authApi } = await import('./api')
+          try {
+            const resp = await authApi.getProfile()
+            if (resp?.data) {
+              const user = resp.data as User
+              localStorage.setItem('admin:user', JSON.stringify(user))
+              set({ user, isAuthenticated: true })
+            } else {
+              set({ isAuthenticated: false, user: undefined })
+            }
+          } catch {
+            // Profile fetch failed, clear auth
+            set({ isAuthenticated: false, user: undefined })
+          }
         } else {
-          const { logout } = get()
-          logout()
+          // No valid auth, clear state
+          set({ isAuthenticated: false, user: undefined })
         }
       } catch {
-        const { logout } = get()
-        logout()
+        set({ isAuthenticated: false, user: undefined })
       } finally {
         set({ isAuthBootstrapped: true })
       }

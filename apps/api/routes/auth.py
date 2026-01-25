@@ -1520,7 +1520,19 @@ def superadmin_login():
         }), 200
 
     except Exception as e:
-        current_app.logger.error(f"Super admin login error: {e}")
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"Super admin login error: {e}\n{error_details}")
+
+        # Check if this is a database connection error
+        error_str = str(e).lower()
+        if 'timeout' in error_str or 'connection' in error_str or 'operational' in error_str:
+            return jsonify({
+                'error': 'Database connection failed',
+                'message': 'Unable to connect to database. Please check your DATABASE_URL configuration or try again in a few moments.',
+                'details': 'Connection timeout - verify network connectivity and database credentials'
+            }), 503
+
         return jsonify({'error': 'Login failed. Please try again.'}), 500
 
 

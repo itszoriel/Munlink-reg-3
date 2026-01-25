@@ -116,7 +116,7 @@ export default function SuperAdminLoginPage() {
         return
       }
 
-      setAuth(user, access_token, refresh_token)
+      setAuth(user, access_token)
       navigate('/superadmin')
     } catch (err: any) {
       setError(handleApiError(err))

@@ -13,6 +13,70 @@ const API_BASE_URL =
   (import.meta as any).env?.VITE_API_URL ||
   'http://localhost:5000'
 
+// In-memory access token (sessionStorage for persistence across page loads)
+let accessToken: string | null = null
+let refreshPromise: Promise<string | null> | null = null
+
+// Token management helpers
+export const getAccessToken = (): string | null => accessToken
+export const setAccessToken = (token: string | null) => {
+  accessToken = token
+  try {
+    if (token) {
+      sessionStorage.setItem('admin:access_token', token)
+    } else {
+      sessionStorage.removeItem('admin:access_token')
+    }
+  } catch {}
+}
+export const clearAccessToken = () => {
+  accessToken = null
+  try {
+    sessionStorage.removeItem('admin:access_token')
+  } catch {}
+}
+
+// Cookie-based refresh using httpOnly cookie (like web app)
+async function doRefresh(): Promise<string | null> {
+  try {
+    const resp = await axios.post(
+      `${API_BASE_URL}/api/auth/refresh`,
+      {},
+      {
+        withCredentials: true,
+        validateStatus: () => true
+      }
+    )
+    if (resp.status !== 200) return null
+    const newToken: string | undefined = resp?.data?.access_token
+    if (newToken) {
+      setAccessToken(newToken)
+      return newToken
+    }
+  } catch {
+    // ignore; caller handles logout
+  }
+  return null
+}
+
+// Bootstrap auth from sessionStorage + cookie refresh
+export async function bootstrapAuth(): Promise<boolean> {
+  // First, hydrate from sessionStorage if present
+  try {
+    const saved = sessionStorage.getItem('admin:access_token')
+    if (saved) {
+      setAccessToken(saved)
+      // Attempt background refresh to extend session
+      void doRefresh()
+      return true
+    }
+  } catch {}
+
+  // Attempt to hydrate from refresh cookie once on app load
+  const token = await doRefresh()
+  return !!token
+}
+
 // Create axios instance with longer timeout for admin operations
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -26,7 +90,6 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
-    const { accessToken } = useAdminStore.getState()
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`
     }
@@ -49,25 +112,20 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        const { refreshToken, setTokens } = useAdminStore.getState()
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, undefined, {
-            headers: { Authorization: `Bearer ${refreshToken}` },
-          })
-
-          const { access_token, refresh_token } = response.data
-          setTokens(access_token, refresh_token)
-
-          // Retry original request with new token
-          originalRequest.headers.Authorization = `Bearer ${access_token}`
+        // Use cookie-based refresh (not localStorage token!)
+        refreshPromise = refreshPromise || doRefresh()
+        const newToken = await refreshPromise.finally(() => { refreshPromise = null })
+        if (newToken) {
+          originalRequest.headers = originalRequest.headers || {}
+          originalRequest.headers['Authorization'] = `Bearer ${newToken}`
           return apiClient(originalRequest)
         }
-      } catch (refreshError) {
-        // Refresh failed, redirect to portal
-        const { logout } = useAdminStore.getState()
-        logout()
-        window.location.href = '/'
-      }
+      } catch {}
+
+      // Refresh failed, redirect to portal
+      const { logout } = useAdminStore.getState()
+      logout()
+      window.location.href = '/'
     }
 
     // Handle role mismatch
