@@ -5,6 +5,7 @@ SCOPE: Zambales province only, excluding Olongapo City.
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 
 try:
     from apps.api import db
@@ -236,7 +237,16 @@ def get_my_requests():
     """Get current user's document requests."""
     try:
         user_id = get_jwt_identity()
-        requests_q = DocumentRequest.query.filter_by(user_id=user_id).order_by(DocumentRequest.created_at.desc()).all()
+        requests_q = (
+            DocumentRequest.query.options(
+                selectinload(DocumentRequest.document_type),
+                selectinload(DocumentRequest.municipality),
+                selectinload(DocumentRequest.barangay),
+            )
+            .filter_by(user_id=user_id)
+            .order_by(DocumentRequest.created_at.desc())
+            .all()
+        )
         return jsonify({
             'count': len(requests_q),
             'requests': [r.to_dict() for r in requests_q]

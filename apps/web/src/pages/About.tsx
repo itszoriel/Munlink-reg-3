@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Users, Building, Heart, Shield, Globe, ArrowRight, Mail, Phone, Bug, Info, FileText, Clock } from 'lucide-react';
 
 // Zambales municipalities (excluding Olongapo City)

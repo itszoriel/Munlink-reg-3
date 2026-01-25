@@ -28,8 +28,8 @@ ZAMBALES_MUNICIPALITIES = [
 # File upload limits
 MAX_FILE_SIZE_MB = 10
 MAX_IMAGE_SIZE_MB = 5
-ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
-ALLOWED_DOCUMENT_EXTENSIONS = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'}
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'hevc'}
+ALLOWED_DOCUMENT_EXTENSIONS = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'heic', 'heif', 'hevc'}
 
 
 class ValidationError(Exception):

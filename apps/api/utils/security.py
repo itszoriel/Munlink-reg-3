@@ -117,11 +117,14 @@ def error_500(message: str = "Internal server error", exception: Exception = Non
 # Mapping of allowed extensions to their expected MIME types
 MIME_TYPE_MAP: Dict[str, Set[str]] = {
     # Images
-    'jpg': {'image/jpeg'},
-    'jpeg': {'image/jpeg'},
-    'png': {'image/png'},
+    'jpg': {'image/jpeg', 'image/pjpeg', 'image/jpg'},
+    'jpeg': {'image/jpeg', 'image/pjpeg', 'image/jpg'},
+    'png': {'image/png', 'image/x-png'},
     'gif': {'image/gif'},
     'webp': {'image/webp'},
+    'heic': {'image/heic', 'image/heif', 'image/heif-sequence', 'image/heic-sequence'},
+    'heif': {'image/heif', 'image/heic', 'image/heif-sequence', 'image/heic-sequence'},
+    'hevc': {'image/heic', 'image/heif', 'image/heif-sequence', 'image/heic-sequence'},
     # Documents
     'pdf': {'application/pdf'},
     'doc': {'application/msword'},
@@ -131,9 +134,16 @@ MIME_TYPE_MAP: Dict[str, Set[str]] = {
 # All allowed image MIME types
 ALLOWED_IMAGE_MIMES = {
     'image/jpeg',
+    'image/jpg',
+    'image/pjpeg',
     'image/png', 
+    'image/x-png',
     'image/gif',
     'image/webp',
+    'image/heic',
+    'image/heif',
+    'image/heif-sequence',
+    'image/heic-sequence',
 }
 
 # All allowed document MIME types
@@ -142,7 +152,14 @@ ALLOWED_DOCUMENT_MIMES = {
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'image/jpeg',
+    'image/jpg',
+    'image/pjpeg',
     'image/png',
+    'image/x-png',
+    'image/heic',
+    'image/heif',
+    'image/heif-sequence',
+    'image/heic-sequence',
 }
 
 
@@ -153,35 +170,43 @@ def validate_file_mime_type(
 ) -> str:
     """
     Validate file content type using magic bytes.
-    
+
     This provides defense-in-depth beyond extension checking by actually
     reading the file's magic bytes to determine its true type.
-    
+
     Args:
         file: File-like object with read() and seek() methods
         allowed_mimes: Set of allowed MIME types (optional)
-        extension: Expected extension to validate against (optional)
-    
+        extension: Expected extension to validate against (optional, with or without leading dot)
+
     Returns:
         Detected MIME type
-    
+
     Raises:
         ValidationError: If MIME type is not allowed or doesn't match extension
     """
     from apps.api.utils.validators import ValidationError
-    
+
+    # Normalize extension (remove leading dot if present)
+    normalized_ext = None
+    if extension:
+        normalized_ext = extension.lower().strip()
+        if normalized_ext.startswith('.'):
+            normalized_ext = normalized_ext[1:]
+
     # Try to use python-magic for accurate detection
+    fallback_from_extension = False
     try:
         import magic
-        
+
         # Read first 2048 bytes for MIME detection
         file.seek(0)
         header = file.read(2048)
         file.seek(0)
-        
+
         # Detect MIME type
         detected_mime = magic.from_buffer(header, mime=True)
-        
+
     except ImportError:
         # python-magic not available, fall back to extension-based validation
         current_app.logger.warning(
@@ -189,33 +214,52 @@ def validate_file_mime_type(
             "Install with: pip install python-magic-bin (Windows) or python-magic (Linux)"
         )
         # Trust extension but warn
-        if extension:
-            detected_mime = list(MIME_TYPE_MAP.get(extension.lower(), {'application/octet-stream'}))[0]
+        fallback_from_extension = True
+        if normalized_ext:
+            detected_mime = list(MIME_TYPE_MAP.get(normalized_ext, {'application/octet-stream'}))[0]
         else:
             detected_mime = 'application/octet-stream'
-    
+
     except Exception as e:
         current_app.logger.error(f"MIME detection error: {e}")
+        fallback_from_extension = True
         detected_mime = 'application/octet-stream'
-    
+
+    # If magic could not identify the content, fall back to the expected MIME from extension
+    if detected_mime in ('application/octet-stream', 'binary/octet-stream', 'application/x-empty', 'inode/x-empty', None):
+        if normalized_ext:
+            expected_mimes = MIME_TYPE_MAP.get(normalized_ext, set())
+            if expected_mimes:
+                detected_mime = list(expected_mimes)[0]
+                fallback_from_extension = True
+                if current_app:
+                    current_app.logger.info(
+                        f"MIME detection fallback for .{normalized_ext}: using {detected_mime}"
+                    )
+
     # Validate against allowed MIME types
     if allowed_mimes and detected_mime not in allowed_mimes:
-        raise ValidationError(
-            'file',
-            f'File type not allowed. Detected: {detected_mime}. '
-            f'Allowed: {", ".join(sorted(allowed_mimes))}'
-        )
-    
+        # If we fell back to extension and the expected set is allowed, allow it
+        expected_mimes = MIME_TYPE_MAP.get(normalized_ext, set()) if normalized_ext else set()
+        if fallback_from_extension and expected_mimes and expected_mimes.intersection(allowed_mimes):
+            pass  # accept the file based on trusted extension + size validation
+        else:
+            raise ValidationError(
+                'file',
+                f'File type not allowed. Detected: {detected_mime}. '
+                f'Allowed: {", ".join(sorted(allowed_mimes))}'
+            )
+
     # Validate MIME matches extension if provided
-    if extension:
-        expected_mimes = MIME_TYPE_MAP.get(extension.lower(), set())
+    if normalized_ext:
+        expected_mimes = MIME_TYPE_MAP.get(normalized_ext, set())
         if expected_mimes and detected_mime not in expected_mimes:
             raise ValidationError(
                 'file',
-                f'File content does not match extension .{extension}. '
+                f'File content does not match extension .{normalized_ext}. '
                 f'Detected: {detected_mime}'
             )
-    
+
     return detected_mime
 
 

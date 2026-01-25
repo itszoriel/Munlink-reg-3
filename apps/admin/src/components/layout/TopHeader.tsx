@@ -119,7 +119,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile }: TopHeaderP
               </div>
               <div className="py-2">
                 <button onClick={goToProfile} className="w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 transition-colors"><User className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">My Profile</span></button>
-                <a href={PUBLIC_SITE_URL} target="_blank" className="flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 transition-colors"><Globe className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">View Public Site</span></a>
+                <a href={PUBLIC_SITE_URL} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 transition-colors"><Globe className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">View Public Site</span></a>
               </div>
               <div className="px-4 py-3 border-t border-neutral-200">
                 <button onClick={handleLogout} className="w-full btn bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium">

@@ -1,4 +1,4 @@
-﻿# MunLink Region III - Render Deployment Configuration
+﻿# MunLink Zambales - Render Deployment Configuration
 # Uses Supabase for database (PostgreSQL)
 
 services:
@@ -29,7 +29,7 @@ services:
       - key: FLASK_APP
         value: app.py
       - key: APP_NAME
-        value: MunLink Region III
+        value: MunLink Zambales
       
       # Security Keys (set in Render Dashboard)
       - key: SECRET_KEY
@@ -115,7 +115,7 @@ services:
       - key: VITE_API_URL
         value: https://munlink-api-9c02.onrender.com
       - key: VITE_APP_NAME
-        value: MunLink Region III
+        value: MunLink Zambales
 
   # ============================================
   # Admin Dashboard (React/Vite)
@@ -141,7 +141,7 @@ services:
       - key: VITE_API_URL
         value: https://munlink-api-9c02.onrender.com
       - key: VITE_APP_NAME
-        value: MunLink Region III Admin
+        value: MunLink Zambales Admin
       - key: VITE_PUBLIC_SITE_URL
         value: https://munlink-web-y9lj.onrender.com
 

@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 interface ViewIDReasonModalProps {
   isOpen: boolean
-  docType: 'id_front' | 'id_back' | 'selfie'
+  docType: 'id_front' | 'id_back'
   onClose: () => void
   onConfirm: (reason: string, notes: string) => void
 }
@@ -47,8 +47,7 @@ export function ViewIDReasonModal({
 
   const docTypeLabels = {
     id_front: 'ID Front',
-    id_back: 'ID Back',
-    selfie: 'Selfie with ID'
+    id_back: 'ID Back'
   }
 
   return (

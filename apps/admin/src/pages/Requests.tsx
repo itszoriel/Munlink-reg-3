@@ -3,13 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { adminApi, handleApiError, documentsAdminApi, mediaUrl, showToast, auditAdminApi } from '../lib/api'
 import { useCachedFetch } from '../lib/useCachedFetch'
 import { CACHE_KEYS } from '../lib/dataStore'
-import { ClipboardList, Hourglass, Cog, CheckCircle, PartyPopper, Smartphone, Package as PackageIcon, Search } from 'lucide-react'
+import { ClipboardList, Hourglass, Cog, CheckCircle, PartyPopper, Smartphone, Package as PackageIcon, Search, ShieldCheck, Ban } from 'lucide-react'
 import { EmptyState } from '@munlink/ui'
+import { useAdminStore } from '../lib/store'
 
-type Status = 'all' | 'pending' | 'processing' | 'ready' | 'completed' | 'picked_up'
+type Status = 'all' | 'pending' | 'barangay_processing' | 'barangay_approved' | 'barangay_rejected' | 'approved' | 'processing' | 'ready' | 'completed' | 'picked_up' | 'rejected'
 
 export default function Requests() {
   const navigate = useNavigate()
+  const user = useAdminStore((s) => s.user)
+  const role = user?.role
+  const barangayName = user?.barangay_name
   const [statusFilter, setStatusFilter] = useState<Status>('all')
   const [error, setError] = useState<string | null>(null)
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'digital' | 'pickup'>('all')
@@ -26,7 +30,15 @@ export default function Requests() {
     const list = ((requestsData as any)?.requests || []) as any[]
     return list.map((r: any) => {
       const raw = (r.status || 'pending').toLowerCase()
-      const normalized = raw === 'in_progress' ? 'processing' : raw === 'resolved' ? 'ready' : raw === 'closed' ? 'completed' : raw
+      const normalized = raw === 'in_progress'
+        ? 'processing'
+        : raw === 'resolved'
+          ? 'ready'
+          : raw === 'closed'
+            ? 'completed'
+            : raw === 'ready_for_pickup'
+              ? 'ready'
+              : raw
       let extra: any = undefined
       try {
         const rawNotes = r.additional_notes
@@ -48,6 +60,8 @@ export default function Requests() {
         delivery_address: r.delivery_address || '',
         request_id: r.id,
         document_file: r.document_file,
+        authority_level: (r.document_type?.authority_level || 'municipal').toLowerCase(),
+        status_raw: raw,
         resident_input: (r as any).resident_input,
         admin_edited_content: (r as any).admin_edited_content,
         additional_notes: r.additional_notes,
@@ -65,6 +79,9 @@ export default function Requests() {
   const stats = statsData ? {
     total_requests: (statsData as any).total_requests || 0,
     pending_requests: (statsData as any).pending_requests || 0,
+    barangay_processing_requests: (statsData as any).barangay_processing_requests || 0,
+    barangay_approved_requests: (statsData as any).barangay_approved_requests || 0,
+    barangay_rejected_requests: (statsData as any).barangay_rejected_requests || 0,
     processing_requests: (statsData as any).processing_requests || 0,
     ready_requests: (statsData as any).ready_requests || 0,
     completed_requests: (statsData as any).completed_requests || 0
@@ -74,12 +91,21 @@ export default function Requests() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [rejectForId, setRejectForId] = useState<number | null>(null)
   const [rejectReason, setRejectReason] = useState<string>('')
+  const [rejectStatus, setRejectStatus] = useState<'rejected' | 'barangay_rejected'>('rejected')
   const [editFor, setEditFor] = useState<null | { id: number; purpose: string; remarks: string; civil_status: string; age?: string }>(null)
   const [savingEdit, setSavingEdit] = useState(false)
   const [historyFor, setHistoryFor] = useState<number | null>(null)
   const [historyRows, setHistoryRows] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [moreForId, setMoreForId] = useState<number | null>(null)
+  const isBarangayAdmin = role === 'barangay_admin'
+  const isMunicipalLike = role === 'municipal_admin' || role === 'superadmin' || role === 'provincial_admin'
+  const scopeBanner = isBarangayAdmin ? (
+    <div className="mb-4 rounded-lg border border-ocean-200 bg-ocean-50 px-4 py-3 text-sm text-ocean-800">
+      Barangay admin view � showing requests for your barangay{barangayName ? `: ${barangayName}` : ''}. Actions are limited to your barangay.
+    </div>
+  ) : null
+
   const visibleRows = rows.filter((r) => {
     // If Ready filter is active, and delivery filter is 'all', force pickup-only per requirements
     const effectiveDelivery = deliveryFilter === 'all' && statusFilter === 'ready' ? 'pickup' : deliveryFilter
@@ -99,6 +125,39 @@ export default function Requests() {
     } catch (e: any) {
       setError(handleApiError(e))
     }
+  }
+
+  const statusCards = [
+    { status: 'all', label: 'All Requests', count: stats?.total_requests ?? 0, icon: 'clipboard', color: 'neutral' },
+    { status: 'pending', label: 'Pending Review', count: stats?.pending_requests ?? 0, icon: 'hourglass', color: 'yellow' },
+    { status: 'processing', label: 'Processing', count: stats?.processing_requests ?? 0, icon: 'cog', color: 'ocean' },
+    { status: 'ready', label: 'Ready for Pickup', count: stats?.ready_requests ?? 0, icon: 'check', color: 'forest' },
+    { status: 'completed', label: 'Completed', count: stats?.completed_requests ?? 0, icon: 'party', color: 'purple' },
+  ]
+
+  if (isBarangayAdmin) {
+    statusCards.splice(1, 0, {
+      status: 'barangay_processing',
+      label: 'Barangay Queue',
+      count: (stats?.barangay_processing_requests ?? 0) + (stats?.barangay_approved_requests ?? 0),
+      icon: 'shield',
+      color: 'ocean'
+    })
+    statusCards.push({
+      status: 'barangay_rejected',
+      label: 'Barangay Rejected',
+      count: stats?.barangay_rejected_requests ?? 0,
+      icon: 'ban',
+      color: 'rose'
+    })
+  } else {
+    statusCards.splice(1, 0, {
+      status: 'barangay_approved',
+      label: 'Barangay Cleared',
+      count: stats?.barangay_approved_requests ?? 0,
+      icon: 'shield',
+      color: 'forest'
+    })
   }
 
   
@@ -122,6 +181,32 @@ export default function Requests() {
       await documentsAdminApi.updateStatus(row.request_id, 'approved')
       await refresh()
       showToast('Request approved', 'success')
+    } catch (e: any) {
+      showToast(handleApiError(e), 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleBarangayStart = async (row: any) => {
+    try {
+      setActionLoading(String(row.id))
+      await documentsAdminApi.updateStatus(row.request_id, 'barangay_processing')
+      await refresh()
+      showToast('Barangay review started', 'success')
+    } catch (e: any) {
+      showToast(handleApiError(e), 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleBarangayApprove = async (row: any) => {
+    try {
+      setActionLoading(String(row.id))
+      await documentsAdminApi.updateStatus(row.request_id, 'barangay_approved')
+      await refresh()
+      showToast('Barangay approved', 'success')
     } catch (e: any) {
       showToast(handleApiError(e), 'error')
     } finally {
@@ -202,6 +287,8 @@ export default function Requests() {
   }
 
   const openReject = (row: any) => {
+    const nextStatus = String(row.status || '').startsWith('barangay') ? 'barangay_rejected' : 'rejected'
+    setRejectStatus(nextStatus as 'rejected' | 'barangay_rejected')
     setRejectForId(row.request_id)
     setRejectReason('')
   }
@@ -210,7 +297,7 @@ export default function Requests() {
     if (!rejectForId) return
     try {
       setActionLoading(String(rejectForId))
-      await documentsAdminApi.updateStatus(rejectForId, 'rejected', undefined, rejectReason || 'Request rejected by admin')
+      await documentsAdminApi.updateStatus(rejectForId, rejectStatus, undefined, rejectReason || 'Request rejected by admin')
       setRejectForId(null)
       setRejectReason('')
       await refresh()
@@ -225,28 +312,25 @@ export default function Requests() {
   return (
     <div className="min-h-screen">
       <div className="mb-8">
+        {scopeBanner}
         <h1 className="text-3xl font-bold text-neutral-900 mb-2">Document Requests</h1>
         <p className="text-neutral-600">Process and track resident document requests</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
-        {[
-          { status: 'all', label: 'All Requests', count: stats?.total_requests ?? 0, icon: '📋', color: 'neutral' },
-          { status: 'pending', label: 'Pending Review', count: stats?.pending_requests ?? 0, icon: '⏳', color: 'yellow' },
-          { status: 'processing', label: 'Processing', count: stats?.processing_requests ?? 0, icon: '⚙️', color: 'ocean' },
-          { status: 'ready', label: 'Ready for Pickup', count: stats?.ready_requests ?? 0, icon: '✅', color: 'forest' },
-          { status: 'completed', label: 'Completed', count: stats?.completed_requests ?? 0, icon: '🎉', color: 'purple' },
-        ].map((item) => (
+        {statusCards.map((item) => (
           <button key={item.status} onClick={() => setStatusFilter(item.status as Status)} className={`text-left p-4 rounded-2xl transition-all ${statusFilter === item.status ? 'bg-white/90 backdrop-blur-xl shadow-xl scale-105 border-2 border-ocean-500' : 'bg-white/70 backdrop-blur-xl border border-white/50 hover:scale-105'}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-2xl">
                 {(() => {
                   const code = String(item.icon)
-                  if (code === '📋') return <ClipboardList className="w-6 h-6" aria-hidden="true" />
-                  if (code === '⏳') return <Hourglass className="w-6 h-6" aria-hidden="true" />
-                  if (code === '⚙️') return <Cog className="w-6 h-6" aria-hidden="true" />
-                  if (code === '✅') return <CheckCircle className="w-6 h-6" aria-hidden="true" />
-                  if (code === '🎉') return <PartyPopper className="w-6 h-6" aria-hidden="true" />
+                  if (code === 'clipboard') return <ClipboardList className="w-6 h-6" aria-hidden="true" />
+                  if (code === 'hourglass') return <Hourglass className="w-6 h-6" aria-hidden="true" />
+                  if (code === 'cog') return <Cog className="w-6 h-6" aria-hidden="true" />
+                  if (code === 'check') return <CheckCircle className="w-6 h-6" aria-hidden="true" />
+                  if (code === 'party') return <PartyPopper className="w-6 h-6" aria-hidden="true" />
+                  if (code === 'shield') return <ShieldCheck className="w-6 h-6" aria-hidden="true" />
+                  if (code === 'ban') return <Ban className="w-6 h-6" aria-hidden="true" />
                   return <ClipboardList className="w-6 h-6" aria-hidden="true" />
                 })()}
               </span>
@@ -342,11 +426,30 @@ export default function Requests() {
                     <p className="text-xs text-neutral-600">Submitted</p>
                   </div>
                   <div className="sm:col-span-2">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-medium ${request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : request.status === 'processing' ? 'bg-ocean-100 text-ocean-700' : request.status === 'ready' ? 'bg-forest-100 text-forest-700' : request.status === 'picked_up' ? 'bg-emerald-100 text-emerald-700' : 'bg-purple-100 text-purple-700'}`}>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-medium ${
+                      request.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : request.status === 'barangay_processing'
+                          ? 'bg-ocean-100 text-ocean-800'
+                          : request.status === 'barangay_approved'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : request.status === 'barangay_rejected'
+                              ? 'bg-rose-100 text-rose-700'
+                              : request.status === 'processing'
+                                ? 'bg-ocean-100 text-ocean-700'
+                                : request.status === 'ready'
+                                  ? 'bg-forest-100 text-forest-700'
+                                  : request.status === 'picked_up'
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-purple-100 text-purple-700'
+                    }`}>
                       {request.status === 'pending' && <Hourglass className="w-3.5 h-3.5" aria-hidden="true" />}
+                      {request.status === 'barangay_processing' && <Hourglass className="w-3.5 h-3.5" aria-hidden="true" />}
+                      {request.status === 'barangay_approved' && <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />}
+                      {request.status === 'barangay_rejected' && <Ban className="w-3.5 h-3.5" aria-hidden="true" />}
                       {request.status === 'processing' && <Cog className="w-3.5 h-3.5" aria-hidden="true" />}
                       {request.status === 'ready' && <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />}
-                      <span>{request.status === 'picked_up' ? 'Picked Up' : (request.status.charAt(0).toUpperCase() + request.status.slice(1))}</span>
+                      <span>{request.status === 'picked_up' ? 'Picked Up' : (request.status.charAt(0).toUpperCase() + request.status.slice(1).replace('_', ' '))}</span>
                     </span>
                   </div>
                   <div className="sm:col-span-1 text-left sm:text-right space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:justify-end sm:gap-2 relative">
@@ -378,8 +481,68 @@ export default function Requests() {
                       const isReady = request.status === 'ready'
                       const isPickup = request.delivery_method === 'pickup'
                       const hasToken = !!request.has_claim_token
+                      const isBarangayProcessing = request.status === 'barangay_processing'
+                      const isBarangayApproved = request.status === 'barangay_approved'
+                      const isBarangayRejected = request.status === 'barangay_rejected'
+                      const isBarangayDoc = (request.authority_level || '') === 'barangay'
+
+                      if (isBarangayRejected) {
+                        return <span className="text-xs font-medium text-rose-700">Rejected at barangay</span>
+                      }
+
+                      if (isBarangayProcessing) {
+                        if (isBarangayAdmin) {
+                          return (
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                              <button
+                                onClick={() => handleBarangayApprove(request)}
+                                className="w-full sm:w-auto px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-60"
+                                disabled={actionLoading === String(request.id)}
+                              >{actionLoading === String(request.id) ? 'Saving…' : 'Approve at Barangay'}</button>
+                              <button
+                                onClick={() => openReject(request)}
+                                className="w-full sm:w-auto px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs sm:text-sm font-medium transition-colors"
+                              >Reject</button>
+                            </div>
+                          )
+                        }
+                        return <span className="text-xs text-neutral-600">Awaiting barangay review</span>
+                      }
+
+                      if (isBarangayApproved) {
+                        if (isBarangayAdmin) {
+                          if (!isBarangayDoc) {
+                            return <span className="text-xs text-neutral-600">Waiting for municipal processing</span>
+                          }
+                          return (
+                            <button
+                              onClick={() => handleStartProcessing(request)}
+                              className="w-full sm:w-auto px-3 py-2 bg-ocean-100 hover:bg-ocean-200 text-ocean-700 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-60"
+                              disabled={actionLoading === String(request.id)}
+                            >{actionLoading === String(request.id) ? 'Starting…' : 'Start Processing'}</button>
+                          )
+                        }
+                        if (isMunicipalLike) {
+                          return (
+                            <button
+                              onClick={() => handleApprove(request)}
+                              className="w-full sm:w-auto px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-60"
+                              disabled={actionLoading === String(request.id)}
+                            >{actionLoading === String(request.id) ? 'Approving…' : 'Approve (Municipal)'}</button>
+                          )
+                        }
+                      }
 
                       if (isPending) {
+                        if (isBarangayAdmin) {
+                          return (
+                            <button
+                              onClick={() => handleBarangayStart(request)}
+                              className="w-full sm:w-auto px-3 py-2 bg-ocean-100 hover:bg-ocean-200 text-ocean-700 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-60"
+                              disabled={actionLoading === String(request.id)}
+                            >{actionLoading === String(request.id) ? 'Starting…' : 'Start Barangay Review'}</button>
+                          )
+                        }
                         return (
                           <button
                             onClick={() => handleApprove(request)}
@@ -597,5 +760,4 @@ export default function Requests() {
     </div>
   )
 }
-
 

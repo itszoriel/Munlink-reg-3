@@ -44,13 +44,16 @@ type AdminState = {
   accessToken?: string
   refreshToken?: string
   isAuthenticated: boolean
+  isAuthBootstrapped: boolean
   setAuth: (user: User, accessToken: string, refreshToken: string) => void
   setTokens: (accessToken: string, refreshToken?: string) => void
   logout: () => void
   updateUser: (user: User) => void
+  setAuthBootstrapped: (v: boolean) => void
+  bootstrapAuth: () => Promise<void>
 }
 
-export const useAdminStore = create<AdminState>((set) => {
+export const useAdminStore = create<AdminState>((set, get) => {
   // Load from localStorage on init
   const storedToken = typeof window !== 'undefined' ? localStorage.getItem('admin:access_token') : null
   const storedRefreshToken = typeof window !== 'undefined' ? localStorage.getItem('admin:refresh_token') : null
@@ -68,13 +71,14 @@ export const useAdminStore = create<AdminState>((set) => {
     accessToken: storedToken || undefined,
     refreshToken: storedRefreshToken || undefined,
     isAuthenticated: !!storedToken && !!initialUser,
+    isAuthBootstrapped: false,
     setAuth: (user, accessToken, refreshToken) => {
       if (typeof window !== 'undefined') {
         localStorage.setItem('admin:access_token', accessToken)
         localStorage.setItem('admin:refresh_token', refreshToken)
         localStorage.setItem('admin:user', JSON.stringify(user))
       }
-      set({ user, accessToken, refreshToken, isAuthenticated: true })
+      set({ user, accessToken, refreshToken, isAuthenticated: true, isAuthBootstrapped: true })
     },
     setTokens: (accessToken, refreshToken) => {
       if (typeof window !== 'undefined') {
@@ -96,7 +100,7 @@ export const useAdminStore = create<AdminState>((set) => {
         localStorage.removeItem('admin:user')
         try { sessionStorage.clear() } catch {}
       }
-      set({ user: undefined, accessToken: undefined, refreshToken: undefined, isAuthenticated: false })
+      set({ user: undefined, accessToken: undefined, refreshToken: undefined, isAuthenticated: false, isAuthBootstrapped: true })
     },
     updateUser: (user) => {
       if (typeof window !== 'undefined') {
@@ -104,6 +108,36 @@ export const useAdminStore = create<AdminState>((set) => {
       }
       set({ user })
     },
+    setAuthBootstrapped: (v) => set({ isAuthBootstrapped: v }),
+    bootstrapAuth: async () => {
+      if (typeof window === 'undefined') {
+        set({ isAuthBootstrapped: true })
+        return
+      }
+
+      const { accessToken } = get()
+      if (!accessToken) {
+        set({ isAuthBootstrapped: true, isAuthenticated: false, user: undefined })
+        return
+      }
+
+      try {
+        const { authApi } = await import('./api')
+        const resp = await authApi.getProfile()
+        if (resp?.data) {
+          const user = resp.data as User
+          localStorage.setItem('admin:user', JSON.stringify(user))
+          set({ user, isAuthenticated: true })
+        } else {
+          const { logout } = get()
+          logout()
+        }
+      } catch {
+        const { logout } = get()
+        logout()
+      } finally {
+        set({ isAuthBootstrapped: true })
+      }
+    },
   }
 })
-

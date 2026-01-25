@@ -9,9 +9,14 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const navigate = useNavigate()
-  const { isAuthenticated, user } = useAdminStore()
+  const { isAuthenticated, user, isAuthBootstrapped, bootstrapAuth } = useAdminStore()
 
   useEffect(() => {
+    if (!isAuthBootstrapped) {
+      void bootstrapAuth()
+      return
+    }
+
     if (!isAuthenticated || !user) {
       navigate('/', { replace: true })
       return
@@ -23,7 +28,15 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       console.error('Access denied: User is not an admin')
       navigate('/', { replace: true })
     }
-  }, [isAuthenticated, user, navigate])
+  }, [isAuthenticated, user, navigate, isAuthBootstrapped, bootstrapAuth])
+
+  if (!isAuthBootstrapped) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] text-gray-500">
+        Checking session...
+      </div>
+    )
+  }
 
   const allowedRoles = ['municipal_admin', 'admin', 'superadmin', 'provincial_admin', 'barangay_admin']
   if (!isAuthenticated || !user || !allowedRoles.includes(user.role)) {

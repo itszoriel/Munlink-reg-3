@@ -8,9 +8,16 @@ from apps.api.utils.validators import validate_file_size, validate_file_extensio
 # MIME type sets for validation
 ALLOWED_IMAGE_MIMES = {
     'image/jpeg',
+    'image/jpg',
+    'image/pjpeg',
     'image/png', 
+    'image/x-png',
     'image/gif',
     'image/webp',
+    'image/heic',
+    'image/heif',
+    'image/heif-sequence',
+    'image/heic-sequence',
 }
 
 ALLOWED_DOCUMENT_MIMES = {
@@ -18,7 +25,14 @@ ALLOWED_DOCUMENT_MIMES = {
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'image/jpeg',
+    'image/jpg',
+    'image/pjpeg',
     'image/png',
+    'image/x-png',
+    'image/heic',
+    'image/heif',
+    'image/heif-sequence',
+    'image/heic-sequence',
 }
 
 # Base upload directory - will be set by Flask app

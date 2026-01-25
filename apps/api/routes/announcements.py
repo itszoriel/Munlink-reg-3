@@ -5,6 +5,7 @@ SCOPE: Zambales province only, excluding Olongapo City.
 from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 from sqlalchemy import and_, or_, case, func
+from sqlalchemy.orm import selectinload
 import sqlalchemy as sa
 from sqlalchemy.exc import OperationalError as SAOperationalError, ProgrammingError as SAProgrammingError
 import sqlite3
@@ -41,9 +42,15 @@ def _is_published_active(now, announcement: Announcement) -> bool:
     status = (announcement.status or '').upper()
     if status != 'PUBLISHED':
         return False
-    if announcement.publish_at and announcement.publish_at > now:
+    publish_at = announcement.publish_at
+    expire_at = announcement.expire_at
+    if publish_at and publish_at.tzinfo:
+        publish_at = publish_at.astimezone(timezone.utc).replace(tzinfo=None)
+    if expire_at and expire_at.tzinfo:
+        expire_at = expire_at.astimezone(timezone.utc).replace(tzinfo=None)
+    if publish_at and publish_at > now:
         return False
-    if announcement.expire_at and announcement.expire_at <= now:
+    if expire_at and expire_at <= now:
         return False
     return True
 
@@ -67,7 +74,8 @@ def list_announcements():
         requested_municipality_id = request.args.get('municipality_id', type=int)
         requested_barangay_id = request.args.get('barangay_id', type=int)
 
-        now = datetime.now(timezone.utc)
+        # Use naive UTC to match stored timestamps (SQLite test DB stores naive datetimes)
+        now = datetime.utcnow()
 
         # Attempt to resolve authenticated resident
         resident_municipality_id = None
@@ -168,7 +176,11 @@ def list_announcements():
         )
         publish_order = func.coalesce(Announcement.publish_at, Announcement.created_at)
 
-        query = Announcement.query.filter(and_(*filters))
+        query = Announcement.query.options(
+            selectinload(Announcement.municipality),
+            selectinload(Announcement.barangay),
+            selectinload(Announcement.creator),
+        ).filter(and_(*filters))
         query = query.order_by(
             case((pinned_active, 0), else_=1),
             publish_order.desc(),
@@ -210,7 +222,7 @@ def list_announcements():
 def get_announcement(announcement_id: int):
     """Get a single announcement by id with scope enforcement."""
     from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     try:
         ann = db.session.get(Announcement, announcement_id)
         if not ann:
@@ -247,13 +259,18 @@ def get_announcement(announcement_id: int):
 
             if not user or user.role != 'resident' or not user.admin_verified:
                 return jsonify({'error': 'Announcement not found'}), 404
+            if not is_valid_zambales_municipality(getattr(user, 'municipality_id', None)):
+                return jsonify({'error': 'Announcement not found'}), 404
 
             # Municipality scope
             if scope == 'MUNICIPALITY':
                 if user.municipality_id != ann.municipality_id and user.municipality_id not in shared_munis:
                     return jsonify({'error': 'Announcement not found'}), 404
             elif scope == 'BARANGAY':
-                if not user.barangay_id or (user.barangay_id != ann.barangay_id and user.municipality_id not in shared_munis):
+                # Allow residents of shared-to municipalities even if they haven't set a barangay.
+                if user.municipality_id in shared_munis:
+                    pass
+                elif not user.barangay_id or user.barangay_id != ann.barangay_id:
                     return jsonify({'error': 'Announcement not found'}), 404
 
         return jsonify(ann.to_dict()), 200

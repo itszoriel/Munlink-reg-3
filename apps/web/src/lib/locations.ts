@@ -92,7 +92,7 @@ export function getProvinces(): Province[] {
  * Get municipalities in Zambales (excluding Olongapo)
  * Province ID parameter is accepted for API compatibility but ignored.
  */
-export function getMunicipalities(provinceId?: number): Municipality[] {
+export function getMunicipalities(_provinceId?: number): Municipality[] {
   // Always return Zambales municipalities only
   return MUNICIPALITIES
 }

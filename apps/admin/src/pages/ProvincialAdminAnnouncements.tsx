@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Plus, Megaphone, Edit, Trash2, Eye, Pin, Archive } from 'lucide-react'
+import { Plus, Megaphone, Edit, Trash2, Pin } from 'lucide-react'
 import ProvincialAdminLayout from '../components/layout/ProvincialAdminLayout'
 import { announcementApi, handleApiError, mediaUrl } from '../lib/api'
 import { EmptyState } from '@munlink/ui'
-import SafeImage from '../components/SafeImage'
 
 interface Announcement {
   id: number
@@ -22,18 +21,18 @@ interface Announcement {
   images?: string[]
 }
 
-interface FormData {
+type AnnouncementFormValues = {
   title: string
   content: string
   priority: 'high' | 'medium' | 'low'
-  status: 'DRAFT' | 'PUBLISHED'
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
   pinned: boolean
   pinned_until: string
   publish_at: string
   expire_at: string
 }
 
-const initialFormData: FormData = {
+const initialFormData: AnnouncementFormValues = {
   title: '',
   content: '',
   priority: 'medium',
@@ -49,7 +48,7 @@ export default function ProvincialAdminAnnouncements() {
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null)
-  const [formData, setFormData] = useState<FormData>(initialFormData)
+  const [formData, setFormData] = useState<AnnouncementFormValues>(initialFormData)
   const [formImages, setFormImages] = useState<FileList | null>(null)
   const [formLoading, setFormLoading] = useState(false)
 
@@ -255,7 +254,7 @@ export default function ProvincialAdminAnnouncements() {
                     {announcement.images && announcement.images.length > 0 && (
                       <div className="flex gap-2 mt-3">
                         {announcement.images.slice(0, 3).map((img, idx) => (
-                          <SafeImage
+                          <img
                             key={idx}
                             src={mediaUrl(img)}
                             alt={`Announcement image ${idx + 1}`}

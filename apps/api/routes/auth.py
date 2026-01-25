@@ -123,6 +123,66 @@ def _limit(limit_string):
     return decorator
 
 
+def _limit_with_key(limit_value, key_func):
+    """Apply rate limit with custom key function if limiter is available."""
+    def decorator(f):
+        if limiter:
+            return limiter.limit(limit_value, key_func=key_func)(f)
+        return f
+    return decorator
+
+
+def _superadmin_key_or_ip() -> str:
+    """
+    Rate limit key for superadmin actions:
+    - If a valid JWT is present and role==superadmin, key by superadmin identity
+    - Otherwise fall back to IP (preserves strict limits for unauth usage)
+    """
+    # Key by authenticated superadmin identity when possible
+    try:
+        from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
+
+        verify_jwt_in_request(optional=True)
+        claims = get_jwt() or {}
+        role = (claims.get('role') or '').lower()
+        if role == 'superadmin':
+            uid = get_jwt_identity()
+            if uid:
+                return f"superadmin:{uid}"
+    except Exception:
+        pass
+
+    # Fallback to IP-based key
+    try:
+        from flask_limiter.util import get_remote_address
+
+        return get_remote_address()
+    except Exception:
+        return request.remote_addr or 'unknown'
+
+
+def _admin_register_limit_value() -> str:
+    """
+    Dynamic rate limit for creating admin accounts.
+
+    - Superadmin-authenticated requests get a practical onboarding limit (bursts allowed)
+    - Unauthenticated requests remain strict to reduce abuse if ADMIN_SECRET_KEY is leaked
+    """
+    try:
+        from flask_jwt_extended import verify_jwt_in_request, get_jwt
+
+        verify_jwt_in_request(optional=True)
+        role = ((get_jwt() or {}).get('role') or '').lower()
+        if role == 'superadmin':
+            # Allow bursts for onboarding while still limiting abuse
+            return "20 per minute; 200 per hour"
+    except Exception:
+        pass
+
+    # Strict default for unauth usage (secret-only)
+    return "3 per hour"
+
+
 @auth_bp.route('/register', methods=['POST'])
 @_limit("5 per hour")  # Prevent spam account creation
 def register():
@@ -699,7 +759,7 @@ def admin_login():
 
 
 @auth_bp.route('/admin/register', methods=['POST'])
-@_limit("3 per hour")  # Strict limit on admin account creation
+@_limit_with_key(_admin_register_limit_value, _superadmin_key_or_ip)
 def admin_register():
     """Create a municipal admin account (separate admin site).
     Requires ADMIN_SECRET_KEY to be provided in the request body as 'admin_secret'.
@@ -808,13 +868,18 @@ def admin_register():
                 db.session.rollback()
                 return jsonify({'error': 'Valid ID Front and Back are required for admin registration'}), 400
 
-            # Optional profile
-            profile = request.files.get('profile_picture')
-            if profile and getattr(profile, 'filename', ''):
-                user.profile_picture = save_profile_picture(profile, user.id, municipality_slug, user_type='admins')
+            try:
+                # Optional profile
+                profile = request.files.get('profile_picture')
+                if profile and getattr(profile, 'filename', ''):
+                    user.profile_picture = save_profile_picture(profile, user.id, municipality_slug, user_type='admins')
 
-            user.valid_id_front = save_verification_document(id_front, user.id, municipality_slug, 'valid_id_front', user_type='admins')
-            user.valid_id_back = save_verification_document(id_back, user.id, municipality_slug, 'valid_id_back', user_type='admins')
+                user.valid_id_front = save_verification_document(id_front, user.id, municipality_slug, 'valid_id_front', user_type='admins')
+                user.valid_id_back = save_verification_document(id_back, user.id, municipality_slug, 'valid_id_back', user_type='admins')
+            except Exception as upload_error:
+                db.session.rollback()
+                # Surface validation/storage errors as 400 instead of 500
+                return jsonify({'error': 'File validation failed', 'details': str(upload_error)}), 400
 
         db.session.commit()
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Shield, Plus, X, Filter, Mail, UserCog, MapPin, Calendar } from 'lucide-react'
+import { Users, Plus, X, Filter, Mail, UserCog, MapPin, Calendar } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getProvinces, getMunicipalities, getBarangaysByMunicipalitySlug } from '@/lib/locations'
 import { superAdminApi } from '../lib/api'
@@ -26,9 +26,44 @@ interface Admin {
   created_at: string
 }
 
+// Helper function to get assignment display based on role
+const getAssignmentDisplay = (admin: Admin): string => {
+  switch (admin.role) {
+    case 'superadmin':
+      return 'System Administrator'
+    case 'provincial_admin':
+      return 'Zambales'
+    case 'municipal_admin':
+      return admin.municipality_name || '—'
+    case 'barangay_admin':
+      if (admin.municipality_name && admin.barangay_name) {
+        return `${admin.municipality_name} • Brgy. ${admin.barangay_name}`
+      }
+      return admin.municipality_name || '—'
+    default:
+      return '—'
+  }
+}
+
+// Helper function to format role display
+const formatRoleDisplay = (role: string): string => {
+  switch (role) {
+    case 'superadmin':
+      return 'Super Admin'
+    case 'provincial_admin':
+      return 'Provincial Admin'
+    case 'municipal_admin':
+      return 'Municipal Admin'
+    case 'barangay_admin':
+      return 'Barangay Admin'
+    default:
+      return role
+  }
+}
+
 export default function SuperAdminPanel() {
   const navigate = useNavigate()
-  const { user, isAuthenticated, logout } = useAdminStore()
+  const { user, isAuthenticated } = useAdminStore()
   const isSuperAdmin = !!user && user.role === 'superadmin'
 
   const [admins, setAdmins] = useState<Admin[]>([])
@@ -64,6 +99,7 @@ export default function SuperAdminPanel() {
   const [filterProvinceId, setFilterProvinceId] = useState<string>('')
   const [filterMunicipalitySlug, setFilterMunicipalitySlug] = useState<string>('')
   const [filterBarangayId, setFilterBarangayId] = useState<string>('')
+  const [filterRole, setFilterRole] = useState<string>('')
   const [fabExpanded, setFabExpanded] = useState(false)
 
   const provinces = getProvinces()
@@ -74,9 +110,14 @@ export default function SuperAdminPanel() {
   const filterMunicipalities = filterProvinceId ? getMunicipalities(Number(filterProvinceId)) : []
   const filterBarangays = filterMunicipalitySlug ? getBarangaysByMunicipalitySlug(filterMunicipalitySlug) : []
 
-  // Filter admins by province, municipality, and barangay
+  // Filter admins by role, province, municipality, and barangay
   const filteredAdmins = useMemo(() => {
     let result = admins
+
+    // Filter by role
+    if (filterRole) {
+      result = result.filter(admin => admin.role === filterRole)
+    }
 
     // Filter by province
     if (filterProvinceId) {
@@ -104,7 +145,7 @@ export default function SuperAdminPanel() {
     }
 
     return result
-  }, [admins, filterProvinceId, filterMunicipalitySlug, filterBarangayId, filterMunicipalities, filterBarangays])
+  }, [admins, filterRole, filterProvinceId, filterMunicipalitySlug, filterBarangayId, filterMunicipalities, filterBarangays])
   const totalAdmins = pagination?.total ?? admins.length
   const pageSize = pagination?.per_page ?? perPage
   const currentPage = pagination?.page ?? page
@@ -219,7 +260,9 @@ export default function SuperAdminPanel() {
       setPage(1)
       fetchAdmins(1)
     } catch (err: any) {
-      setCreateError(err?.response?.data?.error || 'Failed to create admin')
+      const errorMsg = err?.response?.data?.error || 'Failed to create admin'
+      const errorDetails = err?.response?.data?.details
+      setCreateError(errorDetails ? `${errorMsg}: ${errorDetails}` : errorMsg)
     } finally {
       setCreateLoading(false)
     }
@@ -295,6 +338,27 @@ export default function SuperAdminPanel() {
                       <Filter className="w-4 h-4" />
                       <span className="text-sm font-medium">Filters:</span>
                     </div>
+
+                    <select
+                      value={filterRole}
+                      onChange={(e) => {
+                        setFilterRole(e.target.value)
+                        // Clear location filters if SuperAdmin is selected
+                        if (e.target.value === 'superadmin') {
+                          setFilterProvinceId('')
+                          setFilterMunicipalitySlug('')
+                          setFilterBarangayId('')
+                        }
+                      }}
+                      className="w-full sm:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    >
+                      <option value="">All Admin Types</option>
+                      <option value="superadmin">Super Admin</option>
+                      <option value="provincial_admin">Provincial Admin</option>
+                      <option value="municipal_admin">Municipal Admin</option>
+                      <option value="barangay_admin">Barangay Admin</option>
+                    </select>
+
                     <select
                       value={filterProvinceId}
                       onChange={(e) => {
@@ -302,7 +366,8 @@ export default function SuperAdminPanel() {
                         setFilterMunicipalitySlug('')
                         setFilterBarangayId('')
                       }}
-                      className="w-full sm:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      disabled={filterRole === 'superadmin'}
+                      className="w-full sm:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
                     >
                       <option value="">All Provinces</option>
                       {provinces.map(p => (
@@ -316,7 +381,7 @@ export default function SuperAdminPanel() {
                         setFilterMunicipalitySlug(e.target.value)
                         setFilterBarangayId('')
                       }}
-                      disabled={!filterProvinceId}
+                      disabled={!filterProvinceId || filterRole === 'superadmin' || filterRole === 'provincial_admin'}
                       className="w-full sm:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
                     >
                       <option value="">All Municipalities</option>
@@ -328,7 +393,7 @@ export default function SuperAdminPanel() {
                     <select
                       value={filterBarangayId}
                       onChange={(e) => setFilterBarangayId(e.target.value)}
-                      disabled={!filterMunicipalitySlug}
+                      disabled={!filterMunicipalitySlug || filterRole === 'superadmin' || filterRole === 'provincial_admin' || filterRole === 'municipal_admin'}
                       className="w-full sm:w-auto text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
                     >
                       <option value="">All Barangays</option>
@@ -337,9 +402,10 @@ export default function SuperAdminPanel() {
                       ))}
                     </select>
 
-                    {(filterProvinceId || filterMunicipalitySlug || filterBarangayId) && (
+                    {(filterRole || filterProvinceId || filterMunicipalitySlug || filterBarangayId) && (
                       <button
                         onClick={() => {
+                          setFilterRole('')
                           setFilterProvinceId('')
                           setFilterMunicipalitySlug('')
                           setFilterBarangayId('')
@@ -401,7 +467,7 @@ export default function SuperAdminPanel() {
                               </div>
                             </td>
                             <td className="px-4 py-4">
-                              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${
+                              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
                                 admin.role === 'superadmin'
                                   ? 'bg-purple-100 text-purple-700 ring-1 ring-purple-600/20'
                                   : admin.role === 'provincial_admin'
@@ -410,23 +476,16 @@ export default function SuperAdminPanel() {
                                   ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20'
                                   : 'bg-green-100 text-green-700 ring-1 ring-green-600/20'
                               }`}>
-                                {admin.role.replace('_', ' ').toUpperCase()}
+                                {formatRoleDisplay(admin.role)}
                               </span>
                             </td>
                             <td className="px-4 py-4 text-sm text-gray-600">
-                              {admin.municipality_name ? (
-                                <div className="flex items-start gap-2">
-                                  <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                                  <div className="truncate" title={`${admin.municipality_name}${admin.barangay_name ? ` - Brgy. ${admin.barangay_name}` : ''}`}>
-                                    <div>{admin.municipality_name}</div>
-                                    {admin.barangay_name && (
-                                      <div className="text-xs text-gray-500 truncate">Brgy. {admin.barangay_name}</div>
-                                    )}
-                                  </div>
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                <div className="truncate" title={getAssignmentDisplay(admin)}>
+                                  {getAssignmentDisplay(admin)}
                                 </div>
-                              ) : (
-                                <span className="text-gray-400">—</span>
-                              )}
+                              </div>
                             </td>
                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                               <div className="flex items-center gap-2">
@@ -455,7 +514,7 @@ export default function SuperAdminPanel() {
                                 <span className="truncate">{admin.email}</span>
                               </div>
                             </div>
-                            <span className={`px-2.5 py-1 text-xs font-semibold rounded-full flex-shrink-0 whitespace-nowrap ${
+                            <span className={`px-2.5 py-1 text-xs font-medium rounded-full flex-shrink-0 whitespace-nowrap ${
                               admin.role === 'superadmin'
                                 ? 'bg-purple-100 text-purple-700 ring-1 ring-purple-600/20'
                                 : admin.role === 'provincial_admin'
@@ -464,7 +523,7 @@ export default function SuperAdminPanel() {
                                 ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20'
                                 : 'bg-green-100 text-green-700 ring-1 ring-green-600/20'
                             }`}>
-                              {admin.role.replace('_', ' ').toUpperCase()}
+                              {formatRoleDisplay(admin.role)}
                             </span>
                           </div>
                           <div className="space-y-2 text-sm text-gray-600">
@@ -473,16 +532,13 @@ export default function SuperAdminPanel() {
                               <span className="font-medium text-gray-500 flex-shrink-0">Username:</span>
                               <span className="font-mono text-gray-800 truncate">{admin.username}</span>
                             </div>
-                            {admin.municipality_name && (
-                              <div className="flex items-start gap-2">
-                                <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                                <span className="font-medium text-gray-500 flex-shrink-0">Assignment:</span>
-                                <span className="text-gray-800 break-words">
-                                  {admin.municipality_name}
-                                  {admin.barangay_name ? ` - Brgy. ${admin.barangay_name}` : ''}
-                                </span>
-                              </div>
-                            )}
+                            <div className="flex items-start gap-2">
+                              <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                              <span className="font-medium text-gray-500 flex-shrink-0">Assignment:</span>
+                              <span className="text-gray-800 break-words">
+                                {getAssignmentDisplay(admin)}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-2">
                               <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
                               <span className="font-medium text-gray-500 flex-shrink-0">Created:</span>

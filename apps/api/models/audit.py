@@ -34,10 +34,15 @@ class AuditLog(db.Model):
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Relationships
+    user = db.relationship('User', backref=db.backref('audit_logs', lazy='dynamic'))
+    municipality = db.relationship('Municipality', backref=db.backref('audit_logs', lazy='dynamic'))
+
     __table_args__ = (
         Index('idx_audit_muni', 'municipality_id'),
         Index('idx_audit_entity', 'entity_type', 'entity_id'),
         Index('idx_audit_created_at', 'created_at'),
+        Index('idx_audit_user', 'user_id'),
     )
 
     def to_dict(self):

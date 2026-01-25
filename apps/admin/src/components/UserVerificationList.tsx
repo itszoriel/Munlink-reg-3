@@ -4,7 +4,6 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { userApi, handleApiError, mediaUrl, showToast } from '../lib/api'
-import SafeImage from './SafeImage'
 import { WatermarkedImageViewer } from './WatermarkedImageViewer'
 import { ViewIDReasonModal } from './ViewIDReasonModal'
 import { useAdminStore } from '../lib/store'
@@ -18,7 +17,6 @@ interface User {
   profile_picture?: string
   valid_id_front?: string
   valid_id_back?: string
-  selfie_with_id?: string
   created_at: string
   municipality_name?: string
 }
@@ -40,6 +38,8 @@ export default function UserVerificationList({
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [actionLoading, setActionLoading] = useState<{ userId: number; action: 'approve' | 'reject' } | null>(null)
+  const currentUser = useAdminStore((s) => s.user)
+  const hasApprovePermission = (currentUser?.permissions?.includes('residents:approve') || currentUser?.permissions?.includes('*')) ?? false
 
   // Load pending users
   const loadPendingUsers = async () => {
@@ -67,6 +67,10 @@ export default function UserVerificationList({
 
   // Handle user verification
   const handleVerifyUser = async (userId: number) => {
+    if (!hasApprovePermission) {
+      setError('Permission denied: residents:approve required')
+      return
+    }
     try {
       setActionLoading({ userId, action: 'approve' })
       await userApi.verifyUser(userId)
@@ -89,6 +93,10 @@ export default function UserVerificationList({
 
   // Handle user rejection
   const handleRejectUser = async (userId: number, reason: string) => {
+    if (!hasApprovePermission) {
+      setError('Permission denied: residents:approve required')
+      return
+    }
     try {
       setActionLoading({ userId, action: 'reject' })
       await userApi.rejectUser(userId, reason)
@@ -208,18 +216,21 @@ export default function UserVerificationList({
                 </button>
                 <button
                   onClick={() => handleVerifyUser(user.id)}
-                  disabled={actionLoading !== null}
+                  disabled={!hasApprovePermission || actionLoading !== null}
                   className="px-3 py-1 text-xs whitespace-nowrap font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
                   {actionLoading?.userId === user.id && actionLoading?.action === 'approve' ? 'Verifying...' : 'Approve'}
                 </button>
                 <button
                   onClick={() => handleRejectUser(user.id, 'Verification rejected by admin')}
-                  disabled={actionLoading !== null}
+                  disabled={!hasApprovePermission || actionLoading !== null}
                   className="px-3 py-1 text-xs whitespace-nowrap font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                 >
                   {actionLoading?.userId === user.id && actionLoading?.action === 'reject' ? 'Rejecting...' : 'Reject'}
                 </button>
+                {!hasApprovePermission && (
+                  <span className="text-xs text-gray-400 ml-2">No approve/reject permission</span>
+                )}
               </div>
             </div>
           </div>
@@ -259,18 +270,17 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
   const [fullUser, setFullUser] = useState<User | null>(user)
   const [fetching, setFetching] = useState(false)
   const [uploadingDocs, setUploadingDocs] = useState(false)
-  const [docFiles, setDocFiles] = useState<{ valid_id_front?: File, valid_id_back?: File, selfie_with_id?: File }>({})
+  const [docFiles, setDocFiles] = useState<{ valid_id_front?: File, valid_id_back?: File }>({})
   const idFrontInputRef = useRef<HTMLInputElement>(null)
   const idBackInputRef = useRef<HTMLInputElement>(null)
-  const selfieInputRef = useRef<HTMLInputElement>(null)
 
   // Watermarked viewer state
   const [viewingDoc, setViewingDoc] = useState<{
-    type: 'id_front' | 'id_back' | 'selfie',
+    type: 'id_front' | 'id_back',
     reason: string
   } | null>(null)
   const [showReasonModal, setShowReasonModal] = useState<{
-    type: 'id_front' | 'id_back' | 'selfie'
+    type: 'id_front' | 'id_back'
   } | null>(null)
 
   // Permission checks
@@ -309,7 +319,6 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
       setDocFiles({})
       if (idFrontInputRef.current) idFrontInputRef.current.value = ''
       if (idBackInputRef.current) idBackInputRef.current.value = ''
-      if (selfieInputRef.current) selfieInputRef.current.value = ''
       showToast('Documents uploaded successfully', 'success')
     } catch (e: any) {
       showToast(handleApiError(e), 'error')
@@ -446,42 +455,7 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
                 )}
               </div>
 
-              {/* Selfie with ID */}
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Selfie with ID</label>
-                {viewingDoc?.type === 'selfie' ? (
-                  <WatermarkedImageViewer
-                    userId={fullUser?.id || user.id}
-                    docType="selfie"
-                    reason={viewingDoc.reason}
-                    municipalityName={fullUser?.municipality_name || user.municipality_name || 'Unknown'}
-                    residentId={fullUser?.id || user.id}
-                    onError={(err) => {
-                      console.error('Failed to load selfie:', err)
-                      setViewingDoc(null)
-                    }}
-                  />
-                ) : (
-                  <>
-                    {fullUser?.selfie_with_id && hasIdViewPermission && (
-                      <button
-                        onClick={() => setShowReasonModal({ type: 'selfie' })}
-                        className="px-3 py-1.5 text-xs font-medium text-ocean-600 border border-ocean-600 rounded hover:bg-ocean-50"
-                      >
-                        View Selfie
-                      </button>
-                    )}
-                    {fullUser?.selfie_with_id && !hasIdViewPermission && (
-                      <span className="text-xs text-gray-400">No permission to view</span>
-                    )}
-                    {!fullUser?.selfie_with_id && (
-                      <span className="text-xs text-gray-500">Not uploaded</span>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {!fetching && !fullUser?.valid_id_front && !fullUser?.valid_id_back && !fullUser?.selfie_with_id && (
+              {!fetching && !fullUser?.valid_id_front && !fullUser?.valid_id_back && (
                 <p className="text-sm text-gray-500">No ID documents uploaded.</p>
               )}
             </div>
@@ -508,16 +482,6 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
                     accept="image/*"
                     className="text-xs"
                     onChange={(e) => setDocFiles(prev => ({ ...prev, valid_id_back: e.target.files?.[0] || undefined }))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Selfie with ID</label>
-                  <input
-                    ref={selfieInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="text-xs"
-                    onChange={(e) => setDocFiles(prev => ({ ...prev, selfie_with_id: e.target.files?.[0] || undefined }))}
                   />
                 </div>
                 {Object.keys(docFiles).length > 0 && (

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAdminStore } from '../lib/store'
 import { userApi } from '../lib/api'
 
@@ -24,14 +24,14 @@ export function WatermarkedImageViewer({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const user = useAdminStore((s) => s.user)
 
   useEffect(() => {
-    if (!canvasRef.current || !user) return
-
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    // Don't wait for canvas - fetch can happen independently
+    if (!user) {
+      return
+    }
 
     let blobUrl: string | null = null
     let mounted = true
@@ -47,14 +47,49 @@ export function WatermarkedImageViewer({
 
         if (!mounted) return
 
+        // Check if response is actually a blob with image data
+        // If API returns an error, it might be JSON wrapped as a blob
+        if (response.type && response.type.startsWith('application/json')) {
+          const text = await response.text()
+          let errorMsg = 'Failed to load image'
+          try {
+            const json = JSON.parse(text)
+            errorMsg = json.error || json.message || errorMsg
+          } catch {}
+          setError(errorMsg)
+          setLoading(false)
+          onError?.(errorMsg)
+          return
+        }
+
+        // Convert blob to data URL
+        const blob = await response
+        blobUrl = URL.createObjectURL(blob)
+
+        // Add timeout in case image loading hangs
+        let loadTimeout: NodeJS.Timeout | null = null
+
         // Create image element
         const img = new Image()
         img.crossOrigin = 'anonymous'
 
         img.onload = () => {
+          if (loadTimeout) clearTimeout(loadTimeout)
+
           if (!mounted) {
             // Clean up if component unmounted
             if (blobUrl) URL.revokeObjectURL(blobUrl)
+            return
+          }
+
+          // Get canvas and context when we need to draw
+          const canvas = canvasRef.current
+          const ctx = canvas?.getContext('2d')
+
+          if (!canvas || !ctx) {
+            setError('Failed to initialize canvas')
+            setLoading(false)
+            onError?.('Failed to initialize canvas')
             return
           }
 
@@ -110,6 +145,8 @@ export function WatermarkedImageViewer({
         }
 
         img.onerror = () => {
+          if (loadTimeout) clearTimeout(loadTimeout)
+
           // Revoke blob URL on error
           if (blobUrl) URL.revokeObjectURL(blobUrl)
 
@@ -119,13 +156,43 @@ export function WatermarkedImageViewer({
           onError?.(errMsg)
         }
 
-        // Convert blob to data URL
-        const blob = await response
-        blobUrl = URL.createObjectURL(blob)
+        // Set timeout AFTER defining handlers
+        loadTimeout = setTimeout(() => {
+          if (blobUrl) URL.revokeObjectURL(blobUrl)
+          const errMsg = 'Image loading timeout - file may be invalid or too large'
+          setError(errMsg)
+          setLoading(false)
+          onError?.(errMsg)
+        }, 15000) // 15 second timeout
+
+        // Start loading image
         img.src = blobUrl
 
       } catch (err: any) {
-        const errMsg = err.response?.data?.error || err.message || 'Failed to fetch document'
+        // When responseType is 'blob', error responses are also Blobs
+        // We need to extract the JSON error message from the Blob
+        let errMsg = 'Failed to fetch document'
+
+        try {
+          if (err.response?.data instanceof Blob) {
+            const text = await err.response.data.text()
+            try {
+              const json = JSON.parse(text)
+              errMsg = json.error || json.message || errMsg
+            } catch {
+              errMsg = text || errMsg
+            }
+          } else if (err.response?.data?.error) {
+            errMsg = err.response.data.error
+          } else if (err.response?.data?.message) {
+            errMsg = err.response.data.message
+          } else if (err.message) {
+            errMsg = err.message
+          }
+        } catch {
+          // Fallback to generic message
+        }
+
         setError(errMsg)
         setLoading(false)
         onError?.(errMsg)
@@ -139,29 +206,49 @@ export function WatermarkedImageViewer({
       mounted = false
       if (blobUrl) URL.revokeObjectURL(blobUrl)
     }
-  }, [userId, docType, reason, municipalityName, residentId, user, onLoad, onError])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 bg-gray-100 rounded">
-        <div className="text-gray-500">Loading image...</div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 bg-red-50 rounded border border-red-200">
-        <div className="text-red-600 text-sm">{error}</div>
-      </div>
-    )
-  }
+  }, [userId, docType, reason, municipalityName, residentId, user, onLoad, onError, retryCount])
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full h-auto border rounded shadow-sm"
-      style={{ maxHeight: '500px', objectFit: 'contain' }}
-    />
+    <div className="relative">
+      {/* Always render canvas so ref is available */}
+      <canvas
+        ref={canvasRef}
+        className="w-full h-auto border rounded shadow-sm"
+        style={{
+          maxHeight: '500px',
+          objectFit: 'contain',
+          display: loading || error || !user ? 'none' : 'block'
+        }}
+      />
+
+      {/* Loading overlay */}
+      {!user && (
+        <div className="flex items-center justify-center h-64 bg-yellow-50 rounded border border-yellow-200">
+          <div className="text-yellow-700 text-sm">Waiting for authentication...</div>
+        </div>
+      )}
+
+      {user && loading && (
+        <div className="flex items-center justify-center h-64 bg-gray-100 rounded">
+          <div className="text-gray-500">Loading image...</div>
+        </div>
+      )}
+
+      {user && error && (
+        <div className="flex flex-col items-center justify-center h-64 bg-red-50 rounded border border-red-200 p-4">
+          <div className="text-red-600 text-sm text-center mb-3">{error}</div>
+          <button
+            onClick={() => {
+              setError(null)
+              setLoading(true)
+              setRetryCount(prev => prev + 1)
+            }}
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+    </div>
   )
 }

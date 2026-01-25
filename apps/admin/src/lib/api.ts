@@ -6,9 +6,6 @@ import axios from 'axios'
 import type { AxiosResponse, AxiosError, AxiosInstance } from 'axios'
 import { useAdminStore } from './store'
 
-// Avoid type dependency on @types/node for simple environment access in browser builds
-declare const process: any
-
 // API Configuration
 // Local-only: rely on explicit env or default to localhost
 const API_BASE_URL =
@@ -184,11 +181,10 @@ export const userApi = {
     apiClient.get(`/api/admin/users/${userId}`).then(res => res.data),
 
   // Upload verification documents for a user (admin re-upload)
-  uploadUserVerificationDocs: async (userId: number, files: { valid_id_front?: File, valid_id_back?: File, selfie_with_id?: File }): Promise<ApiResponse<any>> => {
+  uploadUserVerificationDocs: async (userId: number, files: { valid_id_front?: File, valid_id_back?: File }): Promise<ApiResponse<any>> => {
     const form = new FormData()
     if (files.valid_id_front) form.append('valid_id_front', files.valid_id_front)
     if (files.valid_id_back) form.append('valid_id_back', files.valid_id_back)
-    if (files.selfie_with_id) form.append('selfie_with_id', files.selfie_with_id)
     return apiClient.post(`/api/admin/users/${userId}/verification-docs`, form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data)
   },
 
@@ -297,8 +293,12 @@ export const announcementApi = {
     expire_at?: string
     pinned?: boolean
     pinned_until?: string
-  }): Promise<ApiResponse> =>
-    apiClient.post('/api/admin/announcements', data).then(res => res.data),
+  } | FormData): Promise<ApiResponse> => {
+    const isForm = (typeof FormData !== 'undefined') && (data instanceof FormData)
+    return apiClient.post('/api/admin/announcements', data, isForm ? {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    } : undefined).then(res => res.data)
+  },
 
   // Upload announcement image
   uploadImage: (id: number, file: File): Promise<ApiResponse<{ path: string; announcement: any }>> => {
@@ -335,8 +335,12 @@ export const announcementApi = {
     pinned_until?: string
     images?: string[]
     external_url?: string
-  }): Promise<ApiResponse> =>
-    apiClient.put(`/api/admin/announcements/${id}`, data).then(res => res.data),
+  } | FormData): Promise<ApiResponse> => {
+    const isForm = (typeof FormData !== 'undefined') && (data instanceof FormData)
+    return apiClient.put(`/api/admin/announcements/${id}`, data, isForm ? {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    } : undefined).then(res => res.data)
+  },
 
   // Delete announcement
   deleteAnnouncement: (id: number): Promise<ApiResponse> =>
@@ -447,6 +451,9 @@ export const adminApi = {
   getRequestStats: async (): Promise<{
     total_requests: number
     pending_requests: number
+    barangay_processing_requests: number
+    barangay_approved_requests: number
+    barangay_rejected_requests: number
     processing_requests: number
     ready_requests: number
     completed_requests: number
@@ -475,33 +482,26 @@ export const adminApi = {
   // Reports aggregate
   getReports: async (): Promise<any> => {
     // Prefer composing from known endpoints to avoid CORS preflight failures on non-existent routes
-    try {
-      const [dashRes, userRes] = await Promise.allSettled([
-        dashboardApi.getDashboardStats(),
-        userApi.getUserStats(),
-      ])
+    const [dashRes, userRes] = await Promise.allSettled([
+      dashboardApi.getDashboardStats(),
+      userApi.getUserStats(),
+    ])
 
-      const dash = dashRes.status === 'fulfilled' ? (dashRes.value as any)?.data || dashRes.value : undefined
-      const users = userRes.status === 'fulfilled' ? (userRes.value as any)?.data || userRes.value : undefined
+    const dash = dashRes.status === 'fulfilled' ? (dashRes.value as any)?.data || dashRes.value : undefined
+    const users = userRes.status === 'fulfilled' ? (userRes.value as any)?.data || userRes.value : undefined
 
-      if (dash || users) {
-        return { dashboard: dash, users }
-      }
-    } catch {}
+    if (dash || users) {
+      return { dashboard: dash, users }
+    }
 
     // As a last resort, try a backend aggregate endpoint if present
-    try {
-      const res = await apiClient.get('/api/admin/reports')
-      return res.data
-    } catch (e) {
-      // Surface the error to caller
-      throw e
-    }
+    const res = await apiClient.get('/api/admin/reports')
+    return res.data
   },
 }
 
 // Error handling utility
-export const handleApiError = (error: AxiosError): string => {
+export const handleApiError = (error: any, _context?: string): string => {
   // Prefer Flask-JWT-Extended default error shape
   const data: any = error.response?.data || {}
   const base = data?.msg || data?.error || error.message || 'An unexpected error occurred'

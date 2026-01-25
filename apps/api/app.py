@@ -280,6 +280,31 @@ def create_app(config_class=Config):
     @app.errorhandler(403)
     def forbidden(error):
         return jsonify({'error': 'Forbidden'}), 403
+
+    # Flask-Limiter rate limit handler (ensure JSON, not HTML)
+    try:
+        from flask_limiter.errors import RateLimitExceeded
+
+        @app.errorhandler(RateLimitExceeded)
+        def ratelimit_handler(error):  # pragma: no cover
+            payload = {'error': 'Rate limit exceeded'}
+            try:
+                desc = getattr(error, 'description', None)
+                if desc:
+                    payload['details'] = str(desc)
+            except Exception:
+                pass
+            resp = jsonify(payload)
+            resp.status_code = 429
+            # Preserve limiter-provided headers when available
+            try:
+                for k, v in error.get_headers():
+                    resp.headers[k] = v
+            except Exception:
+                pass
+            return resp
+    except Exception:
+        pass
     
     return app
 

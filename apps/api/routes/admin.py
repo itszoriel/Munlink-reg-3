@@ -355,14 +355,20 @@ def get_pending_users():
 def verify_user(user_id):
     """Approve user verification."""
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+        # Only municipal admins may verify residents
+        if ctx.get('role_lower') != 'municipal_admin':
+            return jsonify({'error': 'Only municipal admins can verify residents', 'code': 'ROLE_MISMATCH'}), 403
+
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):  # Error response
             return municipality_id
 
         current_admin = User.query.get(get_jwt_identity())
-        if current_admin and current_admin.permissions:
-            if 'residents:approve' not in current_admin.permissions and '*' not in current_admin.permissions:
-                return jsonify({'error': 'Permission denied: residents:approve required', 'code': 'PERMISSION_DENIED'}), 403
+        if not current_admin or not current_admin.has_permission('residents:approve'):
+            return jsonify({'error': 'Permission denied: residents:approve required', 'code': 'PERMISSION_DENIED'}), 403
         
         user = User.query.get(user_id)
         if not user:
@@ -414,14 +420,19 @@ def verify_user(user_id):
 def reject_user(user_id):
     """Reject user verification."""
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+        if ctx.get('role_lower') != 'municipal_admin':
+            return jsonify({'error': 'Only municipal admins can reject residents', 'code': 'ROLE_MISMATCH'}), 403
+
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):  # Error response
             return municipality_id
-        
+
         current_admin = User.query.get(get_jwt_identity())
-        if current_admin and current_admin.permissions:
-            if 'residents:approve' not in current_admin.permissions and '*' not in current_admin.permissions:
-                return jsonify({'error': 'Permission denied: residents:approve required', 'code': 'PERMISSION_DENIED'}), 403
+        if not current_admin or not current_admin.has_permission('residents:approve'):
+            return jsonify({'error': 'Permission denied: residents:approve required', 'code': 'PERMISSION_DENIED'}), 403
         
         data = request.get_json(silent=True) or {}
         reason = (data.get('reason') or '').strip()
@@ -2393,6 +2404,9 @@ def _parse_range(range_param: str):
 def admin_documents_stats():
     """Get document request statistics including status counts - single optimized endpoint."""
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
             return municipality_id
@@ -2405,6 +2419,11 @@ def admin_documents_stats():
             DocumentRequest.created_at >= start,
             DocumentRequest.created_at <= end,
         )
+        # Barangay admins only see their barangay
+        if ctx.get('role_lower') == 'barangay_admin':
+            if not ctx.get('barangay_id'):
+                return jsonify({'error': 'Barangay assignment required'}), 403
+            base_filter = and_(base_filter, DocumentRequest.barangay_id == ctx['barangay_id'])
 
         # Single query to get all status counts efficiently
         status_counts = db.session.query(
@@ -2416,12 +2435,15 @@ def admin_documents_stats():
         status_map = {str(s[0]).lower(): int(s[1]) for s in status_counts}
         total = sum(status_map.values())
         
-        # Normalize status names
+        # Normalize status names including barangay stage
         pending = status_map.get('pending', 0)
+        barangay_processing = status_map.get('barangay_processing', 0)
+        barangay_approved = status_map.get('barangay_approved', 0)
+        barangay_rejected = status_map.get('barangay_rejected', 0)
         processing = status_map.get('processing', 0) + status_map.get('in_progress', 0)
         ready = status_map.get('ready', 0) + status_map.get('ready_for_pickup', 0)
         completed = status_map.get('completed', 0) + status_map.get('picked_up', 0) + status_map.get('closed', 0)
-        rejected = status_map.get('rejected', 0)
+        rejected = status_map.get('rejected', 0) + barangay_rejected
 
         # Top requested document names if relationship exists; fallback to counts by id
         try:
@@ -2444,7 +2466,10 @@ def admin_documents_stats():
         return jsonify({
             'total_requests': total,
             'pending_requests': pending,
-            'processing_requests': processing,
+            'barangay_processing_requests': barangay_processing,
+            'barangay_approved_requests': barangay_approved,
+            'barangay_rejected_requests': barangay_rejected,
+            'processing_requests': processing + barangay_processing,
             'ready_requests': ready,
             'completed_requests': completed,
             'rejected_requests': rejected,
@@ -2460,6 +2485,9 @@ def admin_documents_stats():
 def get_document_requests():
     """Get all document requests for admin's municipality with pagination and filtering."""
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):  # Error response
             return municipality_id
@@ -2475,7 +2503,12 @@ def get_document_requests():
             .join(User, DocumentRequest.user_id == User.id)\
             .join(DocumentType, DocumentRequest.document_type_id == DocumentType.id)\
             .filter(DocumentRequest.municipality_id == municipality_id)
-        
+
+        if ctx.get('role_lower') == 'barangay_admin':
+            if not ctx.get('barangay_id'):
+                return jsonify({'error': 'Barangay assignment required'}), 403
+            query = query.filter(DocumentRequest.barangay_id == ctx['barangay_id'])
+
         # Apply status filter if provided
         if status:
             query = query.filter(DocumentRequest.status == status)
@@ -2525,6 +2558,9 @@ def generate_document_request_pdf(request_id: int):
     try:
         from apps.api.utils.pdf_generator import generate_document_pdf
 
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
             return municipality_id
@@ -2534,6 +2570,9 @@ def generate_document_request_pdf(request_id: int):
             return jsonify({'error': 'Request not found'}), 404
         if req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
+        if ctx.get('role_lower') == 'barangay_admin':
+            if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:
+                return jsonify({'error': 'Request not in your barangay'}), 403
         # Only for digital requests
         if (req.delivery_method or '').lower() not in ('digital',):
             return jsonify({'error': 'PDF generation is only available for digital requests'}), 400
@@ -2598,6 +2637,9 @@ def generate_document_request_pdf(request_id: int):
 def download_document_request_pdf(request_id: int):
     """Return the generated PDF for a request if available."""
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
             return municipality_id
@@ -2607,6 +2649,9 @@ def download_document_request_pdf(request_id: int):
             return jsonify({'error': 'Request not found'}), 404
         if req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
+        if ctx.get('role_lower') == 'barangay_admin':
+            if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:
+                return jsonify({'error': 'Request not in your barangay'}), 403
         if not req.document_file:
             return jsonify({'error': 'No generated document available'}), 404
 
@@ -2632,6 +2677,9 @@ def regenerate_document_qr_code(request_id: int):
         JSON with new QR code URL
     """
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
             return municipality_id
@@ -2641,6 +2689,9 @@ def regenerate_document_qr_code(request_id: int):
             return jsonify({'error': 'Request not found'}), 404
         if req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
+        if ctx.get('role_lower') == 'barangay_admin':
+            if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:
+                return jsonify({'error': 'Request not in your barangay'}), 403
         
         # Get municipality slug
         municipality = Municipality.query.get(municipality_id)
@@ -2693,6 +2744,9 @@ def regenerate_document_pdf(request_id: int):
         JSON with new PDF URL
     """
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
             return municipality_id
@@ -2702,6 +2756,9 @@ def regenerate_document_pdf(request_id: int):
             return jsonify({'error': 'Request not found'}), 404
         if req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
+        if ctx.get('role_lower') == 'barangay_admin':
+            if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:
+                return jsonify({'error': 'Request not in your barangay'}), 403
         
         # Check status - only regenerate for approved/ready/completed requests
         if req.status not in ('approved', 'processing', 'ready', 'completed', 'picked_up'):
@@ -2811,6 +2868,9 @@ def check_legacy_files():
 def update_document_request_status(request_id: int):
     """Update request status and timestamps with basic transition checks."""
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
             return municipality_id
@@ -2820,7 +2880,20 @@ def update_document_request_status(request_id: int):
         notes = data.get('admin_notes')
         rejection_reason = data.get('rejection_reason')
 
-        if new_status not in ['pending', 'approved', 'processing', 'ready', 'completed', 'picked_up', 'rejected', 'cancelled']:
+        valid_statuses = {
+            'pending',
+            'approved',
+            'processing',
+            'ready',
+            'completed',
+            'picked_up',
+            'rejected',
+            'cancelled',
+            'barangay_processing',
+            'barangay_approved',
+            'barangay_rejected',
+        }
+        if new_status not in valid_statuses:
             return jsonify({'error': 'Invalid status'}), 400
 
         req = DocumentRequest.query.get(request_id)
@@ -2828,6 +2901,18 @@ def update_document_request_status(request_id: int):
             return jsonify({'error': 'Request not found'}), 404
         if req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
+        role = ctx.get('role_lower')
+        doc_type = DocumentType.query.get(req.document_type_id) if req.document_type_id else None
+        if role == 'barangay_admin':
+            if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:
+                return jsonify({'error': 'Request not in your barangay'}), 403
+            # Barangay admins have a restricted set for municipal-level documents
+            barangay_allowed = {'barangay_processing', 'barangay_approved', 'barangay_rejected', 'cancelled'}
+            # Barangay-issued documents can be fulfilled end-to-end by barangay admins
+            if doc_type and (doc_type.authority_level or '').lower() == 'barangay':
+                barangay_allowed = barangay_allowed | {'approved', 'processing', 'ready', 'completed', 'picked_up', 'rejected'}
+            if new_status not in barangay_allowed:
+                return jsonify({'error': 'Barangay admins cannot set this status for this request'}), 403
 
         # Simple transition guardrails (with approved step)
         current = (req.status or 'pending').lower()
@@ -2836,7 +2921,10 @@ def update_document_request_status(request_id: int):
             return jsonify({'message': 'Status unchanged', 'request': req.to_dict()}), 200
         # Allow picked_up for physical pickup handover; completed for digital delivery
         allowed = {
-            'pending': {'approved', 'rejected', 'cancelled'},
+            'pending': {'approved', 'rejected', 'cancelled', 'barangay_processing', 'barangay_approved', 'barangay_rejected'},
+            'barangay_processing': {'barangay_approved', 'barangay_rejected', 'cancelled'},
+            'barangay_approved': {'approved', 'processing', 'ready', 'completed', 'picked_up', 'rejected', 'cancelled'},
+            'barangay_rejected': set(),
             'approved': {'processing', 'rejected', 'cancelled'},
             'processing': {'ready', 'completed', 'rejected', 'cancelled'},
             'ready': {'completed', 'picked_up', 'rejected', 'cancelled'},
@@ -2852,10 +2940,10 @@ def update_document_request_status(request_id: int):
         req.status = new_status
         if notes is not None:
             req.admin_notes = notes
-        if new_status == 'rejected' and rejection_reason:
+        if new_status in {'rejected', 'barangay_rejected'} and rejection_reason:
             req.rejection_reason = rejection_reason
         now = datetime.utcnow()
-        if new_status == 'approved':
+        if new_status in {'approved', 'barangay_approved'}:
             req.approved_at = now
         if new_status == 'ready':
             req.ready_at = now
@@ -2921,6 +3009,9 @@ def admin_ready_for_pickup(request_id: int):
     Claim token/QR generation is handled separately via /claim-token.
     """
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
             return municipality_id
@@ -2930,6 +3021,9 @@ def admin_ready_for_pickup(request_id: int):
             return jsonify({'error': 'Request not found'}), 404
         if req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
+        if ctx.get('role_lower') == 'barangay_admin':
+            if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:
+                return jsonify({'error': 'Request not in your barangay'}), 403
 
         # Only for pickup/physical requests
         if (req.delivery_method or '').lower() not in ('physical', 'pickup'):
@@ -2994,6 +3088,9 @@ def admin_ready_for_pickup(request_id: int):
 def admin_generate_claim_token(request_id: int):
     """Generate a claim token/QR for a pickup request without changing status."""
     try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         municipality_id = require_admin_municipality()
         if isinstance(municipality_id, tuple):
             return municipality_id
@@ -3007,6 +3104,9 @@ def admin_generate_claim_token(request_id: int):
             return jsonify({'error': 'Request not found'}), 404
         if req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
+        if ctx.get('role_lower') == 'barangay_admin':
+            if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:
+                return jsonify({'error': 'Request not in your barangay'}), 403
         if (req.delivery_method or '').lower() not in ('physical', 'pickup'):
             return jsonify({'error': 'Only pickup requests support claim tokens'}), 400
 

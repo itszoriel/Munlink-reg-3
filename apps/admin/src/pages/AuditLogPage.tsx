@@ -45,8 +45,6 @@ function formatDate(dateString: string) {
 
 export default function AuditLogPage() {
   const user = useAdminStore((s) => s.user)
-  const accessToken = useAdminStore((s) => s.accessToken)
-
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [pagination, setPagination] = useState<AuditLogPagination | null>(null)
   const [actions, setActions] = useState<string[]>([])

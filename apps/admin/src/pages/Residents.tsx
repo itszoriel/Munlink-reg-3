@@ -478,11 +478,11 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
 
   // Watermarked viewer state
   const [viewingDoc, setViewingDoc] = useState<{
-    type: 'id_front' | 'id_back' | 'selfie',
+    type: 'id_front' | 'id_back',
     reason: string
   } | null>(null)
   const [showReasonModal, setShowReasonModal] = useState<{
-    type: 'id_front' | 'id_back' | 'selfie'
+    type: 'id_front' | 'id_back'
   } | null>(null)
 
   // Permission check
@@ -704,42 +704,7 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
                   )}
                 </div>
 
-                {/* Selfie with ID */}
-                <div>
-                  <label className="block text-xs text-neutral-600 mb-2">Selfie with ID</label>
-                  {viewingDoc?.type === 'selfie' ? (
-                    <WatermarkedImageViewer
-                      userId={userId}
-                      docType="selfie"
-                      reason={viewingDoc.reason}
-                      municipalityName={data?.municipality_name || 'Unknown'}
-                      residentId={userId}
-                      onError={(err) => {
-                        console.error('Failed to load selfie:', err)
-                        setViewingDoc(null)
-                      }}
-                    />
-                  ) : (
-                    <>
-                      {data?.selfie_with_id && hasIdViewPermission && (
-                        <button
-                          onClick={() => setShowReasonModal({ type: 'selfie' })}
-                          className="px-4 py-2 text-sm font-medium text-ocean-600 border border-ocean-600 rounded-lg hover:bg-ocean-50 transition-colors"
-                        >
-                          View Selfie
-                        </button>
-                      )}
-                      {data?.selfie_with_id && !hasIdViewPermission && (
-                        <span className="text-sm text-neutral-400">No permission to view ID documents</span>
-                      )}
-                      {!data?.selfie_with_id && (
-                        <span className="text-sm text-neutral-500">Not uploaded</span>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {!data?.valid_id_front && !data?.valid_id_back && !data?.selfie_with_id && (
+                {!data?.valid_id_front && !data?.valid_id_back && (
                   <p className="text-sm text-neutral-500">No ID documents uploaded.</p>
                 )}
               </div>

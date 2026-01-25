@@ -43,9 +43,6 @@ export default function RegisterPage() {
     [formData.municipality]
   )
 
-  // Zambales is the only province - always show its seal
-  const _selectedProvince = provinces.find(p => p.id === Number(formData.province))
-
   // Reset municipality and barangay when province changes
   useEffect(() => {
     setFormData(f => ({ ...f, municipality: '', barangay_id: '' }))

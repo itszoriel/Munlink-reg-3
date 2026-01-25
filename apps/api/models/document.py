@@ -138,6 +138,7 @@ class DocumentRequest(db.Model):
         Index('idx_doc_request_municipality', 'municipality_id'),
         Index('idx_doc_request_status', 'status'),
         Index('idx_doc_request_number', 'request_number'),
+        Index('idx_doc_request_created_at', 'created_at'),
     )
     
     def __repr__(self):

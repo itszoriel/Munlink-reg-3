@@ -85,7 +85,8 @@ ZAMBALES_MUNICIPALITIES = [
     },
     {
         'name': 'San Antonio',
-        'slug': 'san-antonio',
+        # Align slug with frontend/constants (avoid collision with other San Antonio cities)
+        'slug': 'san-antonio-zambales',
         'psgc_code': '037111000',
         'description': 'Home to Pundaquit Beach',
         'barangays': ['Beddeng', 'Burgos', 'Estansa', 'San Gregorio', 'Pundaquit', 'Rizal', 'San Pablo']
