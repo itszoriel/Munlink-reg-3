@@ -67,7 +67,7 @@ export function WatermarkedImageViewer({
         blobUrl = URL.createObjectURL(blob)
 
         // Add timeout in case image loading hangs
-        let loadTimeout: NodeJS.Timeout | null = null
+        let loadTimeout: number | null = null
 
         // Create image element
         const img = new Image()

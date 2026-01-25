@@ -228,7 +228,6 @@ export default function Programs() {
         {stats.map((stat, i) => (
           <div key={i} className="bg-white/70 backdrop-blur-xl rounded-2xl p-6 border border-white/50 shadow-lg hover:scale-105 transition-transform">
             <div className={`inline-flex w-12 h-12 bg-${stat.color}-100 rounded-xl items-center justify-center mb-3`}>
-              {/* @ts-expect-error dynamic color class */}
               <IconFromCode code={stat.icon as string} className="w-6 h-6" />
             </div>
             <p className="text-3xl font-bold text-neutral-900 mb-1">{stat.value}</p>
