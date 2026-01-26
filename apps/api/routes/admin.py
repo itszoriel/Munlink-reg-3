@@ -653,20 +653,50 @@ def get_resident_document(user_id, doc_type):
         )
 
         # Serve file
-        # If Supabase URL, redirect to it
+        # If Supabase URL, fetch it server-side and return bytes (no redirect to avoid CORS)
         if file_path.startswith(('http://', 'https://')):
-            from flask import redirect
             from urllib.parse import urlparse
+            import requests
+            from io import BytesIO
 
             # Validate URL domain against allowed storage providers
             parsed = urlparse(file_path)
             allowed_domains = current_app.config.get('ALLOWED_FILE_DOMAINS', [])
 
             if allowed_domains and parsed.netloc not in allowed_domains:
-                current_app.logger.warning(f"Blocked redirect to untrusted domain: {parsed.netloc}")
+                current_app.logger.warning(f"Blocked access to untrusted domain: {parsed.netloc}")
                 return jsonify({'error': 'Invalid file URL'}), 403
 
-            return redirect(file_path)
+            # Fetch image from Supabase server-side
+            try:
+                response = requests.get(file_path, timeout=10)
+                response.raise_for_status()
+
+                # Determine MIME type from response or file extension
+                content_type = response.headers.get('Content-Type', 'application/octet-stream')
+                if content_type == 'application/octet-stream':
+                    # Fallback to extension-based MIME type
+                    ext = file_path.split('.')[-1].lower().split('?')[0]  # Remove query params
+                    mime_types = {
+                        'jpg': 'image/jpeg',
+                        'jpeg': 'image/jpeg',
+                        'png': 'image/png',
+                        'gif': 'image/gif',
+                        'webp': 'image/webp'
+                    }
+                    content_type = mime_types.get(ext, 'application/octet-stream')
+
+                # Return image bytes directly
+                return send_file(
+                    BytesIO(response.content),
+                    mimetype=content_type,
+                    as_attachment=False,
+                    download_name=f"{doc_type}.{ext}" if 'ext' in locals() else f"{doc_type}.jpg"
+                )
+
+            except requests.RequestException as e:
+                current_app.logger.error(f"Failed to fetch image from Supabase: {str(e)}")
+                return jsonify({'error': 'Failed to fetch image from storage'}), 502
 
         # If local file, serve it
         upload_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
@@ -686,7 +716,7 @@ def get_resident_document(user_id, doc_type):
             'jpg': 'image/jpeg',
             'jpeg': 'image/jpeg',
             'png': 'image/png',
-            'gif': 'image/webp',
+            'gif': 'image/gif',
             'webp': 'image/webp'
         }
         ext = file_path.split('.')[-1].lower()

@@ -64,7 +64,7 @@ npm run dev
 ```
 
 ## Development Notes
-- API CORS and URLs are driven by `.env` (see `env.example.txt`).
+- API CORS and URLs are driven by `.env` (see `env.example.txt`). CORS uses explicit origins (never wildcard) to support credentialed requests (`withCredentials: true`).
 - Zambales-only filters live in `apps/api/utils/zambales_scope.py` and `apps/web/src/lib/locations.ts` / `apps/admin/src/lib/locations.ts`.
 - Use `scripts/start_project.ps1` (Windows) to launch API + web with network helpers; archived one-off tools are in `scripts/archive/`.
 - Run `flask db upgrade` to apply migrations including scoped announcements (`20260306_scoped_announcements`), cross-municipality sharing (`20260117_sharing`), notification outbox/mobile fields (`20260312_notifications`), and super admin 2FA/audit tables (`20260118_superadmin_2fa_audit`).
@@ -184,7 +184,7 @@ npm run dev
 - **Profile management**: Update personal information, notification preferences, and view verification status; mobile number entered during registration is automatically copied to both phone and mobile fields for convenience
 
 ### Admins (Municipal/Barangay)
-- **Resident verification**: Review and approve/reject resident registrations with privacy-hardened ID viewing (watermarked display, audit logging, permission-based access)
+- **Resident verification**: Review and approve/reject resident registrations with privacy-hardened ID viewing (watermarked display, audit logging, permission-based access). ID images are fetched server-side and returned as blob data to prevent CORS issues and avoid exposing storage URLs
 - **Document processing**: Generate PDFs with QR codes, create claim tickets, validate QR codes at claim time
 - **Marketplace moderation**: Monitor and moderate live marketplace listings (resident posts publish immediately)
 - **Problem triage**: Review and categorize problem reports, update status and resolution

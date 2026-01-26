@@ -112,23 +112,21 @@ def create_app(config_class=Config):
         return response
     
     # CORS configuration
-    if app.config.get('DEBUG', False):
-        # In development, allow all origins for easier local network testing
-        cors_origins = ["*"]
-    else:
-        cors_origins = [
-            app.config.get('WEB_URL', 'http://localhost:5173'),
-            app.config.get('ADMIN_URL', 'http://localhost:3001'),
-            # Local development
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:5173",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:3001",
-            "http://127.0.0.1:5173",
-        ]
-        # Remove duplicates
-        cors_origins = list(dict.fromkeys(cors_origins))
+    # NOTE: Cannot use wildcard ("*") with supports_credentials=True
+    # Even in development, we must specify explicit origins for credentialed requests
+    cors_origins = [
+        app.config.get('WEB_URL', 'http://localhost:5173'),
+        app.config.get('ADMIN_URL', 'http://localhost:3001'),
+        # Local development
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:5173",
+    ]
+    # Remove duplicates
+    cors_origins = list(dict.fromkeys(cors_origins))
     
     # Apply CORS globally with Flask-CORS
     CORS(app,
