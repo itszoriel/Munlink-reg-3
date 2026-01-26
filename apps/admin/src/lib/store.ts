@@ -108,13 +108,22 @@ export const useAdminStore = create<AdminState>((set) => {
         return
       }
 
+      // First, restore cached user from localStorage if available
+      const storedUser = localStorage.getItem('admin:user')
+      let cachedUser: User | undefined
+      try {
+        cachedUser = storedUser ? JSON.parse(storedUser) : undefined
+      } catch {
+        cachedUser = undefined
+      }
+
       try {
         // Use cookie-based auth bootstrap from api layer
         const { bootstrapAuth: apiBootstrap } = await import('./api')
         const hasAuth = await apiBootstrap()
 
         if (hasAuth) {
-          // We have a valid token, fetch user profile
+          // We have a valid token, try to fetch fresh user profile
           const { authApi } = await import('./api')
           try {
             const resp = await authApi.getProfile()
@@ -122,19 +131,38 @@ export const useAdminStore = create<AdminState>((set) => {
               const user = resp.data as User
               localStorage.setItem('admin:user', JSON.stringify(user))
               set({ user, isAuthenticated: true })
+            } else if (cachedUser) {
+              // Profile fetch returned no data, but we have cached user - use it
+              set({ user: cachedUser, isAuthenticated: true })
             } else {
+              // No profile data and no cached user
               set({ isAuthenticated: false, user: undefined })
             }
           } catch {
-            // Profile fetch failed, clear auth
-            set({ isAuthenticated: false, user: undefined })
+            // Profile fetch failed (could be network, expired token, etc.)
+            // If we have a cached user, use it and stay authenticated
+            if (cachedUser) {
+              set({ user: cachedUser, isAuthenticated: true })
+            } else {
+              // No cached user, clear auth
+              set({ isAuthenticated: false, user: undefined })
+            }
           }
         } else {
-          // No valid auth, clear state
+          // No valid auth token, clear state
           set({ isAuthenticated: false, user: undefined })
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('admin:user')
+          }
         }
       } catch {
-        set({ isAuthenticated: false, user: undefined })
+        // Bootstrap failed completely
+        // If we have a cached user and a token might exist, stay authenticated
+        if (cachedUser) {
+          set({ user: cachedUser, isAuthenticated: true })
+        } else {
+          set({ isAuthenticated: false, user: undefined })
+        }
       } finally {
         set({ isAuthBootstrapped: true })
       }

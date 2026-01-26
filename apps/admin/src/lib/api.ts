@@ -16,6 +16,7 @@ const API_BASE_URL =
 // In-memory access token (sessionStorage for persistence across page loads)
 let accessToken: string | null = null
 let refreshPromise: Promise<string | null> | null = null
+let isBootstrapping = false // Flag to prevent redirects during bootstrap
 
 // Flag to track if admin has ever logged in (avoids 401 errors on fresh loads)
 const HAS_SESSION_KEY = 'admin:has_session'
@@ -77,26 +78,32 @@ async function doRefresh(): Promise<string | null> {
 
 // Bootstrap auth from sessionStorage + cookie refresh
 export async function bootstrapAuth(): Promise<boolean> {
-  // First, hydrate from sessionStorage if present for immediate UX
+  isBootstrapping = true
+
   try {
-    const saved = sessionStorage.getItem('admin:access_token')
-    if (saved) {
-      setAccessToken(saved)
-      // Attempt background refresh to extend session
-      void doRefresh()
-      return true
+    // First, hydrate from sessionStorage if present for immediate UX
+    try {
+      const saved = sessionStorage.getItem('admin:access_token')
+      if (saved) {
+        setAccessToken(saved)
+        // Attempt background refresh to extend session
+        void doRefresh()
+        return true
+      }
+    } catch {}
+
+    // Only attempt refresh if admin has had a session before
+    // This prevents 401 errors on fresh loads when user has never logged in
+    if (!hasHadSession()) {
+      return false
     }
-  } catch {}
 
-  // Only attempt refresh if admin has had a session before
-  // This prevents 401 errors on fresh loads when user has never logged in
-  if (!hasHadSession()) {
-    return false
+    // Attempt to hydrate from refresh cookie once on app load
+    const token = await doRefresh()
+    return !!token
+  } finally {
+    isBootstrapping = false
   }
-
-  // Attempt to hydrate from refresh cookie once on app load
-  const token = await doRefresh()
-  return !!token
 }
 
 // Create axios instance with longer timeout for admin operations
@@ -144,12 +151,15 @@ apiClient.interceptors.response.use(
         }
       } catch {}
 
-      // Refresh failed, logout and redirect to role selector
-      const { logout } = useAdminStore.getState()
-      logout()
-      // Only redirect if we're not already on a public page
-      if (!window.location.pathname.match(/^\/(login|superadmin\/login|provincial|barangay|$)/)) {
-        window.location.href = '/'
+      // Refresh failed - if we're bootstrapping, don't redirect (let the store handle it)
+      if (!isBootstrapping) {
+        const { logout } = useAdminStore.getState()
+        logout()
+        // Only redirect if we're not already on a public/login page
+        const publicPaths = /^\/(login|register|superadmin\/login|provincial|barangay)?(\/.*)?$/
+        if (!publicPaths.test(window.location.pathname) && window.location.pathname !== '/') {
+          window.location.href = '/'
+        }
       }
       return Promise.reject(error)
     }

@@ -68,7 +68,12 @@ npm run dev
 - Zambales-only filters live in `apps/api/utils/zambales_scope.py` and `apps/web/src/lib/locations.ts` / `apps/admin/src/lib/locations.ts`.
 - Use `scripts/start_project.ps1` (Windows) to launch API + web with network helpers; archived one-off tools are in `scripts/archive/`.
 - Run `flask db upgrade` to apply migrations including scoped announcements (`20260306_scoped_announcements`), cross-municipality sharing (`20260117_sharing`), notification outbox/mobile fields (`20260312_notifications`), and super admin 2FA/audit tables (`20260118_superadmin_2fa_audit`).
-- **Auth Bootstrapping**: Frontend apps use `isAuthBootstrapped` flag to prevent race conditions when restoring authentication state from sessionStorage on page load. Components check this flag before fetching protected resources. Both web and admin apps use a `HAS_SESSION_KEY` flag to track if a user has ever logged in, preventing unnecessary token refresh attempts and 401 errors on fresh page loads.
+- **Auth Bootstrapping**: Frontend apps use `isAuthBootstrapped` flag to prevent race conditions when restoring authentication state from sessionStorage on page load. Components check this flag before fetching protected resources. Both web and admin apps use a `HAS_SESSION_KEY` flag to track if a user has ever logged in, preventing unnecessary token refresh attempts and 401 errors on fresh page loads. The admin app implements resilient bootstrap logic that:
+  - Restores cached user from localStorage first for immediate UX
+  - Attempts token refresh only if a session has existed before
+  - Prevents logout redirects during the bootstrap phase
+  - Falls back to cached user data if profile fetch fails (network issues, temporary backend unavailability)
+  - Only clears authentication if truly no valid session exists
 - **Frontend UI Guide**: See `docs/frontend-ui-guide/` for responsive design patterns, mobile FAB implementation, table-to-card conversion, and reusable component snippets.
 
 ## Super Admin Setup
