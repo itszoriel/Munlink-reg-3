@@ -17,6 +17,9 @@ const API_BASE_URL =
 let accessToken: string | null = null
 let refreshPromise: Promise<string | null> | null = null
 
+// Flag to track if admin has ever logged in (avoids 401 errors on fresh loads)
+const HAS_SESSION_KEY = 'admin:has_session'
+
 // Token management helpers
 export const getAccessToken = (): string | null => accessToken
 export const setAccessToken = (token: string | null) => {
@@ -24,6 +27,8 @@ export const setAccessToken = (token: string | null) => {
   try {
     if (token) {
       sessionStorage.setItem('admin:access_token', token)
+      // Mark that admin has a session (for refresh attempts)
+      localStorage.setItem(HAS_SESSION_KEY, 'true')
     } else {
       sessionStorage.removeItem('admin:access_token')
     }
@@ -33,7 +38,18 @@ export const clearAccessToken = () => {
   accessToken = null
   try {
     sessionStorage.removeItem('admin:access_token')
+    // Clear session flag on logout
+    localStorage.removeItem(HAS_SESSION_KEY)
   } catch {}
+}
+
+// Check if admin has ever had a session (to avoid unnecessary refresh calls on fresh loads)
+const hasHadSession = (): boolean => {
+  try {
+    return localStorage.getItem(HAS_SESSION_KEY) === 'true'
+  } catch {
+    return false
+  }
 }
 
 // Cookie-based refresh using httpOnly cookie (like web app)
@@ -61,7 +77,7 @@ async function doRefresh(): Promise<string | null> {
 
 // Bootstrap auth from sessionStorage + cookie refresh
 export async function bootstrapAuth(): Promise<boolean> {
-  // First, hydrate from sessionStorage if present
+  // First, hydrate from sessionStorage if present for immediate UX
   try {
     const saved = sessionStorage.getItem('admin:access_token')
     if (saved) {
@@ -71,6 +87,12 @@ export async function bootstrapAuth(): Promise<boolean> {
       return true
     }
   } catch {}
+
+  // Only attempt refresh if admin has had a session before
+  // This prevents 401 errors on fresh loads when user has never logged in
+  if (!hasHadSession()) {
+    return false
+  }
 
   // Attempt to hydrate from refresh cookie once on app load
   const token = await doRefresh()
@@ -122,10 +144,14 @@ apiClient.interceptors.response.use(
         }
       } catch {}
 
-      // Refresh failed, redirect to portal
+      // Refresh failed, logout and redirect to role selector
       const { logout } = useAdminStore.getState()
       logout()
-      window.location.href = '/'
+      // Only redirect if we're not already on a public page
+      if (!window.location.pathname.match(/^\/(login|superadmin\/login|provincial|barangay|$)/)) {
+        window.location.href = '/'
+      }
+      return Promise.reject(error)
     }
 
     // Handle role mismatch

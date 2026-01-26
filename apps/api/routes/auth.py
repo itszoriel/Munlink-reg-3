@@ -213,6 +213,12 @@ def register():
         suffix = data.get('suffix')
         phone_number = validate_phone(data.get('phone_number'))
         mobile_number = validate_phone(data.get('mobile_number'), 'mobile_number')
+
+        # If mobile_number is provided but phone_number is not, copy mobile to phone
+        # This ensures the user's number appears in both profile fields
+        if mobile_number and not phone_number:
+            phone_number = mobile_number
+
         municipality_slug = data.get('municipality_slug')
         barangay_id_raw = data.get('barangay_id')
         

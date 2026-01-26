@@ -68,7 +68,7 @@ npm run dev
 - Zambales-only filters live in `apps/api/utils/zambales_scope.py` and `apps/web/src/lib/locations.ts` / `apps/admin/src/lib/locations.ts`.
 - Use `scripts/start_project.ps1` (Windows) to launch API + web with network helpers; archived one-off tools are in `scripts/archive/`.
 - Run `flask db upgrade` to apply migrations including scoped announcements (`20260306_scoped_announcements`), cross-municipality sharing (`20260117_sharing`), notification outbox/mobile fields (`20260312_notifications`), and super admin 2FA/audit tables (`20260118_superadmin_2fa_audit`).
-- **Auth Bootstrapping**: Frontend apps use `isAuthBootstrapped` flag to prevent race conditions when restoring authentication state from sessionStorage on page load. Components check this flag before fetching protected resources.
+- **Auth Bootstrapping**: Frontend apps use `isAuthBootstrapped` flag to prevent race conditions when restoring authentication state from sessionStorage on page load. Components check this flag before fetching protected resources. Both web and admin apps use a `HAS_SESSION_KEY` flag to track if a user has ever logged in, preventing unnecessary token refresh attempts and 401 errors on fresh page loads.
 - **Frontend UI Guide**: See `docs/frontend-ui-guide/` for responsive design patterns, mobile FAB implementation, table-to-card conversion, and reusable component snippets.
 
 ## Super Admin Setup
@@ -176,7 +176,7 @@ npm run dev
 - **Benefit programs**: Apply for municipal benefit programs with eligibility checking
 - **Announcements**: View province-wide, municipal, and barangay announcements with image support
 - **Notifications**: Email and SMS notifications (configurable) for document status and announcements
-- **Profile management**: Update personal information, notification preferences, and view verification status
+- **Profile management**: Update personal information, notification preferences, and view verification status; mobile number entered during registration is automatically copied to both phone and mobile fields for convenience
 
 ### Admins (Municipal/Barangay)
 - **Resident verification**: Review and approve/reject resident registrations with privacy-hardened ID viewing (watermarked display, audit logging, permission-based access)
