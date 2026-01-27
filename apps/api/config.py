@@ -237,10 +237,10 @@ class Config:
     FROM_EMAIL = os.getenv('FROM_EMAIL', '')
 
     # SMS / Notifications
-    SMS_PROVIDER = os.getenv('SMS_PROVIDER', 'disabled')  # semaphore | console | disabled
-    SEMAPHORE_API_KEY = os.getenv('SEMAPHORE_API_KEY', '')
-    SEMAPHORE_SENDERNAME = os.getenv('SEMAPHORE_SENDERNAME', '')
-    SEMAPHORE_BASE_URL = os.getenv('SEMAPHORE_BASE_URL', 'https://api.semaphore.co')
+    SMS_PROVIDER = os.getenv('SMS_PROVIDER', 'disabled')  # philsms | console | disabled
+    PHILSMS_API_KEY = os.getenv('PHILSMS_API_KEY', '')
+    PHILSMS_SENDER_ID = os.getenv('PHILSMS_SENDER_ID', '')
+    PHILSMS_BASE_URL = os.getenv('PHILSMS_BASE_URL', 'https://dashboard.philsms.com/api/v3')
     SMS_CAPABILITY_CACHE_SECONDS = int(os.getenv('SMS_CAPABILITY_CACHE_SECONDS', 90))
     
     # QR Codes

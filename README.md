@@ -95,15 +95,18 @@ npm run dev
 - **Use cases**: Email verification, admin welcome, document status updates, announcement notifications
 
 ### SMS Notifications
-- **Provider config**: `SMS_PROVIDER` (`semaphore` | `console` | `disabled`), `SEMAPHORE_API_KEY`, optional `SEMAPHORE_SENDERNAME` / `SEMAPHORE_BASE_URL`
+- **Provider config**: `SMS_PROVIDER` (`philsms` | `console` | `disabled`), `PHILSMS_API_KEY` (required), `PHILSMS_SENDER_ID` (default: "PhilSMS"), optional `PHILSMS_BASE_URL`
 - **Mobile numbers**: Optional for residents and admins; add during registration or in Profile page (PH numbers normalized server-side)
-- **SMS capability**: Sends skipped when Semaphore account is pending approval or out of credits
-- **Resident preferences**: Email ON by default, SMS OFF until mobile number exists; manage in Profile page
+- **SMS capability**: Uses PhilSMS API v3; sends skipped when API key not configured or network errors occur
+- **⚠️ Carrier limitation**: PhilSMS currently delivers to **Globe/TM/GOMO networks only**. Smart/TNT users will not receive SMS (verified via testing). Email notifications work for all users regardless of carrier.
+- **Resident preferences**: Email ON by default, **SMS OFF by default** - users must enable SMS in Profile page. Both email and SMS require valid contact information.
+- **Cross-municipality sharing**: When announcements are shared with other municipalities (via `shared_with_municipalities`), residents from ALL shared municipalities receive notifications.
 
 ### Notification Worker
-- **Queue system**: Notification outbox queues announcement publishes (province/municipality/barangay), document request submissions, and document status changes
-- **Worker process**: Run as long-running process (`python -m apps.api.scripts.notification_worker`) or single batch (`--once`)
+- **Queue system**: Notification outbox queues announcement publishes (province/municipality/barangay), benefit program creation, document request submissions, and document status changes
+- **Worker process**: Run as long-running process (`python scripts/notification_worker.py`) or single batch (`--once`)
 - **Deployment**: Deploy as Render/Railway worker using the same command with retry/backoff logic
+- **Setup guide**: See `SMS_NOTIFICATION_GUIDE.md` for comprehensive setup, testing, and troubleshooting steps
 
 ## ID/Selfie Security & Privacy
 

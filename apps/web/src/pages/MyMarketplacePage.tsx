@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { marketplaceApi, mediaUrl, showToast } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
@@ -190,7 +190,7 @@ export default function MyMarketplacePage() {
                 icon="cart"
                 title="No items yet"
                 description="You haven't posted any items to the marketplace. Start selling, lending, or donating!"
-                action={<a href="/marketplace" className="btn btn-primary">Go to Marketplace</a>}
+                action={<Link to="/marketplace" className="btn btn-primary">Go to Marketplace</Link>}
               />
             </div>
           )}

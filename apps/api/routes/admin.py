@@ -31,7 +31,7 @@ from apps.api.utils.admin_audit import (
     log_resident_verified,
     log_resident_rejected,
 )
-from apps.api.utils.notifications import queue_document_status_change, queue_announcement_notifications
+from apps.api.utils.notifications import queue_document_status_change, queue_announcement_notifications, queue_benefit_program_notifications
 from apps.api.utils.qr_utils import (
     generate_pickup_code,
     hash_code,
@@ -2280,6 +2280,14 @@ def admin_create_benefit_program():
         rel_path = save_benefit_program_image(file, program.id, municipality_slug, user_type='admins')
         program.image_path = rel_path
         db.session.commit()
+
+        try:
+            if program.is_active and program.is_accepting_applications:
+                queue_benefit_program_notifications(program)
+                db.session.commit()
+        except Exception as notify_exc:
+            db.session.rollback()
+            current_app.logger.warning("Failed to queue benefit program notifications: %s", notify_exc)
 
         return jsonify({'message': 'Program created', 'program': program.to_dict()}), 201
     except Exception as e:

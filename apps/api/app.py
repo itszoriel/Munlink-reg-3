@@ -102,7 +102,7 @@ def create_app(config_class=Config):
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob: https:",
-            "connect-src 'self' https://api.sendgrid.com https://api.semaphore.co",
+            "connect-src 'self' https://api.sendgrid.com https://dashboard.philsms.com",
             "frame-ancestors 'none'",
             "base-uri 'self'",
             "form-action 'self'",

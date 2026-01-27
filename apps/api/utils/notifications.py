@@ -293,3 +293,108 @@ def queue_announcement_notifications(announcement) -> Dict[str, int]:
             results['skipped'] += 1
 
     return results
+
+
+def _benefit_program_recipients(program) -> List[User]:
+    """Return verified residents in the program's municipality."""
+    if not getattr(program, 'municipality_id', None):
+        return []
+
+    if not is_valid_zambales_municipality(program.municipality_id):
+        return []
+
+    query = User.query.filter(
+        User.role == 'resident',
+        User.admin_verified == True,
+        or_(User.is_active == True, User.is_active.is_(None)),
+        User.municipality_id == program.municipality_id,
+    )
+    return query.all()
+
+
+def queue_benefit_program_notifications(program) -> Dict[str, int]:
+    """Queue notifications when a benefit program is created or becomes active."""
+    results = {'queued': 0, 'skipped': 0}
+
+    is_active = getattr(program, 'is_active', False)
+    is_accepting = getattr(program, 'is_accepting_applications', False)
+
+    if not is_active or not is_accepting:
+        return results
+
+    recipients = _benefit_program_recipients(program)
+    if not recipients:
+        return results
+
+    program_name = getattr(program, 'name', 'Benefit Program')
+    web_url = (current_app.config.get('WEB_URL') or '').rstrip('/') or 'http://localhost:5173'
+    link = f"{web_url}/benefits"
+
+    subject = f"New benefit program: {program_name}"
+    body = (
+        f"A new benefit program is now available: {program_name}\n\n"
+        f"{(getattr(program, 'description', '') or '')[:240]}...\n\n"
+        f"Apply now: {link}"
+    )
+    sms_message = f"New benefit program available: {program_name}. Check MunLink to apply."
+    batch_key = f"benefit_program:{program.id}"
+    schedule_at = datetime.utcnow()
+
+    # Bulk dedupe check
+    keys: Set[str] = set()
+    for user in recipients:
+        if _prefers_email(user):
+            keys.add(_build_dedupe_key('benefit_program_created', program.id, user.id, 'email'))
+        if _prefers_sms(user) and getattr(user, 'mobile_number', None):
+            keys.add(_build_dedupe_key('benefit_program_created', program.id, user.id, 'sms'))
+
+    if keys:
+        existing = db.session.query(NotificationOutbox.dedupe_key).filter(NotificationOutbox.dedupe_key.in_(list(keys))).all()
+        existing_keys = {row[0] for row in existing}
+    else:
+        existing_keys = set()
+
+    for user in recipients:
+        # Email
+        if _prefers_email(user):
+            dedupe_key = _build_dedupe_key('benefit_program_created', program.id, user.id, 'email')
+            if dedupe_key not in existing_keys:
+                db.session.add(NotificationOutbox(
+                    resident_id=user.id,
+                    channel='email',
+                    event_type='benefit_program_created',
+                    entity_id=program.id,
+                    payload={'subject': subject, 'body': body},
+                    status='pending',
+                    attempts=0,
+                    next_attempt_at=schedule_at,
+                    dedupe_key=dedupe_key,
+                ))
+                results['queued'] += 1
+            else:
+                results['skipped'] += 1
+        else:
+            results['skipped'] += 1
+
+        # SMS
+        if _prefers_sms(user) and getattr(user, 'mobile_number', None):
+            dedupe_key = _build_dedupe_key('benefit_program_created', program.id, user.id, 'sms')
+            if dedupe_key not in existing_keys:
+                db.session.add(NotificationOutbox(
+                    resident_id=user.id,
+                    channel='sms',
+                    event_type='benefit_program_created',
+                    entity_id=program.id,
+                    payload={'message': sms_message, 'batch_key': batch_key},
+                    status='pending',
+                    attempts=0,
+                    next_attempt_at=schedule_at,
+                    dedupe_key=dedupe_key,
+                ))
+                results['queued'] += 1
+            else:
+                results['skipped'] += 1
+        else:
+            results['skipped'] += 1
+
+    return results

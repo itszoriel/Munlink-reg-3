@@ -1,4 +1,13 @@
-"""SMS provider utilities (Semaphore + console fallback)."""
+"""SMS provider utilities (PhilSMS + console fallback).
+
+IMPORTANT: PhilSMS currently delivers to Globe/TM/GOMO networks only.
+Smart/TNT users will NOT receive SMS (verified 2026-01-26).
+Email notifications work for all users regardless of carrier.
+
+To enable Smart/TNT delivery:
+- Contact PhilSMS support to enable Smart network on your account
+- Or implement dual-provider setup (PhilSMS for Globe, Semaphore for Smart)
+"""
 from __future__ import annotations
 import time
 from typing import List, Dict, Any
@@ -24,7 +33,7 @@ def mask_number(number: str) -> str:
 
 
 def normalize_sms_number(number: str | None) -> str | None:
-    """Normalize to digits-only format accepted by Semaphore (63XXXXXXXXXX)."""
+    """Normalize to digits-only format accepted by PhilSMS (63XXXXXXXXXX)."""
     if not number:
         return None
     digits = ''.join(ch for ch in str(number) if ch.isdigit())
@@ -33,7 +42,7 @@ def normalize_sms_number(number: str | None) -> str | None:
     if digits.startswith('09') and len(digits) == 11:
         digits = '63' + digits[1:]
     elif digits.startswith('9') and len(digits) == 10:
-        digits = '639' + digits
+        digits = '63' + digits
     elif digits.startswith('63') and len(digits) == 12:
         pass
     elif digits.startswith('0') and len(digits) == 10:
@@ -61,10 +70,10 @@ def _sanitize_message(text: str) -> str:
     return trimmed
 
 
-def get_semaphore_capability(force: bool = False, ttl_seconds: int | None = None) -> Dict[str, Any]:
-    """Check Semaphore account status and credits with short-lived caching."""
+def get_philsms_capability(force: bool = False, ttl_seconds: int | None = None) -> Dict[str, Any]:
+    """Check PhilSMS account status with short-lived caching."""
     provider = (current_app.config.get('SMS_PROVIDER') or 'disabled').lower()
-    if provider != 'semaphore':
+    if provider != 'philsms':
         return {
             'provider': provider,
             'available': provider == 'console',
@@ -73,8 +82,8 @@ def get_semaphore_capability(force: bool = False, ttl_seconds: int | None = None
             'status': None,
         }
 
-    api_key = current_app.config.get('SEMAPHORE_API_KEY', '')
-    base_url = (current_app.config.get('SEMAPHORE_BASE_URL') or 'https://api.semaphore.co').rstrip('/')
+    api_key = current_app.config.get('PHILSMS_API_KEY', '')
+    base_url = (current_app.config.get('PHILSMS_BASE_URL') or 'https://dashboard.philsms.com/api/v3').rstrip('/')
     ttl = ttl_seconds or int(current_app.config.get('SMS_CAPABILITY_CACHE_SECONDS', 90) or 90)
     now = time.time()
 
@@ -83,7 +92,7 @@ def get_semaphore_capability(force: bool = False, ttl_seconds: int | None = None
 
     if not api_key:
         data = {
-            'provider': 'semaphore',
+            'provider': 'philsms',
             'available': False,
             'reason': 'not_configured',
             'credit_balance': None,
@@ -93,35 +102,17 @@ def get_semaphore_capability(force: bool = False, ttl_seconds: int | None = None
         _capability_cache['expires_at'] = now + ttl
         return data
 
-    try:
-        resp = requests.get(f"{base_url}/api/v4/account", params={'apikey': api_key}, timeout=10)
-        resp.raise_for_status()
-        payload = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {}
-        status = str(payload.get('status') or payload.get('account_status') or '').strip()
-        credit_balance = float(payload.get('credit_balance') or 0)
-        available = status.lower() == 'active' and credit_balance > 0
-        reason = None
-        if status.lower() != 'active':
-            reason = 'semaphore_not_approved'
-        elif credit_balance <= 0:
-            reason = 'semaphore_no_credits'
-        data = {
-            'provider': 'semaphore',
-            'available': available,
-            'reason': reason,
-            'credit_balance': credit_balance,
-            'status': status or None,
-            'checked_at': datetime.utcnow(),
-        }
-    except Exception as exc:
-        data = {
-            'provider': 'semaphore',
-            'available': False,
-            'reason': 'semaphore_unreachable',
-            'credit_balance': None,
-            'status': None,
-            'error': str(exc)[:200],
-        }
+    # PhilSMS doesn't have a separate account status endpoint
+    # Assume available if API key is configured
+    # The actual availability will be determined when sending
+    data = {
+        'provider': 'philsms',
+        'available': True,
+        'reason': None,
+        'credit_balance': None,  # PhilSMS doesn't expose balance via API
+        'status': 'active',
+        'checked_at': datetime.utcnow(),
+    }
     _capability_cache['data'] = data
     _capability_cache['expires_at'] = now + ttl
     return data
@@ -149,42 +140,62 @@ def send_sms(numbers: List[str], message: str) -> Dict[str, Any]:
             pass
         return {'status': 'sent'}
 
-    if provider != 'semaphore':
+    if provider != 'philsms':
         return {'status': 'skipped', 'reason': 'unknown_provider'}
 
-    api_key = current_app.config.get('SEMAPHORE_API_KEY', '')
-    sendername = current_app.config.get('SEMAPHORE_SENDERNAME', '')
-    base_url = (current_app.config.get('SEMAPHORE_BASE_URL') or 'https://api.semaphore.co').rstrip('/')
+    api_key = current_app.config.get('PHILSMS_API_KEY', '')
+    sender_id = current_app.config.get('PHILSMS_SENDER_ID', '')
+    base_url = (current_app.config.get('PHILSMS_BASE_URL') or 'https://dashboard.philsms.com/api/v3').rstrip('/')
 
-    capability = get_semaphore_capability()
+    capability = get_philsms_capability()
     if not capability.get('available'):
-        return {'status': 'skipped', 'reason': capability.get('reason') or 'semaphore_unavailable'}
+        return {'status': 'skipped', 'reason': capability.get('reason') or 'philsms_unavailable'}
 
-    payload: Dict[str, Any] = {
-        'apikey': api_key,
-        'number': ','.join(payload_numbers),
-        'message': sanitized_message,
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
     }
-    if sendername:
-        payload['sendername'] = sendername
 
-    try:
-        resp = requests.post(f"{base_url}/api/v4/messages", json=payload, timeout=15)
-        if resp.status_code not in (200, 201, 202):
-            detail = None
-            try:
-                detail = resp.json()
-            except Exception:
-                detail = resp.text[:200]
-            return {'status': 'failed', 'reason': f"{resp.status_code}", 'error': detail}
-        return {'status': 'sent'}
-    except requests.exceptions.RequestException as exc:
-        return {'status': 'failed', 'reason': 'network_error', 'error': str(exc)[:200]}
+    # PhilSMS API v3 accepts single recipient per request
+    # Send to each number individually
+    failed_count = 0
+    last_error = None
+
+    for recipient in payload_numbers:
+        payload: Dict[str, Any] = {
+            'recipient': recipient,
+            'message': sanitized_message,
+        }
+        if sender_id:
+            payload['sender_id'] = sender_id
+
+        try:
+            resp = requests.post(f"{base_url}/sms/send", json=payload, headers=headers, timeout=15)
+            if resp.status_code not in (200, 201, 202):
+                failed_count += 1
+                detail = None
+                try:
+                    detail = resp.json()
+                except Exception:
+                    detail = resp.text[:200]
+                last_error = detail
+                current_app.logger.error(f"[PhilSMS] Send failed to {mask_number(recipient)}: status={resp.status_code} detail={detail}")
+        except requests.exceptions.RequestException as exc:
+            failed_count += 1
+            last_error = str(exc)[:200]
+            current_app.logger.error(f"[PhilSMS] Network error to {mask_number(recipient)}: {exc}")
+
+    # Return success if at least one message was sent
+    if failed_count == len(payload_numbers):
+        return {'status': 'failed', 'reason': 'all_failed', 'error': last_error}
+    elif failed_count > 0:
+        return {'status': 'sent', 'warning': f'{failed_count} of {len(payload_numbers)} failed'}
+    return {'status': 'sent'}
 
 
 def get_provider_status() -> Dict[str, Any]:
     """Lightweight capability snapshot for APIs/UI."""
-    data = get_semaphore_capability()
+    data = get_philsms_capability()
     return {
         'provider': data.get('provider'),
         'available': data.get('available'),

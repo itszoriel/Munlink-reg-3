@@ -97,6 +97,11 @@ uploads/        Runtime file storage (gitignored)
 #### What You CAN Do:
 - Keep Region 3 data in database/files (it's there for compatibility)
 - Reference Region 3 in internal scripts (just don't expose it)
+- Do not use emoji and use plain text when creating script
+   Example:
+       '✅': '[OK]',
+       '❌': '[FAIL]',
+       '⚠️': '[WARN]',
 - Expand scope in the future by relaxing these guards (with approval)
 
 ### 2. Database Context
