@@ -1,5 +1,5 @@
 /**
- * SEO Component for MunLink Zambales
+ * SEO Component for SerbisyoZambaleño Zambales
  * 
  * Provides meta tags for search engine optimization, social sharing,
  * and answer engine optimization (AEO).
@@ -25,9 +25,9 @@ interface SEOProps {
 }
 
 const BASE_URL = 'https://munlink-web-y9lj.onrender.com'
-const DEFAULT_TITLE = 'MunLink Zambales - Digital Municipal Services'
-const DEFAULT_DESCRIPTION = 'MunLink Zambales is a digital governance platform connecting residents of Zambales province with their municipal government services. Request documents, report issues, access benefit programs, and more.'
-const DEFAULT_IMAGE = '/logos/MunLink Logo.png'
+const DEFAULT_TITLE = 'SerbisyoZambaleño Zambales - Digital Municipal Services'
+const DEFAULT_DESCRIPTION = 'SerbisyoZambaleño Zambales is a digital governance platform connecting residents of Zambales province with their municipal government services. Request documents, report issues, access benefit programs, and more.'
+const DEFAULT_IMAGE = '/logos/serbisyozambaleno-logo.png'
 
 /**
  * Set or update a meta tag
@@ -68,7 +68,7 @@ export default function SEO({
   type = 'website',
   noIndex = false,
 }: SEOProps) {
-  const fullTitle = title ? `${title} | MunLink Zambales` : DEFAULT_TITLE
+  const fullTitle = title ? `${title} | SerbisyoZambaleño Zambales` : DEFAULT_TITLE
   const fullUrl = url ? `${BASE_URL}${url}` : BASE_URL
   const fullImage = image.startsWith('http') ? image : `${BASE_URL}${image}`
 
@@ -96,7 +96,7 @@ export default function SEO({
     setMetaTag('og:title', fullTitle, true)
     setMetaTag('og:description', description, true)
     setMetaTag('og:image', fullImage, true)
-    setMetaTag('og:site_name', 'MunLink Zambales', true)
+    setMetaTag('og:site_name', 'SerbisyoZambaleño Zambales', true)
     setMetaTag('og:locale', 'en_PH', true)
     
     // Twitter
@@ -107,7 +107,7 @@ export default function SEO({
     setMetaTag('twitter:image', fullImage)
     
     // Additional SEO tags
-    setMetaTag('application-name', 'MunLink Zambales')
+    setMetaTag('application-name', 'SerbisyoZambaleño Zambales')
     setMetaTag('theme-color', '#1e40af')
     setMetaTag('geo.region', 'PH-ZMB')
     setMetaTag('geo.placename', 'Zambales, Philippines')
@@ -123,7 +123,7 @@ export function HomeSEO() {
   return (
     <SEO
       title="Home"
-      description="MunLink Zambales - Your digital gateway to municipal services in Zambales province. Access government documents, announcements, community marketplace, and more."
+      description="SerbisyoZambaleño Zambales - Your digital gateway to municipal services in Zambales province. Access government documents, announcements, community marketplace, and more."
       url="/"
     />
   )
@@ -152,8 +152,8 @@ export function MarketplaceSEO() {
 export function AboutSEO() {
   return (
     <SEO
-      title="About MunLink"
-      description="Learn about MunLink Zambales - a digital governance platform serving the 13 municipalities of Zambales province, Philippines."
+      title="About SerbisyoZambaleño"
+      description="Learn about SerbisyoZambaleño Zambales - a digital governance platform serving the 13 municipalities of Zambales province, Philippines."
       url="/about"
     />
   )

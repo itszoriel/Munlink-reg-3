@@ -12,7 +12,6 @@ import Dashboard from './pages/Dashboard'
 import Residents from './pages/Residents'
 import Programs from './pages/Programs'
 import Requests from './pages/Requests'
-import Marketplace from './pages/Marketplace'
 import Admins from './pages/Admins'
 import Reports from './pages/Reports'
 import Profile from './pages/Profile'
@@ -126,16 +125,6 @@ export default function App() {
             <ProtectedRoute>
               <AdminLayout>
                 <VerifyTicket />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/marketplace"
-          element={
-            <ProtectedRoute>
-              <AdminLayout>
-                <Marketplace />
               </AdminLayout>
             </ProtectedRoute>
           }
@@ -293,7 +282,7 @@ export default function App() {
               {!isAuthenticated && (
                 <nav className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur-xl">
                   <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-                    <Link to="/" className="font-serif font-semibold text-gray-900">MunLink Admin</Link>
+                    <Link to="/" className="font-serif font-semibold text-gray-900">SerbisyoZambaleño Admin</Link>
                     <div className="flex items-center gap-6">
                       <Link to="/login" className="hover:text-ocean-700">Login</Link>
                       <Link to="/register" className="hover:text-ocean-700">Create Admin</Link>

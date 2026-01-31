@@ -1,4 +1,4 @@
-/** Tailwind preset for MunLink shared tokens and utilities */
+/** Tailwind preset for SerbisyoZambaleño shared tokens and utilities */
 const colors = require('tailwindcss/colors')
 const plugin = require('tailwindcss/plugin')
 
@@ -10,7 +10,7 @@ module.exports = {
         xs: '480px',
       },
       colors: {
-        /* MunLink Unified Design System */
+        /* SerbisyoZambaleño Unified Design System */
         ocean: {
           50: '#f0f9ff',
           100: '#e0f2fe',

@@ -64,7 +64,7 @@ export default function PrivacyPolicy() {
                 <li>With municipal and government authorities for official services and verification purposes</li>
                 <li>With service providers who assist us in operating our platform (under strict confidentiality agreements)</li>
                 <li>When required by law or to respond to legal process</li>
-                <li>To protect the rights, property, or safety of MunLink, our users, or others</li>
+                <li>To protect the rights, property, or safety of SerbisyoZambaleño, our users, or others</li>
                 <li>With your consent or at your direction</li>
               </ul>
             </section>

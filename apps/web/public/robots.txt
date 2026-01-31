@@ -1,4 +1,4 @@
-# MunLink Region 3 - Robots.txt
+# SerbisyoZambaleño Region 3 - Robots.txt
 # Allows search engines to crawl public pages while protecting private content
 
 # Allow all crawlers

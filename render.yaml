@@ -88,6 +88,7 @@ services:
     
     # Note: For production, consider adding a persistent disk (requires paid plan)
     # Or use Supabase Storage for file uploads
+    postdeployCommand: "FLASK_APP=app:create_app flask db upgrade"
     
     plan: free
 

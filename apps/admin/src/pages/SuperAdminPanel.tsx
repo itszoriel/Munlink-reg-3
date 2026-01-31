@@ -582,11 +582,11 @@ export default function SuperAdminPanel() {
 
       {/* Create Admin Modal */}
       {showCreateForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start md:items-center justify-center p-4 pt-20 md:pt-4 z-[60] overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] md:max-h-[90vh] overflow-y-auto my-auto"
           >
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
               <h3 className="text-xl font-semibold text-gray-900">Create New Admin Account</h3>

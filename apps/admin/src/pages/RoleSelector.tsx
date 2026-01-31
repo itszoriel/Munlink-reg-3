@@ -1,131 +1,70 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Shield, Building2, Building, MapPin } from 'lucide-react'
+import { ConnoisseurStackInteractor, type MenuItem } from '@/components/ui/connoisseur-stack-interactor'
 
 export default function RoleSelector() {
   const navigate = useNavigate()
 
-  const roles = [
+  const visualItems: MenuItem[] = [
     {
-      id: 'superadmin',
-      label: 'Super Admin',
-      description: 'Platform-level administration',
-      icon: Shield,
-      color: 'from-purple-500 to-blue-600',
-      hoverColor: 'hover:from-purple-600 hover:to-blue-700',
-      path: '/superadmin/login',
+      num: '01',
+      name: 'Super Admin',
+      clipId: 'clip-original',
+      image: '/assets/superadmin_login.jpg',
+      onSelect: () => navigate('/superadmin/login'),
     },
     {
-      id: 'provincial',
-      label: 'Provincial Admin',
-      description: 'Province-wide announcements',
-      icon: Building2,
-      color: 'from-indigo-500 to-violet-600',
-      hoverColor: 'hover:from-indigo-600 hover:to-violet-700',
-      path: '/provincial/login',
+      num: '02',
+      name: 'Provincial Admin',
+      clipId: 'clip-hexagons',
+      image: '/assets/provincial.jpg',
+      onSelect: () => navigate('/provincial/login'),
     },
     {
-      id: 'municipal',
-      label: 'Municipal Admin',
-      description: 'Municipality management',
-      icon: Building,
-      color: 'from-blue-500 to-cyan-600',
-      hoverColor: 'hover:from-blue-600 hover:to-cyan-700',
-      path: '/login',
+      num: '03',
+      name: 'Municipal Admin',
+      clipId: 'clip-pixels',
+      image: '/assets/admin_login.jpg',
+      onSelect: () => navigate('/login'),
     },
     {
-      id: 'barangay',
-      label: 'Barangay Admin',
-      description: 'Barangay-level administration',
-      icon: MapPin,
-      color: 'from-emerald-500 to-green-600',
-      hoverColor: 'hover:from-emerald-600 hover:to-green-700',
-      path: '/barangay/login',
+      num: '04',
+      name: 'Barangay Admin',
+      clipId: 'clip-stripes',
+      image: '/assets/barangay.jpg',
+      onSelect: () => navigate('/barangay/login'),
     },
   ]
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-neutral-50 via-ocean-50/30 to-forest-50/20">
-      {/* Background decorations */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-20 right-20 w-96 h-96 bg-ocean-200/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-20 w-96 h-96 bg-forest-200/20 rounded-full blur-3xl" />
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-[#f7fbff] via-[#f3f6ff] to-[#e8f5ff]">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -left-16 top-6 w-[340px] h-[340px] bg-ocean-200/30 blur-[110px]" />
+        <div className="absolute -right-16 bottom-0 w-[340px] h-[340px] bg-purple-200/25 blur-[110px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl">
-        {/* Header */}
+      <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
         <motion.div
-          className="text-center mb-12"
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.4 }}
+          className="text-center"
         >
-          <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4">
-            MunLink Admin Portal
+          <p className="text-[11px] md:text-xs font-semibold uppercase tracking-[0.28em] text-ocean-700/80">
+            Admin Portal
+          </p>
+          <h1 className="mt-2 text-3xl md:text-[2.6rem] font-serif font-bold text-slate-900 leading-tight">
+            Choose Your Governance Track
           </h1>
-          <p className="text-lg text-gray-600">
-            Select your admin role to continue
+          <p className="mt-2 text-sm md:text-base text-slate-600 max-w-3xl mx-auto">
+            Hover to explore the feel of each admin level. Click a track to jump into its dedicated sign-in flow.
           </p>
         </motion.div>
 
-        {/* Role Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {roles.map((role, index) => {
-            const Icon = role.icon
-            return (
-              <motion.button
-                key={role.id}
-                onClick={() => navigate(role.path)}
-                className={`group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 text-left overflow-hidden`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {/* Gradient background on hover */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${role.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
-
-                {/* Icon */}
-                <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${role.color} mb-6 shadow-lg group-hover:shadow-xl transition-shadow`}>
-                  <Icon className="w-8 h-8 text-white" />
-                </div>
-
-                {/* Content */}
-                <div className="relative z-10">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-gray-800 transition-colors">
-                    {role.label}
-                  </h3>
-                  <p className="text-gray-600 group-hover:text-gray-700 transition-colors">
-                    {role.description}
-                  </p>
-                </div>
-
-                {/* Arrow indicator */}
-                <div className="absolute bottom-8 right-8 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-300">
-                  <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </motion.button>
-            )
-          })}
-        </div>
-
-        {/* Footer */}
-        <motion.div
-          className="text-center mt-12 text-sm text-gray-500"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <p>
-            Need assistance?{' '}
-            <button className="text-ocean-600 hover:text-ocean-700 font-medium">
-              Contact support
-            </button>
-          </p>
-        </motion.div>
+        <ConnoisseurStackInteractor
+          items={visualItems}
+          className="rounded-[24px] border border-white/60 shadow-2xl !min-h-[430px] md:!min-h-[470px] bg-gradient-to-br from-slate-900 via-slate-800 to-sky-900"
+        />
       </div>
     </div>
   )

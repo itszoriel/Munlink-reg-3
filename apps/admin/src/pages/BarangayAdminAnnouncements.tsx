@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Megaphone, Edit, Trash2, Pin } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import BarangayAdminLayout from '../components/layout/BarangayAdminLayout'
 import { announcementApi, handleApiError, mediaUrl } from '../lib/api'
 import { EmptyState } from '@munlink/ui'
@@ -58,6 +59,7 @@ export default function BarangayAdminAnnouncements() {
   const [formData, setFormData] = useState<AnnouncementFormValues>(initialFormData)
   const [formImages, setFormImages] = useState<FileList | null>(null)
   const [formLoading, setFormLoading] = useState(false)
+  const [fabExpanded, setFabExpanded] = useState(false)
 
   useEffect(() => {
     fetchAnnouncements()
@@ -206,7 +208,7 @@ export default function BarangayAdminAnnouncements() {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-shadow"
+            className="hidden sm:flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-shadow"
           >
             <Plus className="w-5 h-5" />
             <span className="font-medium">New Announcement</span>
@@ -232,7 +234,7 @@ export default function BarangayAdminAnnouncements() {
             action={
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-700 text-white rounded-xl hover:shadow-lg transition-shadow"
+                className="hidden sm:block px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-700 text-white rounded-xl hover:shadow-lg transition-shadow"
               >
                 Create Announcement
               </button>
@@ -305,8 +307,8 @@ export default function BarangayAdminAnnouncements() {
 
         {/* Create/Edit Modal */}
         {isFormOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-start md:items-center justify-center p-4 pt-20 md:pt-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 my-auto">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 {editingAnnouncement ? 'Edit Announcement' : `Create Barangay Announcement for ${barangayName}`}
               </h2>
@@ -416,6 +418,79 @@ export default function BarangayAdminAnnouncements() {
             </div>
           </div>
         )}
+
+        {/* Floating Action Button (Mobile Only) */}
+        {!isFormOpen && (
+          <motion.div
+            className="fixed bottom-20 right-4 z-50 sm:hidden"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.button
+              className="relative flex items-center justify-center bg-gradient-to-r from-emerald-600 to-green-700 text-white shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-shadow"
+              onClick={() => {
+                if (fabExpanded) {
+                  setShowCreateModal(true)
+                  setFabExpanded(false)
+                } else {
+                  setFabExpanded(true)
+                }
+              }}
+              animate={{
+                width: fabExpanded ? 200 : 56,
+                height: 56,
+                borderRadius: 28,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 25,
+              }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <AnimatePresence mode="wait">
+                {fabExpanded ? (
+                  <motion.div
+                    key="expanded"
+                    className="flex items-center gap-2 px-4"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <Plus className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">New Announcement</span>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="collapsed"
+                    initial={{ opacity: 0, rotate: -90 }}
+                    animate={{ opacity: 1, rotate: 0 }}
+                    exit={{ opacity: 0, rotate: 90 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <Plus className="w-6 h-6" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* Backdrop to close FAB when clicking outside */}
+        <AnimatePresence>
+          {fabExpanded && !isFormOpen && (
+            <motion.div
+              className="fixed inset-0 z-40 sm:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFabExpanded(false)}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </BarangayAdminLayout>
   )

@@ -29,7 +29,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Acceptance of Terms</h2>
               <p className="text-gray-700 leading-relaxed">
-                By accessing and using MunLink Zambales, you accept and agree to be bound by the terms and provision of this agreement. 
+                By accessing and using SerbisyoZambaleño Zambales, you accept and agree to be bound by the terms and provision of this agreement. 
                 If you do not agree to abide by the above, please do not use this service.
               </p>
             </section>
@@ -37,13 +37,13 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">2. Use License</h2>
               <p className="text-gray-700 leading-relaxed mb-3">
-                Permission is granted to temporarily use MunLink Zambales for personal, non-commercial transitory viewing only. 
+                Permission is granted to temporarily use SerbisyoZambaleño Zambales for personal, non-commercial transitory viewing only. 
                 This is the grant of a license, not a transfer of title, and under this license you may not:
               </p>
               <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
                 <li>Modify or copy the materials</li>
                 <li>Use the materials for any commercial purpose or for any public display</li>
-                <li>Attempt to reverse engineer any software contained on MunLink Zambales</li>
+                <li>Attempt to reverse engineer any software contained on SerbisyoZambaleño Zambales</li>
                 <li>Remove any copyright or other proprietary notations from the materials</li>
                 <li>Transfer the materials to another person or "mirror" the materials on any other server</li>
               </ul>
@@ -96,7 +96,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Limitation of Liability</h2>
               <p className="text-gray-700 leading-relaxed">
-                In no event shall MunLink Zambales, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable 
+                In no event shall SerbisyoZambaleño Zambales, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable 
                 for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, 
                 data, use, goodwill, or other intangible losses, resulting from your use of the service.
               </p>

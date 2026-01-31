@@ -58,6 +58,20 @@ export default function BarangayAdminLoginPage() {
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/20 to-black/30" />
+
+        {/* Zambales Province Logo Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <motion.img
+            src="/logos/provinces/zambales.png"
+            alt="Zambales Province Seal"
+            className="w-[500px] h-[500px] object-contain opacity-10"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 0.1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+          />
+        </div>
+
         <div className="absolute inset-0 bg-grid-pattern opacity-[0.05]" />
 
         {/* Content */}
@@ -243,15 +257,6 @@ export default function BarangayAdminLoginPage() {
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to role selection</span>
               </Link>
-            </div>
-
-            <div className="mt-8 text-center text-sm text-gray-600">
-              <p>
-                Need help?{' '}
-                <button className="text-emerald-600 hover:text-emerald-700 font-medium">
-                  Contact support
-                </button>
-              </p>
             </div>
           </motion.div>
         </div>

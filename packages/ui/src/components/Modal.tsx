@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef, useCallback } from 'react'
 
 export type ModalProps = {
   open: boolean
@@ -19,18 +19,73 @@ const sizeClasses = {
   full: 'max-w-full h-full',
 }
 
+// Focus trap: cycle focus within modal
+const FOCUSABLE_SELECTORS = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+
 export const Modal: React.FC<ModalProps> = ({ open, onOpenChange, title, children, footer, className, size = 'md' }) => {
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousActiveElement = useRef<HTMLElement | null>(null)
+
+  // Focus trap handler
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onOpenChange(false)
+      return
+    }
+
+    if (e.key !== 'Tab' || !modalRef.current) return
+
+    const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS)
+    const firstFocusable = focusableElements[0]
+    const lastFocusable = focusableElements[focusableElements.length - 1]
+
+    if (e.shiftKey) {
+      // Shift + Tab: if on first element, go to last
+      if (document.activeElement === firstFocusable) {
+        e.preventDefault()
+        lastFocusable?.focus()
+      }
+    } else {
+      // Tab: if on last element, go to first
+      if (document.activeElement === lastFocusable) {
+        e.preventDefault()
+        firstFocusable?.focus()
+      }
+    }
+  }, [onOpenChange])
+
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onOpenChange(false) }
-    window.addEventListener('keydown', onKey)
+
+    // Store the currently focused element to restore later
+    previousActiveElement.current = document.activeElement as HTMLElement
+
+    // Focus the modal or first focusable element
+    const timer = setTimeout(() => {
+      if (modalRef.current) {
+        const firstFocusable = modalRef.current.querySelector<HTMLElement>(FOCUSABLE_SELECTORS)
+        if (firstFocusable) {
+          firstFocusable.focus()
+        } else {
+          modalRef.current.focus()
+        }
+      }
+    }, 0)
+
+    window.addEventListener('keydown', handleKeyDown)
     // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden'
+
     return () => {
-      window.removeEventListener('keydown', onKey)
+      clearTimeout(timer)
+      window.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = ''
+      // Restore focus to the previously focused element
+      if (previousActiveElement.current) {
+        previousActiveElement.current.focus()
+      }
     }
-  }, [open, onOpenChange])
+  }, [open, handleKeyDown])
 
   if (!open) return null
   
@@ -45,8 +100,13 @@ export const Modal: React.FC<ModalProps> = ({ open, onOpenChange, title, childre
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
-        className={`relative w-full ${sizeClasses[size]} max-h-[95vh] sm:max-h-[90vh] flex flex-col bg-[var(--color-card,#fff)] text-[var(--color-card-foreground,#111)] border border-[var(--color-border,#e5e7eb)] shadow-2xl ${isFullSize ? 'rounded-none' : 'rounded-t-2xl sm:rounded-2xl'} ${className || ''}`.trim()}
+        ref={modalRef}
+        tabIndex={-1}
+        className={`relative w-full ${sizeClasses[size]} max-h-[95vh] sm:max-h-[90vh] flex flex-col bg-[var(--color-card,#fff)] text-[var(--color-card-foreground,#111)] border border-[var(--color-border,#e5e7eb)] shadow-2xl ${isFullSize ? 'rounded-none' : 'rounded-t-2xl sm:rounded-2xl'} animate-modal-slide-up ${className || ''}`.trim()}
         onClick={(e) => e.stopPropagation()}
+        style={{
+          animation: 'modal-slide-up 0.3s ease-out forwards',
+        }}
       >
         {(title !== undefined) && (
           <div className="flex-shrink-0 px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--color-border,#e5e7eb)] flex items-center justify-between">

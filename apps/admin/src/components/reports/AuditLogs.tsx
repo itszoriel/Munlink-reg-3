@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import apiClient, { auditAdminApi, exportAdminApi, mediaUrl, showToast } from '../../lib/api'
+import apiClient, { auditAdminApi, exportAdminApi, mediaUrl, showToast, handleApiError } from '../../lib/api'
+import { EmptyState } from '@munlink/ui'
 
 export default function AuditLogs() {
   const [logs, setLogs] = useState<any[]>([])
@@ -9,14 +10,24 @@ export default function AuditLogs() {
   const [filters, setFilters] = useState<{ entity_type?: string; actor_role?: string; action?: string; from?: string; to?: string }>({})
   const [working, setWorking] = useState('')
   const [meta, setMeta] = useState<{ entity_types: string[]; actions: string[]; actor_roles: string[] }|null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const fallbackEntityTypes = ['document_request', 'announcement', 'marketplace_item', 'user', 'transaction']
+  const fallbackActions = ['create', 'update', 'delete', 'status_processing', 'status_completed']
 
-  const load = async () => {
+  const load = async (opts?: { filters?: typeof filters; page?: number }) => {
     setLoading(true)
+    setLoadError(null)
     try {
-      const res = await auditAdminApi.list({ ...filters, page, per_page: 20 })
+      const nextFilters = opts?.filters ?? filters
+      const nextPage = opts?.page ?? page
+      const res = await auditAdminApi.list({ ...nextFilters, page: nextPage, per_page: 20 })
       const data: any = (res as any)
       setLogs(data.logs || data.data?.logs || [])
       setPages(data.pages || 1)
+    } catch (err: any) {
+      setLogs([])
+      setPages(1)
+      setLoadError(handleApiError(err))
     } finally {
       setLoading(false)
     }
@@ -52,59 +63,102 @@ export default function AuditLogs() {
     }
   }
 
+  const resetFilters = () => {
+    const cleared = {}
+    setFilters(cleared)
+    setPage(1)
+    void load({ filters: cleared, page: 1 })
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-        <div>
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 items-end">
+        <div className="min-w-[180px]">
           <label className="block text-xs font-medium mb-1">Entity Type</label>
-          {meta?.entity_types ? (
-            <select className="border rounded px-3 py-2 text-sm" value={filters.entity_type||''} onChange={(e)=> setFilters(f=>({...f, entity_type: e.target.value||undefined}))}>
-              <option value="">Any</option>
-              {meta.entity_types.map((et)=> (<option key={et} value={et}>{et}</option>))}
-            </select>
-          ) : (
-            <input className="border rounded px-3 py-2 text-sm" placeholder="e.g., document_request" value={filters.entity_type||''} onChange={(e)=> setFilters(f=>({...f, entity_type: e.target.value||undefined}))} />
-          )}
+          <select className="input-field-sm" value={filters.entity_type||''} onChange={(e)=> setFilters(f=>({...f, entity_type: e.target.value||undefined}))}>
+            <option value="">Any</option>
+            {(meta?.entity_types || fallbackEntityTypes).map((et)=> (<option key={et} value={et}>{et}</option>))}
+          </select>
         </div>
-        <div>
+        <div className="min-w-[150px]">
           <label className="block text-xs font-medium mb-1">Actor Role</label>
-          <select className="border rounded px-3 py-2 text-sm" value={filters.actor_role||''} onChange={(e)=> setFilters(f=>({...f, actor_role: e.target.value||undefined}))}>
+          <select className="input-field-sm" value={filters.actor_role||''} onChange={(e)=> setFilters(f=>({...f, actor_role: e.target.value||undefined}))}>
             <option value="">Any</option>
             <option value="admin">admin</option>
             <option value="resident">resident</option>
             <option value="system">system</option>
           </select>
         </div>
-        <div>
+        <div className="min-w-[180px]">
           <label className="block text-xs font-medium mb-1">Action</label>
-          {meta?.actions ? (
-            <select className="border rounded px-3 py-2 text-sm" value={filters.action||''} onChange={(e)=> setFilters(f=>({...f, action: e.target.value||undefined}))}>
-              <option value="">Any</option>
-              {meta.actions.map((a)=> (<option key={a} value={a}>{a}</option>))}
-            </select>
-          ) : (
-            <input className="border rounded px-3 py-2 text-sm" placeholder="e.g., status_processing" value={filters.action||''} onChange={(e)=> setFilters(f=>({...f, action: e.target.value||undefined}))} />
-          )}
+          <select className="input-field-sm" value={filters.action||''} onChange={(e)=> setFilters(f=>({...f, action: e.target.value||undefined}))}>
+            <option value="">Any</option>
+            {(meta?.actions || fallbackActions).map((a)=> (<option key={a} value={a}>{a}</option>))}
+          </select>
         </div>
         <div>
           <label className="block text-xs font-medium mb-1">From</label>
-          <input type="datetime-local" className="border rounded px-3 py-2 text-sm" value={filters.from||''} onChange={(e)=> setFilters(f=>({...f, from: e.target.value||undefined}))} />
+          <input
+            type="date"
+            className="input-field-sm"
+            value={filters.from?.slice(0,10) || ''}
+            onChange={(e)=> setFilters(f=>({...f, from: e.target.value||undefined}))}
+          />
         </div>
         <div>
           <label className="block text-xs font-medium mb-1">To</label>
-          <input type="datetime-local" className="border rounded px-3 py-2 text-sm" value={filters.to||''} onChange={(e)=> setFilters(f=>({...f, to: e.target.value||undefined}))} />
+          <input
+            type="date"
+            className="input-field-sm"
+            value={filters.to?.slice(0,10) || ''}
+            onChange={(e)=> setFilters(f=>({...f, to: e.target.value||undefined}))}
+          />
         </div>
-        <div className="flex gap-2">
-          <button className="px-3 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-sm" onClick={()=> { setPage(1); load() }}>Apply</button>
-          <button className="px-3 py-2 rounded-lg bg-ocean-600 hover:bg-ocean-700 text-white text-sm disabled:opacity-60" disabled={working==='pdf'} onClick={()=> exportIt('pdf')}>{working==='pdf'?'Exporting…':'Export PDF'}</button>
-          <button className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm disabled:opacity-60" disabled={working==='xlsx'} onClick={()=> exportIt('xlsx')}>{working==='xlsx'?'Exporting…':'Export Excel'}</button>
+        <div className="flex flex-wrap gap-2 md:justify-start lg:justify-end">
+          <button className="btn btn-secondary" onClick={()=> { setPage(1); load() }}>Apply</button>
+          <button className="btn btn-primary min-w-[110px] disabled:opacity-60" disabled={working==='pdf'} onClick={()=> exportIt('pdf')}>{working==='pdf'?'Exporting…':'Export PDF'}</button>
+          <button className="btn btn-success min-w-[120px] disabled:opacity-60" disabled={working==='xlsx'} onClick={()=> exportIt('xlsx')}>{working==='xlsx'?'Exporting…':'Export Excel'}</button>
         </div>
       </div>
       <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-5 border border-white/50 shadow-lg">
         {loading ? (
-          <div>Loading…</div>
+          <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden" style={{ minHeight: 140 }}>
+            <div className="grid grid-cols-6 gap-3 px-4 py-3 border-b border-neutral-100">
+              {[18, 12, 10, 12, 9, 14].map((w, i) => (
+                <div key={i} className="h-3.5 skeleton rounded" style={{ width: `${w}ch` }} />
+              ))}
+            </div>
+            <div className="divide-y divide-neutral-100">
+              {Array.from({ length: 3 }).map((_, row) => (
+                <div key={row} className="grid grid-cols-6 gap-3 px-4 py-3 items-center">
+                  {[14, 11, 10, 11, 8, 12].map((w, col) => (
+                    <div key={col} className="h-3.5 skeleton rounded" style={{ width: `${w}ch` }} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : loadError ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm">
+            {loadError}
+          </div>
         ) : logs.length === 0 ? (
-          <div className="text-sm text-neutral-600">No audit entries.</div>
+          <div className="px-2">
+            <EmptyState
+              icon="activity"
+              title="No audit entries found"
+              description="Try a different date range or actor filter."
+              compact
+              action={
+                <button
+                  className="btn btn-secondary"
+                  onClick={resetFilters}
+                >
+                  Clear filters
+                </button>
+              }
+            />
+          </div>
         ) : (
           <div className="overflow-auto">
             <table className="w-full text-sm">
@@ -142,5 +196,3 @@ export default function AuditLogs() {
     </div>
   )
 }
-
-

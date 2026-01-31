@@ -53,7 +53,7 @@ export default function VerifyDocumentPage() {
         </div>
       ) : (
         <div className={`rounded-xl border p-5 ${valid ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50'}`}>
-          <div className="text-xl font-bold mb-2">{valid ? 'Valid MunLink Document' : 'Invalid or Not Found'}</div>
+          <div className="text-xl font-bold mb-2">{valid ? 'Valid SerbisyoZambaleño Document' : 'Invalid or Not Found'}</div>
           <div className="space-y-1 text-sm">
             <div><span className="font-medium">Request #:</span> {data?.request_number || requestNumber}</div>
             {data?.doc_name && <div><span className="font-medium">Document:</span> {data.doc_name}</div>}

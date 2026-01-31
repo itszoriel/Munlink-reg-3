@@ -102,7 +102,7 @@ export default function Requests() {
   const isMunicipalLike = role === 'municipal_admin' || role === 'superadmin' || role === 'provincial_admin'
   const scopeBanner = isBarangayAdmin ? (
     <div className="mb-4 rounded-lg border border-ocean-200 bg-ocean-50 px-4 py-3 text-sm text-ocean-800">
-      Barangay admin view — showing requests for your barangay{barangayName ? `: ${barangayName}` : ''}. Actions are limited to your barangay.
+      Barangay admin view ï¿½ showing requests for your barangay{barangayName ? `: ${barangayName}` : ''}. Actions are limited to your barangay.
     </div>
   ) : null
 
@@ -645,9 +645,9 @@ export default function Requests() {
       </div>
       {/* Reject Modal */}
       {rejectForId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setRejectForId(null) }}>
+        <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center pt-20 md:pt-0 overflow-y-auto" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setRejectForId(null) }}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setRejectForId(null)} />
-          <div className="relative bg-white w-[92%] max-w-md max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 pb-24 sm:pb-5" tabIndex={-1} autoFocus>
+          <div className="relative bg-white w-[92%] max-w-md max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 pb-24 sm:pb-5 my-auto" tabIndex={-1} autoFocus>
             <h3 className="text-lg font-semibold mb-2">Reject Request</h3>
             <p className="text-sm text-neutral-700 mb-3">Provide a reason to inform the resident.</p>
             <label htmlFor="reject-reason" className="block text-sm font-medium mb-1">Reason</label>
@@ -663,9 +663,9 @@ export default function Requests() {
       )}
       {/* Edit Content Modal */}
       {editFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setEditFor(null) }}>
+        <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center pt-20 md:pt-0 overflow-y-auto" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setEditFor(null) }}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setEditFor(null)} />
-          <div className="relative bg-white w-[92%] max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 pb-24 sm:pb-5" tabIndex={-1} autoFocus>
+          <div className="relative bg-white w-[92%] max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 pb-24 sm:pb-5 my-auto" tabIndex={-1} autoFocus>
             <h3 className="text-lg font-semibold mb-2">Edit Request Content</h3>
             <div className="space-y-3">
               <div>
@@ -731,9 +731,9 @@ export default function Requests() {
       )}
       {/* History Modal */}
       {historyFor !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" onKeyDown={(e)=> { if (e.key==='Escape') setHistoryFor(null) }}>
+        <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center pt-20 md:pt-0 overflow-y-auto" role="dialog" aria-modal="true" onKeyDown={(e)=> { if (e.key==='Escape') setHistoryFor(null) }}>
           <div className="absolute inset-0 bg-black/40" onClick={()=> setHistoryFor(null)} />
-          <div className="relative bg-white w-[92%] max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5" tabIndex={-1} autoFocus>
+          <div className="relative bg-white w-[92%] max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 my-auto" tabIndex={-1} autoFocus>
             <h3 className="text-lg font-semibold mb-2">Request History</h3>
             <div className="text-sm text-neutral-600 mb-3">Request ID: {historyFor}</div>
             {loadingHistory ? (

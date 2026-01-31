@@ -13,7 +13,7 @@ export interface PageHeaderProps {
 
 /**
  * PageHeader - Unified page header component for consistent page layouts
- * Uses serif font for titles per MunLink design system
+ * Uses serif font for titles per SerbisyoZambaleño design system
  */
 export const PageHeader: React.FC<PageHeaderProps> = ({
   title,

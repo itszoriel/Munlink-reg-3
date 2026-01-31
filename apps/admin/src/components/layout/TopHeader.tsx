@@ -23,10 +23,23 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile }: TopHeaderP
     if (path === '/programs') return 'Programs'
     if (path === '/requests') return 'Requests'
     if (path === '/problems') return 'Problems'
-    if (path === '/marketplace') return 'Marketplace'
     if (path === '/admins') return 'Admins'
     if (path === '/reports') return 'Reports'
     if (path === '/announcements') return 'Announcements'
+    if (path.startsWith('/provincial')) {
+      if (path.includes('announcements')) return 'Provincial Announcements'
+      if (path.includes('reports')) return 'Provincial Reports'
+      return 'Provincial Dashboard'
+    }
+    if (path.startsWith('/barangay')) {
+      if (path.includes('announcements')) return 'Barangay Announcements'
+      if (path.includes('reports')) return 'Barangay Reports'
+      return 'Barangay Dashboard'
+    }
+    if (path.startsWith('/superadmin')) {
+      if (path.includes('audit')) return 'Audit Log'
+      return 'Super Admin'
+    }
     return 'Dashboard'
   }
   
@@ -61,8 +74,8 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile }: TopHeaderP
   const goToProfile = () => {
     navigate('/profile')
   }
-  // Align header to sidebar width (collapsed=80px, expanded=260px) on md+.
-  const leftOffset = sidebarCollapsed ? 'md:left-[80px]' : 'md:left-[260px]'
+  // Align header to sidebar width (collapsed=84px, expanded=288px) on md+.
+  const leftOffset = sidebarCollapsed ? 'md:left-[84px]' : 'md:left-[288px]'
   const portalTitle = `${user?.admin_municipality_name || 'Municipality'} Admin Portal`
   return (
     <header className={`fixed top-0 right-0 left-0 ${leftOffset} h-16 bg-white md:bg-white/90 md:backdrop-blur-xl border-b border-neutral-200 z-40 transition-all duration-300`}>

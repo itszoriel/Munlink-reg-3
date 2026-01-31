@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { handleApiError, dashboardApi, userApi, marketplaceApi, announcementApi, documentsAdminApi } from '../lib/api'
 import ExportData from '../components/reports/ExportArchive.tsx'
 import AuditLogs from '../components/reports/AuditLogs.tsx'
+import MarketplaceTransactionAudit from '../components/reports/MarketplaceTransactionAudit.tsx'
+import { BellIcon, LucidePaperclip, ShoppingBasketIcon, User2Icon, FileText } from 'lucide-react'
 
 export default function Reports() {
   // Track if we've ever loaded data (for first-load-only skeleton)
@@ -50,10 +52,10 @@ export default function Reports() {
   }, [range, hasLoadedOnce])
 
   const metrics = useMemo(() => ([
-    { label: 'Total Users', value: String(report?.users?.total_users ?? 0), change: '+0%', trend: 'up', icon: '👥', color: 'ocean' },
-    { label: 'Active Listings', value: String(report?.marketplace?.total_items ?? 0), change: '+0%', trend: 'up', icon: '🛍️', color: 'forest' },
-    { label: 'Documents Issued', value: String((report?.documents?.total_requests ?? report?.documents?.issued_total) ?? 0), change: '+0%', trend: 'up', icon: '📄', color: 'purple' },
-    { label: 'Active Announcements', value: String(report?.announcements?.active_announcements ?? 0), change: '+0%', trend: 'up', icon: '📢', color: 'sunset' },
+    { label: 'Total Users', value: String(report?.users?.total_users ?? 0), change: '+0%', trend: 'up', icon: User2Icon, color: 'ocean' },
+    { label: 'Active Listings', value: String(report?.marketplace?.total_items ?? 0), change: '+0%', trend: 'up', icon: ShoppingBasketIcon, color: 'forest' },
+    { label: 'Documents Issued', value: String((report?.documents?.total_requests ?? report?.documents?.issued_total) ?? 0), change: '+0%', trend: 'up', icon: LucidePaperclip, color: 'purple' },
+    { label: 'Active Announcements', value: String(report?.announcements?.active_announcements ?? 0), change: '+0%', trend: 'up', icon: BellIcon, color: 'sunset' },
   ] as const), [report])
 
   const documents = (report?.documents?.top_requested as any[]) || []
@@ -101,7 +103,12 @@ export default function Reports() {
                 ) : (
                   <>
                     <div className="flex items-start justify-between mb-4">
-                      <div className={`w-12 h-12 bg-${metric.color}-100 rounded-xl flex items-center justify-center text-2xl`}>{metric.icon}</div>
+                      <div className={`w-12 h-12 bg-${metric.color}-100 rounded-xl flex items-center justify-center text-2xl`}>
+                        {(() => {
+                          const Icon = metric.icon
+                          return <Icon className="w-6 h-6 text-neutral-900" />
+                        })()}
+                      </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${metric.trend === 'up' ? 'bg-forest-100 text-forest-700' : 'bg-red-100 text-red-700'}`}>{metric.trend === 'up' ? '↑' : '↓'} {metric.change}</span>
                     </div>
                     <p className="text-3xl font-bold text-neutral-900 mb-1">{metric.value}</p>
@@ -206,7 +213,12 @@ export default function Reports() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {documents.map((doc: any) => (
                     <div key={doc.name} className="bg-neutral-50 rounded-2xl p-4 hover:bg-ocean-50 transition-colors">
-                      <div className="flex items-start justify-between mb-3"><div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shadow-sm">📋</div><span className="text-2xl font-bold text-neutral-900">{doc.count}</span></div>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shadow-sm">
+                          <FileText className="w-6 h-6 text-ocean-700" />
+                        </div>
+                        <span className="text-2xl font-bold text-neutral-900">{doc.count}</span>
+                      </div>
                       <h3 className="font-semibold text-sm text-neutral-900 mb-2">{doc.name}</h3>
                     </div>
                   ))}
@@ -224,7 +236,10 @@ export default function Reports() {
 
       {/* Audit Logs Tab Content */}
       {tab === 'audit' && (
-        <AuditLogs />
+        <div className="space-y-6">
+          <AuditLogs />
+          <MarketplaceTransactionAudit />
+        </div>
       )}
     </div>
   )

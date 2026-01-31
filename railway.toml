@@ -6,8 +6,8 @@ builder = "nixpacks"
 buildCommand = "cd apps/api && pip install -r requirements.txt"
 
 [deploy]
-# Start the Flask API with Gunicorn
-startCommand = "cd apps/api && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+# Start the Flask API with Gunicorn (run migrations first)
+startCommand = "cd apps/api && FLASK_APP=app:create_app flask db upgrade && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
 
 # Health check configuration
 healthcheckPath = "/health"

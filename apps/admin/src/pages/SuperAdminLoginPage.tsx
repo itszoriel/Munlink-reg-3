@@ -7,8 +7,6 @@ import { Shield, Mail, Lock, ArrowLeft, KeyRound } from 'lucide-react'
 
 type LoginStep = 'credentials' | '2fa'
 
-const provinces = ['aurora', 'bataan', 'bulacan', 'nueva-ecija', 'pampanga', 'tarlac', 'zambales']
-
 export default function SuperAdminLoginPage() {
   const [step, setStep] = useState<LoginStep>('credentials')
   const [email, setEmail] = useState('')
@@ -164,32 +162,25 @@ export default function SuperAdminLoginPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/60 via-blue-900/50 to-black/60" />
 
+        {/* Zambales Province Logo Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <motion.img
+            src="/logos/provinces/zambales.png"
+            alt="Zambales Province Seal"
+            className="w-[500px] h-[500px] object-contain opacity-10"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 0.1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+          />
+        </div>
+
         {/* Grid overlay */}
         <div className="absolute inset-0 bg-grid-pattern opacity-[0.05]" />
 
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
           <div className="max-w-lg">
-            {/* Province seals */}
-            <motion.div
-              className="hidden lg:flex items-center gap-2 mb-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              {provinces.map((province, i) => (
-                <motion.img
-                  key={province}
-                  src={`/logos/provinces/${province}.png`}
-                  alt={`${province} Seal`}
-                  className="h-10 w-10 object-contain opacity-90 hover:opacity-100 hover:scale-110 transition-all"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                />
-              ))}
-            </motion.div>
 
             {/* Logo mark */}
             <motion.div
@@ -198,7 +189,7 @@ export default function SuperAdminLoginPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <span className="text-4xl xl:text-5xl font-serif font-bold text-white tracking-tight drop-shadow-lg">MunLink</span>
+              <span className="text-4xl xl:text-5xl font-serif font-bold text-white tracking-tight drop-shadow-lg">SerbisyoZambaleño</span>
             </motion.div>
 
             <motion.div
@@ -470,7 +461,7 @@ export default function SuperAdminLoginPage() {
 
           {/* Decorative elements */}
           <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between text-xs text-slate-400">
-            <span>© 2026 MunLink</span>
+            <span>© 2026 SerbisyoZambaleño</span>
             <span>Zambales Province</span>
           </div>
         </div>

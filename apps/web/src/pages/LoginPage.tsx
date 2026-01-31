@@ -5,8 +5,6 @@ import { authApi } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { Eye, EyeOff, User, Lock, MapPin, Users, FileText, ShoppingBag } from 'lucide-react'
 
-const provinces = ['aurora', 'bataan', 'bulacan', 'nueva-ecija', 'pampanga', 'tarlac', 'zambales']
-
 export default function LoginPage() {
   const [formData, setFormData] = useState({
     username: '',
@@ -54,10 +52,24 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <img
           src="/assets/resident_login.jpg"
-          alt="MunLink Login"
+          alt="SerbisyoZambaleño Login"
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/20 to-black/30" />
+
+        {/* Zambales Province Logo Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <motion.img
+            src="/logos/provinces/zambales.png"
+            alt="Zambales Province Seal"
+            className="w-[500px] h-[500px] object-contain opacity-10"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 0.1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+          />
+        </div>
+
         {/* Animated background elements */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 -left-20 w-96 h-96 bg-ocean-400/20 rounded-full blur-3xl animate-pulse" />
@@ -67,26 +79,6 @@ export default function LoginPage() {
 
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-16 w-full">
-          {/* Province seals - hidden on mobile, show MunLink logo instead */}
-          <motion.div 
-            className="hidden lg:flex items-center gap-2 mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            {provinces.map((province, i) => (
-              <motion.img
-                key={province}
-                src={`/logos/provinces/${province}.png`}
-                alt={`${province} Seal`}
-                className="h-10 w-10 object-contain opacity-90 hover:opacity-100 hover:scale-110 transition-all"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-              />
-            ))}
-          </motion.div>
 
           <motion.h1 
             className="text-4xl xl:text-5xl font-serif font-bold text-white mb-4 drop-shadow-lg"
@@ -94,7 +86,7 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            MunLink
+            SerbisyoZambaleño
           </motion.h1>
           <motion.p 
             className="text-xl text-white/90 mb-2 drop-shadow"
@@ -144,13 +136,13 @@ export default function LoginPage() {
           <div className="lg:hidden text-center mb-8">
             <div className="flex justify-center mb-4">
               <img
-                src="/logos/MunLink Logo.png"
-                alt="MunLink Logo"
+                src="/logos/serbisyozambaleno-logo.png"
+                alt="SerbisyoZambaleño Logo"
                 className="h-16 w-16 object-contain"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
               />
             </div>
-            <h1 className="text-2xl font-serif font-bold text-gray-900">MunLink</h1>
+            <h1 className="text-2xl font-serif font-bold text-gray-900">SerbisyoZambaleño</h1>
             <p className="text-gray-600 text-sm">Zambales Province</p>
           </div>
 
@@ -247,7 +239,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-xs text-gray-400 mt-6">
-            By signing in, you agree to MunLink's{' '}
+            By signing in, you agree to SerbisyoZambaleño's{' '}
             <Link to="/terms-of-service" state={{ from: '/login' }} className="text-ocean-600 hover:text-ocean-700 underline">
               Terms of Service
             </Link>

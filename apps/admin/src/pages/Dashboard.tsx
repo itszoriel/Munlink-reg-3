@@ -184,10 +184,30 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatCard title="Pending Verifications" value={loading ? '…' : (finalDash?.pending_verifications ?? 0)} />
-            <StatCard title="Active Problems" value={loading ? '…' : (finalDash?.active_problems ?? 0)} />
-            <StatCard title="Marketplace Items" value={loading ? '…' : (finalDash?.marketplace_items ?? 0)} />
-            <StatCard title="Announcements" value={loading ? '…' : (finalDash?.announcements ?? 0)} />
+            <StatCard
+              title="Pending Verifications"
+              value={loading ? 0 : (finalDash?.pending_verifications ?? 0)}
+              icon={<Users className="w-6 h-6" />}
+              animated={!loading}
+            />
+            <StatCard
+              title="Active Problems"
+              value={loading ? 0 : (finalDash?.active_problems ?? 0)}
+              icon={<AlertTriangle className="w-6 h-6" />}
+              animated={!loading}
+            />
+            <StatCard
+              title="Marketplace Items"
+              value={loading ? 0 : (finalDash?.marketplace_items ?? 0)}
+              icon={<ShoppingBag className="w-6 h-6" />}
+              animated={!loading}
+            />
+            <StatCard
+              title="Announcements"
+              value={loading ? 0 : (finalDash?.announcements ?? 0)}
+              icon={<Megaphone className="w-6 h-6" />}
+              animated={!loading}
+            />
           </div>
 
           {/* Main Content Grid */}

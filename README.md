@@ -166,6 +166,11 @@ npm run dev
 - Render: `render.yaml` provided.
 - Railway: see `docs/RAILWAY_DEPLOYMENT.md` for env vars and steps (set `DATABASE_URL`, JWT secrets, SendGrid/SMTP, `WEB_URL`/`ADMIN_URL`).
 
+## Database migrations
+- Local/dev: `cd apps/api && FLASK_APP=app:create_app flask db upgrade` (or run `python scripts/run_migrations.py`).
+- Render prod: `render.yaml` runs `FLASK_APP=app:create_app flask db upgrade` after each deploy, using the `DATABASE_URL` set in Render env vars.
+- Back up Supabase prod (or enable PITR) before shipping migration-heavy releases.
+
 ### Scheduled Jobs
 - **ID Retention Cleanup**: Run `python apps/api/scripts/cleanup_verification_images.py` daily
   - **Configuration**: Set `ID_RETENTION_DAYS` env var (default: 30 days)

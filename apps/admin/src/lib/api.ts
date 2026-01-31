@@ -1,5 +1,5 @@
 /**
- * MunLink Zambales - Admin API Client
+ * SerbisyoZambaleño Zambales - Admin API Client
  * Centralized API client with authentication and error handling
  */
 import axios from 'axios'
@@ -8,10 +8,12 @@ import { useAdminStore } from './store'
 
 // API Configuration
 // Local-only: rely on explicit env or default to localhost
+const isBrowser = typeof window !== 'undefined'
 const API_BASE_URL =
   (import.meta as any).env?.VITE_API_BASE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
-  'http://localhost:5000'
+  // Use relative path in browser so Vite dev proxy handles CORS; fall back to localhost for server contexts
+  (isBrowser ? '' : 'http://localhost:5000')
 
 // In-memory access token (sessionStorage for persistence across page loads)
 let accessToken: string | null = null

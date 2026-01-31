@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* MunLink Admin Design System */
+  /* SerbisyoZambaleño Admin Design System */
   --color-primary: #0ea5e9;
   --color-primary-hover: #0284c7;
   --color-primary-light: #e0f2fe;
@@ -32,8 +32,8 @@
   --color-success-light: #ecfdf5;
   
   /* Admin-specific */
-  --sidebar-width: 260px;
-  --sidebar-collapsed-width: 80px;
+  --sidebar-width: 288px;
+  --sidebar-collapsed-width: 84px;
   --header-height: 64px;
 }
 
@@ -310,6 +310,61 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes modal-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Typography System - Fluid Responsive Text Sizing */
+.text-fluid-sm {
+  font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+}
+
+.text-fluid-base {
+  font-size: clamp(0.875rem, 0.85rem + 0.125vw, 1rem);
+}
+
+.text-fluid-lg {
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+}
+
+.text-fluid-xl {
+  font-size: clamp(1.125rem, 1.05rem + 0.375vw, 1.25rem);
+}
+
+.text-fluid-2xl {
+  font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+}
+
+.text-fluid-3xl {
+  font-size: clamp(1.5rem, 1.3rem + 1vw, 1.875rem);
+}
+
+.text-fluid-4xl {
+  font-size: clamp(1.875rem, 1.6rem + 1.375vw, 2.25rem);
+}
+
+/* Standard Heading Styles - Apply to all headings for consistency */
+.heading-1 {
+  @apply text-fluid-4xl font-semibold tracking-tight text-slate-900;
+}
+
+.heading-2 {
+  @apply text-fluid-3xl font-semibold tracking-tight text-slate-900;
+}
+
+.heading-3 {
+  @apply text-fluid-2xl font-semibold text-slate-900;
+}
+
+.heading-4 {
+  @apply text-fluid-xl font-medium text-slate-800;
+}
+
+.heading-hero {
+  @apply text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight;
+}
+
 .animate-fade-in { animation: fade-in 0.2s ease-out; }
 .animate-slide-up { animation: slide-up 0.3s ease-out; }
 
@@ -351,4 +406,44 @@
   .print-full-width { width: 100% !important; max-width: none !important; }
   .admin-sidebar { display: none !important; }
   .admin-main-content { margin-left: 0 !important; }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all scroll and motion animations */
+  .scroll-animate,
+  .scroll-velocity,
+  .parallax-bg,
+  .timeline-animate,
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-float,
+  .animate-shimmer,
+  .animate-pulse-subtle,
+  .animate-scale-in {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Show all content immediately */
+  .scroll-reveal {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+
+  /* Reduce skeleton loading animation */
+  .skeleton {
+    animation: none !important;
+  }
+
+  /* Disable pulsing status effects */
+  .status-active,
+  .notification-badge {
+    animation: none !important;
+  }
+
+  /* Disable priority indicator animation */
+  .priority-urgent::before {
+    animation: none !important;
+  }
 }
