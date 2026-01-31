@@ -1,13 +1,14 @@
 # Railway Configuration for MunLink Region 3 API
 # Documentation: https://docs.railway.app/deploy/config-as-code
+# IMPORTANT: Set "Root Directory" to "apps/api" in Railway dashboard for each service
 
 [build]
-builder = "nixpacks"
-buildCommand = "cd apps/api && pip install -r requirements.txt"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-# Start the Flask API with Gunicorn (run migrations first)
-startCommand = "cd apps/api && FLASK_APP=app:create_app flask db upgrade && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+# Start command (migrations run in Dockerfile CMD)
+startCommand = "flask db upgrade && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
 
 # Health check configuration
 healthcheckPath = "/health"
