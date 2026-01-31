@@ -180,8 +180,6 @@ class Config:
     
     # SQLAlchemy Engine Options - dynamically configured based on database type
     SQLALCHEMY_ENGINE_OPTIONS = get_engine_options()
-    # Control whether the app auto-runs migrations at startup (off by default to keep healthchecks fast)
-    AUTO_MIGRATE = os.getenv('AUTO_MIGRATE', 'false')
     
     # Supabase Configuration (optional - for Supabase features like auth, storage, real-time)
     SUPABASE_URL = os.getenv('SUPABASE_URL', '')

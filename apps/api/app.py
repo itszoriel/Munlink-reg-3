@@ -167,20 +167,6 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(superadmin_bp)
 
-    # Auto-run migrations at startup so deployments don't need a manual shell
-    # Set AUTO_MIGRATE=false to skip (e.g., for read-only replicas)
-    # Run migrations only when explicitly enabled; keep startup fast for healthchecks
-    auto_migrate_flag = str(app.config.get('AUTO_MIGRATE', os.getenv('AUTO_MIGRATE', 'false'))).lower() == 'true'
-    if auto_migrate_flag:
-        try:
-            from flask_migrate import upgrade
-            with app.app_context():
-                upgrade()
-            app.logger.info("Auto migration succeeded")
-        except Exception as e:
-            app.logger.error(f"Auto migration failed: {e}", exc_info=True)
-            # Continue serving so /health stays available even if DB is down
-    
     # Health check endpoint
     @app.route('/health', methods=['GET'])
     def health_check():

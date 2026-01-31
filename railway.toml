@@ -14,14 +14,10 @@ PYTHON_VERSION = "3.12"
 [env]
 # Display name used by the API/frontends
 APP_NAME = "Serbisyo Zambaleño"
-# Keep startup independent of the database so healthcheck stays green
-AUTO_MIGRATE = "false"
-# Run migrations manually or set RUN_MIGRATIONS=true when needed
-RUN_MIGRATIONS = "false"
 
 [deploy]
-# Start command: only run migrations when explicitly requested so startup isn't blocked by the DB
-startCommand = "bash -lc 'cd apps/api && if [ \"${RUN_MIGRATIONS:-false}\" = \"true\" ]; then FLASK_APP=app:create_app flask db upgrade || echo \"migrations failed - continuing to start\" >&2; fi; exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120'"
+# Start command: just launch the server; run migrations manually when needed
+startCommand = "bash -lc 'cd apps/api && exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120'"
 
 # Health check configuration
 healthcheckPath = "/health"
