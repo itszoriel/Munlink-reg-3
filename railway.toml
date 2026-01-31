@@ -1,31 +1,19 @@
-﻿# Railway Configuration for MunLink Region 3 API
-# Documentation: https://docs.railway.app/deploy/config-as-code
-# Use repo root as service root so this file is picked up.
+builder = "nixpacks"
 
 [build]
-builder = "nixpacks"
-buildCommand = "bash -lc \"cd apps/api && pip install -r requirements.txt\""
+buildCommand = "bash -lc 'cd apps/api && pip install -r requirements.txt'"
 
 [build.env]
-# Force Nixpacks to select Python (monorepo defaults to Node otherwise)
 NIXPACKS_LANGS = "python"
 PYTHON_VERSION = "3.12"
 
 [env]
-# Display name used by the API/frontends
 APP_NAME = "Serbisyo Zambaleño"
 
 [deploy]
-# Start command: just launch the server; run migrations manually when needed
 startCommand = "bash -lc 'cd apps/api && exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120'"
-
-# Health check configuration
 healthcheckPath = "/health"
 healthcheckTimeout = 100
-
-# Restart policy
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-
-# Number of instances (free tier = 1)
 numReplicas = 1

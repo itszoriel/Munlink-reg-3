@@ -28,5 +28,5 @@ COPY . .
 # Set runtime working directory to API folder
 WORKDIR /app/apps/api
 
-# Default command: run migrations then start gunicorn
-CMD ["sh", "-c", "flask db upgrade && gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120"]
+# Default command: start gunicorn (run migrations manually when needed)
+CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120"]
