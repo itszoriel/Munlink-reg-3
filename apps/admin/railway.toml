@@ -7,7 +7,7 @@ builder = "NIXPACKS"
 buildCommand = "npm install --no-audit --no-fund && cd packages/ui && npm install --no-audit --no-fund && npm run build && cd ../../apps/admin && npm install --no-audit --no-fund && npm run build"
 
 [deploy]
-startCommand = "npx serve -s apps/admin/dist -l $PORT"
+startCommand = "bash -lc \"npx serve -s apps/admin/dist -l $PORT\""
 
 [staticServe]
 publicPath = "apps/admin/dist"
