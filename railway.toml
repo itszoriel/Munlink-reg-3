@@ -16,8 +16,8 @@ PYTHON_VERSION = "3.12"
 APP_NAME = "Serbisyo Zambaleño"
 
 [deploy]
-# Start command (migrations run here)
-startCommand = "bash -lc \"cd apps/api && FLASK_APP=app:create_app flask db upgrade && exec gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120\""
+# Start command: try migrations, but don't fail startup if they error (surface in logs)
+startCommand = "bash -lc \"cd apps/api && FLASK_APP=app:create_app flask db upgrade || echo 'migrations failed - continuing to start' >&2; exec gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120\""
 
 # Health check configuration
 healthcheckPath = "/health"
