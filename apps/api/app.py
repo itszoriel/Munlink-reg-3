@@ -169,7 +169,9 @@ def create_app(config_class=Config):
 
     # Auto-run migrations at startup so deployments don't need a manual shell
     # Set AUTO_MIGRATE=false to skip (e.g., for read-only replicas)
-    if app.config.get('AUTO_MIGRATE', 'true').lower() == 'true':
+    # Run migrations only when explicitly enabled; keep startup fast for healthchecks
+    auto_migrate_flag = str(app.config.get('AUTO_MIGRATE', os.getenv('AUTO_MIGRATE', 'false'))).lower() == 'true'
+    if auto_migrate_flag:
         try:
             from flask_migrate import upgrade
             with app.app_context():
@@ -177,14 +179,14 @@ def create_app(config_class=Config):
             app.logger.info("Auto migration succeeded")
         except Exception as e:
             app.logger.error(f"Auto migration failed: {e}", exc_info=True)
-            raise
+            # Continue serving so /health stays available even if DB is down
     
     # Health check endpoint
     @app.route('/health', methods=['GET'])
     def health_check():
         """Health check endpoint for monitoring"""
         return jsonify({
-            'status': 'healthy',
+            'status': 'ok',
             'service': 'MunLink Region III API',
             'version': '1.0.0'
         }), 200
