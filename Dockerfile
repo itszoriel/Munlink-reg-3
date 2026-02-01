@@ -40,4 +40,5 @@ WORKDIR /app/apps/api
 EXPOSE 5000
 
 # Start gunicorn - PORT is provided by Railway
-CMD ["sh", "-c", "flask db upgrade && gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --threads 2 --timeout 120"]
+# Note: Migrations are run separately (flask db upgrade) after initial deployment works
+CMD ["sh", "-c", "echo 'Starting MunLink API on port ${PORT:-5000}...' && gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --threads 2 --timeout 120 --access-logfile - --error-logfile - --log-level info"]
