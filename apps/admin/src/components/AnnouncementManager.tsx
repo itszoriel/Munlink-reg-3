@@ -1,5 +1,5 @@
 /**
- * SerbisyoZambaleño Zambales - Announcement Manager Component
+ * MunLink Zambales - Announcement Manager Component
  * Component for managing municipality announcements
  */
 import React, { useState, useEffect, useMemo } from 'react'

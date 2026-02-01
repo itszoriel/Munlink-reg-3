@@ -8,7 +8,7 @@ export default function Footer() {
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <div className="text-xl font-serif font-semibold text-gray-900">SerbisyoZambaleño Zambales</div>
+              <div className="text-xl font-serif font-semibold text-gray-900">MunLink Zambales</div>
               <p className="mt-2 text-gray-600">Connecting residents, services, and local markets across Zambales province.</p>
             </div>
             <div>
@@ -29,7 +29,7 @@ export default function Footer() {
             </div>
           </div>
           <div className="mt-10 pt-6 border-t border-white/40 text-sm text-gray-600 flex items-center justify-between">
-            <p>© {year} SerbisyoZambaleño Zambales. All rights reserved.</p>
+            <p>© {year} MunLink Zambales. All rights reserved.</p>
             <p>Serving 13 municipalities across Zambales province.</p>
           </div>
         </div>

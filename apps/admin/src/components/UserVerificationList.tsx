@@ -1,5 +1,5 @@
 /**
- * SerbisyoZambaleño Zambales - User Verification Component
+ * MunLink Zambales - User Verification Component
  * Component for managing user verification requests
  */
 import { useState, useEffect, useRef } from 'react'

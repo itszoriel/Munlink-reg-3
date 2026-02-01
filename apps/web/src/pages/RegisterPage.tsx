@@ -115,7 +115,7 @@ export default function RegisterPage() {
           Create Account
         </h2>
         <p className="text-center text-sm text-gray-600 mb-6">
-          Join SerbisyoZambaleño Zambales — serving 13 municipalities across Zambales province
+          Join MunLink Zambales — serving 13 municipalities across Zambales province
         </p>
         
         <form onSubmit={handleSubmit} className="space-y-4">

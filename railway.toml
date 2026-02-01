@@ -1,10 +1,21 @@
-# MunLink Railway Configuration
-# For API service only - web and admin use their own Dockerfiles
+﻿builder = "nixpacks"
 
 [build]
-dockerfilePath = "Dockerfile"
+buildCommand = "bash -lc 'cd apps/api && pip install -r requirements.txt'"
+
+[build.env]
+NIXPACKS_LANGS = "python"
+PYTHON_VERSION = "3.12"
+
+[env]
+APP_NAME = "Serbisyo Zambaleño"
+BASE_URL = "https://munlink-api-production-7124.up.railway.app"
+QR_BASE_URL = "https://munlink-web-production-327f.up.railway.app/verify"
+ADMIN_URL = "https://munlink-admin-production-61a1.up.railway.app"
+WEB_URL = "https://munlink-web-production-327f.up.railway.app"
 
 [deploy]
+startCommand = "bash -lc 'cd apps/api && exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120'"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"

@@ -1,5 +1,5 @@
 /**
- * SerbisyoZambaleño Zambales - Admin API Client
+ * MunLink Zambales - Admin API Client
  * Centralized API client with authentication and error handling
  */
 import axios from 'axios'

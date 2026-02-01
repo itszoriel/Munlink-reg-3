@@ -52,7 +52,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <img
           src="/assets/resident_login.jpg"
-          alt="SerbisyoZambaleño Login"
+          alt="MunLink Login"
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/20 to-black/30" />
@@ -86,7 +86,7 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            SerbisyoZambaleño
+            MunLink
           </motion.h1>
           <motion.p 
             className="text-xl text-white/90 mb-2 drop-shadow"
@@ -136,13 +136,13 @@ export default function LoginPage() {
           <div className="lg:hidden text-center mb-8">
             <div className="flex justify-center mb-4">
               <img
-                src="/logos/serbisyozambaleno-logo.png"
-                alt="SerbisyoZambaleño Logo"
+                src="/logos/munlink-logo.png"
+                alt="MunLink Logo"
                 className="h-16 w-16 object-contain"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
               />
             </div>
-            <h1 className="text-2xl font-serif font-bold text-gray-900">SerbisyoZambaleño</h1>
+            <h1 className="text-2xl font-serif font-bold text-gray-900">MunLink</h1>
             <p className="text-gray-600 text-sm">Zambales Province</p>
           </div>
 
@@ -239,7 +239,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-xs text-gray-400 mt-6">
-            By signing in, you agree to SerbisyoZambaleño's{' '}
+            By signing in, you agree to MunLink's{' '}
             <Link to="/terms-of-service" state={{ from: '/login' }} className="text-ocean-600 hover:text-ocean-700 underline">
               Terms of Service
             </Link>

@@ -1,5 +1,5 @@
 /**
- * SerbisyoZambaleño Zambales - Marketplace Moderation Component
+ * MunLink Zambales - Marketplace Moderation Component
  * Component for moderating marketplace listings
  */
 import { useState, useEffect } from 'react'

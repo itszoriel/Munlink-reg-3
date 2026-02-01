@@ -93,12 +93,12 @@ export default function Layout() {
           <div className="flex items-center justify-between gap-2">
             <Link to="/" className="text-base lg:text-lg font-serif font-semibold text-gray-900 whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2">
               <img
-                src="/logos/serbisyozambaleno-logo.png"
-                alt="SerbisyoZambaleño Logo"
+                src="/logos/munlink-logo.png"
+                alt="MunLink Logo"
                 className="h-7 w-7 rounded-full object-cover bg-white/60 border border-white/60 shadow-sm"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
               />
-              <span>SerbisyoZambaleño</span>
+              <span>MunLink</span>
             </Link>
 
             <div className="hidden lg:flex items-center gap-1 xl:gap-3 text-gray-900 text-sm">
@@ -175,12 +175,12 @@ export default function Layout() {
           <div className="flex items-center justify-between p-4 border-b border-gray-200/80 bg-white/80 backdrop-blur-sm">
             <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
               <img
-                src="/logos/serbisyozambaleno-logo.png"
-                alt="SerbisyoZambaleño Logo"
+                src="/logos/munlink-logo.png"
+                alt="MunLink Logo"
                 className="h-8 w-8 rounded-full object-cover bg-white border border-gray-200 shadow-sm"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
               />
-              <span className="text-lg font-serif font-semibold text-gray-900">SerbisyoZambaleño</span>
+              <span className="text-lg font-serif font-semibold text-gray-900">MunLink</span>
             </Link>
             <button
               onClick={() => setMobileOpen(false)}

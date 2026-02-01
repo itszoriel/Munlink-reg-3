@@ -23,7 +23,7 @@ const zambalesMunicipalities = [
   { name: 'Subic', slug: 'subic', landmark: '/landmarks/zambales/subic/subic_municipality.png' },
 ]
 
-// SerbisyoZambaleño development timeline
+// MunLink development timeline
 const munlinkTimeline: TimelineItem[] = [
   {
     title: 'Concept & Planning',
@@ -49,7 +49,7 @@ const munlinkTimeline: TimelineItem[] = [
   {
     title: 'Planned Deployment',
     date: 'Q4 2026',
-    description: 'Planning official rollout of SerbisyoZambaleño to Zambales residents with document services, marketplace, benefit programs, and problem reporting features.',
+    description: 'Planning official rollout of MunLink to Zambales residents with document services, marketplace, benefit programs, and problem reporting features.',
     icon: <CheckCircle2 className="w-5 h-5" />,
     color: 'purple',
   },
@@ -129,7 +129,7 @@ export default function About() {
                 municipal services, and fosters community connections.
               </p>
               <p className="text-base text-gray-600 leading-relaxed">
-                SerbisyoZambaleño empowers residents with convenient access to government services while helping
+                MunLink empowers residents with convenient access to government services while helping
                 local government units operate more efficiently and transparently. We bridge the gap
                 between communities and their local governments through technology.
               </p>
@@ -155,7 +155,7 @@ export default function About() {
         </div>
       </section>
 
-      {/* SerbisyoZambaleño Development Timeline */}
+      {/* MunLink Development Timeline */}
       <section className="py-20 bg-gradient-to-br from-slate-50 via-white to-sky-50/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -163,7 +163,7 @@ export default function About() {
               <Calendar className="w-4 h-4" />
               Our Journey
             </div>
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4 font-serif">How SerbisyoZambaleño Came to Be</h2>
+            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4 font-serif">How MunLink Came to Be</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Building Zambales' digital governance platform - our development journey
             </p>
@@ -190,7 +190,7 @@ export default function About() {
               Serving All of Zambales
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              From coastal towns to mountain communities - SerbisyoZambaleño connects every corner of Zambales province
+              From coastal towns to mountain communities - MunLink connects every corner of Zambales province
             </p>
           </div>
 
@@ -317,7 +317,7 @@ export default function About() {
             </div>
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4 font-serif">Public Records Access</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              SerbisyoZambaleño guides Zambales residents through requesting municipal and barangay documents, grounded in Philippine transparency laws.
+              MunLink guides Zambales residents through requesting municipal and barangay documents, grounded in Philippine transparency laws.
             </p>
           </div>
 

@@ -113,7 +113,7 @@ export default function HomePage() {
         }
         subtitle={
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl font-serif max-w-3xl mx-auto leading-relaxed drop-shadow text-white/95">
-            SerbisyoZambaleño: Building a modern digital governance platform for Zambales and its 13 municipalities.
+            MunLink: Building a modern digital governance platform for Zambales and its 13 municipalities.
           </p>
         }
       >
@@ -151,7 +151,7 @@ export default function HomePage() {
                 All your municipal services in one place
               </h2>
               <p className="text-base sm:text-lg md:text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
-                Browse services, submit requests, and stay updated across municipalities and barangays with a verified SerbisyoZambaleño account.
+                Browse services, submit requests, and stay updated across municipalities and barangays with a verified MunLink account.
               </p>
             </div>
 

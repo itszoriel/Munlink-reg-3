@@ -282,7 +282,7 @@ export default function App() {
               {!isAuthenticated && (
                 <nav className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur-xl">
                   <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-                    <Link to="/" className="font-serif font-semibold text-gray-900">SerbisyoZambaleño Admin</Link>
+                    <Link to="/" className="font-serif font-semibold text-gray-900">MunLink Admin</Link>
                     <div className="flex items-center gap-6">
                       <Link to="/login" className="hover:text-ocean-700">Login</Link>
                       <Link to="/register" className="hover:text-ocean-700">Create Admin</Link>

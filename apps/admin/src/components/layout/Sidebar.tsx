@@ -134,7 +134,7 @@ export default function Sidebar({
   }), [open])
 
   // Use custom title/subtitle or fall back to user's municipality
-  const sidebarTitle = title || user?.admin_municipality_name || 'SerbisyoZambaleño'
+  const sidebarTitle = title || user?.admin_municipality_name || 'MunLink'
   const sidebarSubtitle = subtitle || 'Admin Portal'
 
   // Filter visible sections based on permissions

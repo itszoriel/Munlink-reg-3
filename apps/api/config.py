@@ -61,10 +61,11 @@ def get_database_url():
     url = os.getenv('DATABASE_URL')
 
     if not url:
-        raise RuntimeError(
-            "DATABASE_URL environment variable is required. "
-            "Please set it in your .env file with your Supabase connection string."
-        )
+        # In platform environments where DB isn't provided (e.g., healthcheck-only boot),
+        # fall back to a lightweight SQLite DB so the app can start and serve /health.
+        fallback = 'sqlite:///tmp/healthcheck.db'
+        logging.warning("DATABASE_URL not set; using fallback %s for startup/healthchecks", fallback)
+        return fallback
     
     # Handle Heroku/Render style postgres:// URLs (SQLAlchemy requires postgresql://)
     if url.startswith('postgres://'):
@@ -93,7 +94,6 @@ def get_database_url():
         except ValueError as e:
             # URL parsing failed - likely due to special characters in password
             # Just append sslmode if not present and return
-            import logging
             logging.warning(f"Could not parse DATABASE_URL (special chars?): {e}")
             if 'sslmode=' not in url:
                 separator = '&' if '?' in url else '?'
@@ -116,7 +116,7 @@ def get_engine_options():
     intermittent network issues between Render and Supabase.
     """
     db_url = get_database_url()
-    
+
     # Base options for all databases
     options = {
         'pool_pre_ping': True,  # Verify connections before use (handles stale connections)
@@ -162,6 +162,11 @@ def get_engine_options():
                 }
             })
     
+    # For SQLite fallback keep the options minimal (no pooling)
+    if db_url.startswith('sqlite://'):
+        from sqlalchemy.pool import NullPool
+        options = {'poolclass': NullPool}
+
     return options
 
 

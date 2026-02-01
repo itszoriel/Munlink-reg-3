@@ -189,7 +189,7 @@ export default function SuperAdminLoginPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <span className="text-4xl xl:text-5xl font-serif font-bold text-white tracking-tight drop-shadow-lg">SerbisyoZambaleño</span>
+              <span className="text-4xl xl:text-5xl font-serif font-bold text-white tracking-tight drop-shadow-lg">MunLink</span>
             </motion.div>
 
             <motion.div
@@ -461,7 +461,7 @@ export default function SuperAdminLoginPage() {
 
           {/* Decorative elements */}
           <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between text-xs text-slate-400">
-            <span>© 2026 SerbisyoZambaleño</span>
+            <span>© 2026 MunLink</span>
             <span>Zambales Province</span>
           </div>
         </div>

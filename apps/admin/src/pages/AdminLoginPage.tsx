@@ -91,7 +91,7 @@ export default function AdminLoginPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <span className="text-4xl xl:text-5xl font-serif font-bold text-white tracking-tight drop-shadow-lg">SerbisyoZambaleño</span>
+              <span className="text-4xl xl:text-5xl font-serif font-bold text-white tracking-tight drop-shadow-lg">MunLink</span>
             </motion.div>
             
             <motion.h1 
@@ -147,12 +147,12 @@ export default function AdminLoginPage() {
           {/* Mobile logo */}
           <div className="lg:hidden mb-8 flex flex-col items-center">
             <img
-              src="/logos/serbisyozambaleno-logo.png"
-              alt="SerbisyoZambaleño Logo"
+              src="/logos/munlink-logo.png"
+              alt="MunLink Logo"
               className="h-16 w-16 object-contain mb-2"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
-            <span className="text-2xl font-serif font-bold text-slate-900">SerbisyoZambaleño</span>
+            <span className="text-2xl font-serif font-bold text-slate-900">MunLink</span>
           </div>
           
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
@@ -279,7 +279,7 @@ export default function AdminLoginPage() {
           
           {/* Decorative elements */}
           <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between text-xs text-slate-400">
-            <span>© 2026 SerbisyoZambaleño</span>
+            <span>© 2026 MunLink</span>
             <span>Zambales Province</span>
           </div>
         </div>

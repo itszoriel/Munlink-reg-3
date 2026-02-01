@@ -75,7 +75,7 @@ export interface ModernHeroProps {
  * ```tsx
  * <ModernHero
  *   backgroundImage="/assets/hero.jpg"
- *   title="Welcome to SerbisyoZambaleño Zambales"
+ *   title="Welcome to MunLink Zambales"
  *   subtitle="Digital governance for all 13 municipalities"
  *   logoOverlay="/logos/provinces/zambales.png"
  * />
