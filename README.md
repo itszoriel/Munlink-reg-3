@@ -162,13 +162,45 @@ npm run dev
 - **Migrations**: Run `flask db upgrade` to apply announcements migrations including scoped announcements (`20260306_scoped_announcements`) and cross-municipality sharing (`20260117_add_announcement_sharing`) after pulling new changes.
 
 ## Deployment
-- Docker: `docker-compose up -d` for API + frontends.
-- Render: `render.yaml` provided.
-- Railway: see `docs/RAILWAY_DEPLOYMENT.md` for env vars and steps (set `DATABASE_URL`, JWT secrets, SendGrid/SMTP, `WEB_URL`/`ADMIN_URL`).
+
+### Railway (Recommended)
+The project is configured for Railway deployment with three services:
+- **API Service**: Flask backend (uses root `railway.toml`)
+- **Web Service**: Public site (uses `apps/web/railway.toml`)
+- **Admin Service**: Admin dashboard (uses `apps/admin/railway.toml`)
+
+**Setup Steps:**
+1. Create Railway project and connect GitHub repository
+2. Create 3 services, each with root directory set to `.`
+3. Set environment variables in Railway Dashboard for each service:
+
+**API Service:**
+- `FLASK_ENV=production`, `DEBUG=False`
+- `SECRET_KEY`, `JWT_SECRET_KEY`, `ADMIN_SECRET_KEY` (generate with `python -c "import secrets; print(secrets.token_hex(32))"`)
+- `DATABASE_URL` (Supabase connection string)
+- `WEB_URL`, `ADMIN_URL`, `BASE_URL` (your Railway service URLs)
+- `SENDGRID_API_KEY`, `FROM_EMAIL`
+- `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_KEY`
+
+**Web Service:**
+- `VITE_API_URL` (API service Railway URL)
+- `VITE_APP_NAME=Serbisyo Zambaleano`
+
+**Admin Service:**
+- `VITE_API_URL` (API service Railway URL)
+- `VITE_APP_NAME=Serbisyo Zambaleano Admin`
+- `VITE_PUBLIC_SITE_URL` (Web service Railway URL)
+
+### Docker
+- Local development: `docker-compose up -d` for API + frontends
+
+### Render (Legacy)
+- Configuration backed up in `render.yaml.bak` for reference
 
 ## Database migrations
 - Local/dev: `cd apps/api && FLASK_APP=app:create_app flask db upgrade` (or run `python scripts/run_migrations.py`).
-- Render prod: `render.yaml` runs `FLASK_APP=app:create_app flask db upgrade` after each deploy, using the `DATABASE_URL` set in Render env vars.
+- Railway prod: Migrations run automatically on startup (Gunicorn process handles database initialization).
+- Both environments use `DATABASE_URL` set in the dashboard environment variables.
 - Back up Supabase prod (or enable PITR) before shipping migration-heavy releases.
 
 ### Scheduled Jobs
