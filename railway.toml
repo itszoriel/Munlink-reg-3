@@ -1,15 +1,12 @@
 # MunLink Railway Configuration
-# This file configures the API service for Railway deployment
-# Note: For monorepo, each service in Railway should point to its own Dockerfile
+# For API service only - web and admin use their own Dockerfiles
 
 [build]
-# Use the Dockerfile at the root for API
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Health check configuration
 healthcheckPath = "/health"
-healthcheckTimeout = 100
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 numReplicas = 1
