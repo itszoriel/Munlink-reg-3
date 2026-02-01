@@ -24,7 +24,7 @@ interface SEOProps {
   noIndex?: boolean
 }
 
-const BASE_URL = 'https://munlink-web-y9lj.onrender.com'
+const BASE_URL = import.meta.env.VITE_PUBLIC_URL || import.meta.env.BASE_URL || ''
 const DEFAULT_TITLE = 'SerbisyoZambaleño Zambales - Digital Municipal Services'
 const DEFAULT_DESCRIPTION = 'SerbisyoZambaleño Zambales is a digital governance platform connecting residents of Zambales province with their municipal government services. Request documents, report issues, access benefit programs, and more.'
 const DEFAULT_IMAGE = '/logos/serbisyozambaleno-logo.png'

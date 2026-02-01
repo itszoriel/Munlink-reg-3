@@ -25,8 +25,8 @@ Disallow: /api/
 # Disallow admin dashboard (separate site)
 Disallow: /admin/
 
-# Sitemap location
-Sitemap: https://munlink-web-y9lj.onrender.com/sitemap.xml
+# Sitemap location - UPDATE THIS AFTER DEPLOYMENT
+# Sitemap: https://your-railway-web-url.up.railway.app/sitemap.xml
 
 # Crawl delay (be respectful of server resources)
 Crawl-delay: 1
