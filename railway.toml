@@ -1,17 +1,13 @@
-builder = "nixpacks"
+# MunLink Railway Configuration
+# This file configures the API service for Railway deployment
+# Note: For monorepo, each service in Railway should point to its own Dockerfile
 
 [build]
-buildCommand = "bash -lc 'cd apps/api && pip install -r requirements.txt'"
-
-[build.env]
-NIXPACKS_LANGS = "python"
-PYTHON_VERSION = "3.12"
-
-[env]
-APP_NAME = "Serbisyo Zambaleño"
+# Use the Dockerfile at the root for API
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "bash -lc 'cd apps/api && exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120'"
+# Health check configuration
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"

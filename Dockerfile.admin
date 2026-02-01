@@ -1,0 +1,58 @@
+# MunLink Admin Dashboard - Railway Dockerfile
+# Builds the admin dashboard (React/Vite) and serves with nginx
+
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files first for better layer caching
+COPY package.json package-lock.json ./
+COPY packages/ui/package.json packages/ui/
+COPY apps/admin/package.json apps/admin/
+
+# Install dependencies
+RUN npm ci --no-audit --no-fund
+
+# Copy source code
+COPY packages/ui packages/ui
+COPY apps/admin apps/admin
+
+# Build shared UI package first
+WORKDIR /app/packages/ui
+RUN npm run build
+
+# Build admin app
+WORKDIR /app/apps/admin
+RUN npm run build
+
+# Production stage - serve with nginx
+FROM nginx:alpine
+
+# Copy custom nginx config for SPA routing
+RUN echo 'server { \
+    listen 80; \
+    listen [::]:80; \
+    server_name _; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ { \
+        expires 1y; \
+        add_header Cache-Control "public, immutable"; \
+    } \
+    location = /index.html { \
+        add_header Cache-Control "no-cache, no-store, must-revalidate"; \
+    } \
+    gzip on; \
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml; \
+}' > /etc/nginx/conf.d/default.conf
+
+# Copy built files
+COPY --from=builder /app/apps/admin/dist /usr/share/nginx/html
+
+# Railway uses PORT env variable
+EXPOSE 80
+
+CMD ["sh", "-c", "sed -i 's/listen 80/listen '${PORT:-80}'/g' /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
