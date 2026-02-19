@@ -13,6 +13,8 @@ export default function DocumentRequestPage() {
   const [downloadingDoc, setDownloadingDoc] = useState(false)
   const [claimTicket, setClaimTicket] = useState<any>(null)
   const [claimLoading, setClaimLoading] = useState(false)
+  const [claimQrLoading, setClaimQrLoading] = useState(false)
+  const [claimQrBlobUrl, setClaimQrBlobUrl] = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
   const selectedProvince = useAppStore((s) => s.selectedProvince)
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
@@ -88,6 +90,53 @@ export default function DocumentRequestPage() {
     return () => { cancelled = true }
   }, [hasClaimTicket, id])
 
+  useEffect(() => {
+    if (!hasClaimTicket || !id || !claimTicket?.qr_url) {
+      setClaimQrLoading(false)
+      setClaimQrBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
+      return
+    }
+
+    let cancelled = false
+    let nextObjectUrl: string | null = null
+
+    const loadQr = async () => {
+      setClaimQrLoading(true)
+      try {
+        const res = await documentsApi.getClaimTicketQr(Number(id), claimTicket.qr_url)
+        nextObjectUrl = URL.createObjectURL(res.data)
+        if (cancelled) {
+          URL.revokeObjectURL(nextObjectUrl)
+          nextObjectUrl = null
+          return
+        }
+        setClaimQrBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return nextObjectUrl
+        })
+      } catch {
+        if (!cancelled) {
+          setClaimQrBlobUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev)
+            return null
+          })
+        }
+      } finally {
+        if (!cancelled) setClaimQrLoading(false)
+      }
+    }
+
+    void loadQr()
+
+    return () => {
+      cancelled = true
+      if (nextObjectUrl) URL.revokeObjectURL(nextObjectUrl)
+    }
+  }, [hasClaimTicket, id, claimTicket?.qr_url])
+
   const handleCopyCode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code)
@@ -106,12 +155,17 @@ export default function DocumentRequestPage() {
   const canPay = paymentDue && ['approved', 'processing', 'ready', 'completed'].includes((req?.status || '').toLowerCase()) && paymentStatus !== 'paid'
 
   const handleDownloadDocument = async () => {
-    if (!req?.id) return
+    if (!req?.id || downloadingDoc) return
     let previewWindow: Window | null = null
     try {
       setDownloadingDoc(true)
       // Open immediately on user gesture to avoid popup blockers after async network call.
-      previewWindow = window.open('', '_blank', 'noopener,noreferrer')
+      // Avoid noopener/noreferrer here because some browsers can return null while still
+      // creating a tab, which leaves an untracked blank tab open.
+      previewWindow = window.open('about:blank', '_blank')
+      if (previewWindow) {
+        try { previewWindow.opener = null } catch { /* ignore */ }
+      }
       const res: any = await documentsApi.downloadDocument(Number(req.id))
       const blob = res?.data
       if (!blob) throw new Error('Document file is empty')
@@ -306,15 +360,26 @@ export default function DocumentRequestPage() {
                 </div>
               ) : claimTicket ? (
                 <div className="space-y-4">
-                  {claimTicket.qr_url && (
+                  {claimTicket.qr_url && claimQrLoading && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                      <div className="h-4 w-4 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
+                      Loading QR code...
+                    </div>
+                  )}
+                  {claimTicket.qr_url && !claimQrLoading && claimQrBlobUrl && (
                     <div className="flex flex-col items-center">
                       <img
-                        src={`${claimTicket.qr_url}`}
+                        src={claimQrBlobUrl}
                         alt="Claim QR Code"
                         className="w-48 h-48 rounded-lg border bg-white p-2"
                       />
                       <p className="text-xs text-gray-500 mt-1">Show this QR code to the staff</p>
                     </div>
+                  )}
+                  {claimTicket.qr_url && !claimQrLoading && !claimQrBlobUrl && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                      QR image could not be loaded. Use the claim code below when claiming your document.
+                    </p>
                   )}
                   {(claimTicket.code_plain || claimTicket.code_masked) && (
                     <div className="flex items-center justify-center gap-2">

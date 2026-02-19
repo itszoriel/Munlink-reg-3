@@ -367,6 +367,8 @@ export const documentsApi = {
   downloadDocument: (id: number) => api.get(`/api/documents/requests/${id}/download`, { responseType: 'blob' }),
   uploadSupportingDocs: (id: number, form: FormData) => api.post(`/api/documents/requests/${id}/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getClaimTicket: (id: number, params?: any) => api.get(`/api/documents/requests/${id}/claim-ticket`, { params }),
+  getClaimTicketQr: (id: number, url?: string) =>
+    api.get(url || `/api/documents/requests/${id}/claim-ticket/qr`, { responseType: 'blob' }),
   publicVerify: (requestNumber: string) => api.get(`/api/documents/verify/${encodeURIComponent(requestNumber)}`),
   // Fee calculation
   calculateFee: (params: { document_type_id: number, purpose_type?: string, business_type?: string, requirements_submitted?: boolean }) =>

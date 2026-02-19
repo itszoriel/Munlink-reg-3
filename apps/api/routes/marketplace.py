@@ -2,7 +2,7 @@
 
 SCOPE: Zambales province only, excluding Olongapo City.
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from apps.api.utils.time import utc_now
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timezone, timedelta
@@ -28,6 +28,10 @@ from apps.api.utils import (
     TransitionError,
 )
 from apps.api.utils.storage_handler import save_marketplace_image
+from apps.api.utils.notifications import (
+    queue_marketplace_pickup_details_ready,
+    flush_pending_notifications,
+)
 from apps.api.utils.zambales_scope import (
     ZAMBALES_MUNICIPALITY_IDS,
     is_valid_zambales_municipality,
@@ -45,6 +49,20 @@ STANDARD_MARKETPLACE_CATEGORIES = (
 )
 STANDARD_MARKETPLACE_CATEGORIES_LOWER = tuple(c.lower() for c in STANDARD_MARKETPLACE_CATEGORIES)
 OTHER_CATEGORY_FILTER = '__other__'
+
+
+def _notify_pickup_ready(tx: Transaction) -> None:
+    """Best-effort notifications when seller provides pickup details."""
+    try:
+        buyer = db.session.get(User, tx.buyer_id)
+        seller = db.session.get(User, tx.seller_id)
+        item = db.session.get(Item, tx.item_id)
+        queue_marketplace_pickup_details_ready(buyer=buyer, seller=seller, tx=tx, item=item)
+        db.session.commit()
+        flush_pending_notifications()
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.warning("Failed to queue marketplace pickup notifications for tx %s: %s", tx.id, exc)
 
 
 @marketplace_bp.route('/items', methods=['GET'])
@@ -547,6 +565,7 @@ def propose_transaction(transaction_id):
         tx.status = 'awaiting_buyer'
         tx.updated_at = utc_now()
         db.session.commit()
+        _notify_pickup_ready(tx)
         return jsonify({'message': 'Pickup details proposed', 'transaction': tx.to_dict()}), 200
     except Exception as e:
         db.session.rollback()
@@ -678,6 +697,7 @@ def accept_transaction(transaction_id):
             pass
 
         db.session.commit()
+        _notify_pickup_ready(transaction)
         
         return jsonify({'message': 'Pickup details saved. Awaiting buyer confirmation.', 'transaction': transaction.to_dict()}), 200
     

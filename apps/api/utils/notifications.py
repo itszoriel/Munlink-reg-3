@@ -185,6 +185,67 @@ def queue_document_status_change(user: User, req, doc_name: str, new_status: str
     return results
 
 
+def queue_marketplace_pickup_details_ready(buyer: User | None, seller: User | None, tx, item) -> Dict[str, int]:
+    """Queue buyer/seller notifications when pickup details are set."""
+    results = {'queued': 0, 'skipped': 0}
+    event_type = 'marketplace_pickup_ready'
+    entity_id = getattr(tx, 'id', None)
+    item_title = (getattr(item, 'title', None) or 'your marketplace item').strip()
+    pickup_at = getattr(tx, 'pickup_at', None)
+    pickup_location = (getattr(tx, 'pickup_location', None) or '').strip()
+
+    pickup_when = pickup_at.strftime('%B %d, %Y %I:%M %p') if pickup_at else 'Not specified'
+    pickup_where = pickup_location or 'Not specified'
+    dedupe_extra = f"{pickup_at.isoformat() if pickup_at else ''}|{pickup_where.lower()}"
+
+    participants = [
+        ('buyer', buyer, 'seller'),
+        ('seller', seller, 'buyer'),
+    ]
+
+    for role, user, counterparty_role in participants:
+        if not user:
+            # One skip per channel (email + sms)
+            results['skipped'] += 2
+            continue
+
+        subject = f"MunLink Marketplace: Pickup details ready for {item_title}"
+        body = (
+            f"Item: {item_title}\n"
+            f"Transaction ID: {entity_id}\n"
+            f"Your role: {role}\n"
+            f"Pickup date & time: {pickup_when}\n"
+            f"Pickup location: {pickup_where}\n\n"
+            f"Please coordinate with the {counterparty_role} in My Marketplace."
+        )
+        sms_message = (
+            f"Marketplace pickup ready for {item_title}. "
+            f"When: {pickup_when}. Where: {pickup_where}."
+        )
+
+        email_state = queue_notification_for_user(
+            user,
+            'email',
+            event_type,
+            entity_id,
+            {'subject': subject, 'body': body},
+            dedupe_extra=f"{role}:{dedupe_extra}",
+        )
+        results['queued' if email_state == 'queued' else 'skipped'] += 1
+
+        sms_state = queue_notification_for_user(
+            user,
+            'sms',
+            event_type,
+            entity_id,
+            {'message': sms_message},
+            dedupe_extra=f"{role}:{dedupe_extra}",
+        )
+        results['queued' if sms_state == 'queued' else 'skipped'] += 1
+
+    return results
+
+
 def _announcement_recipients(announcement) -> List[User]:
     """Return verified residents eligible for this announcement scope."""
     scope = (getattr(announcement, 'scope', 'MUNICIPALITY') or 'MUNICIPALITY').upper()
