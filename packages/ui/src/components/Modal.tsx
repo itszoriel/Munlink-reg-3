@@ -26,11 +26,16 @@ const FOCUSABLE_SELECTORS = 'button, [href], input, select, textarea, [tabindex]
 export const Modal: React.FC<ModalProps> = ({ open, onOpenChange, title, children, footer, className, size = 'md' }) => {
   const modalRef = useRef<HTMLDivElement>(null)
   const previousActiveElement = useRef<HTMLElement | null>(null)
+  const onOpenChangeRef = useRef(onOpenChange)
+
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+  }, [onOpenChange])
 
   // Focus trap handler
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      onOpenChange(false)
+      onOpenChangeRef.current(false)
       return
     }
 
@@ -53,7 +58,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onOpenChange, title, childre
         firstFocusable?.focus()
       }
     }
-  }, [onOpenChange])
+  }, [])
 
   useEffect(() => {
     if (!open) return
