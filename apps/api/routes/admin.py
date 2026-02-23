@@ -1652,10 +1652,14 @@ def create_announcement():
         if is_multipart and 'images' in request.files:
             image_files = request.files.getlist('images')
             saved_images = []
+            municipality_slug = 'zambales'
+            if announcement.municipality_id:
+                municipality = db.session.get(Municipality, announcement.municipality_id)
+                municipality_slug = municipality.slug if municipality else 'zambales'
             for img_file in image_files:
                 if img_file and img_file.filename:
                     try:
-                        img_path = save_announcement_image(img_file)
+                        img_path = save_announcement_image(img_file, announcement.id, municipality_slug)
                         saved_images.append(img_path)
                     except Exception as img_err:
                         current_app.logger.warning(f"Failed to save announcement image: {img_err}")
@@ -1771,10 +1775,14 @@ def update_announcement(announcement_id):
         if is_multipart and 'images' in request.files:
             image_files = request.files.getlist('images')
             saved_images = list(announcement.images) if announcement.images else []
+            municipality_slug = 'zambales'
+            if announcement.municipality_id:
+                municipality = db.session.get(Municipality, announcement.municipality_id)
+                municipality_slug = municipality.slug if municipality else 'zambales'
             for img_file in image_files:
                 if img_file and img_file.filename:
                     try:
-                        img_path = save_announcement_image(img_file)
+                        img_path = save_announcement_image(img_file, announcement.id, municipality_slug)
                         saved_images.append(img_path)
                     except Exception as img_err:
                         current_app.logger.warning(f"Failed to save announcement image: {img_err}")
