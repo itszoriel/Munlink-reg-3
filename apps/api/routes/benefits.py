@@ -7,6 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from urllib.parse import urlparse
 import mimetypes
+from typing import Optional
 import requests
 from flask import Blueprint, jsonify, request, current_app, send_file
 from apps.api.utils.time import utc_now, utc_today
@@ -15,6 +16,7 @@ from datetime import datetime, timedelta
 
 from apps.api import db
 from sqlalchemy import or_, and_
+from sqlalchemy.exc import IntegrityError
 from apps.api.models.benefit import BenefitProgram, BenefitApplication
 from apps.api.models.user import User
 from apps.api.models.municipality import Municipality
@@ -60,6 +62,16 @@ def _remote_content_allowed(url: str) -> bool:
         return True
     parsed = urlparse(url)
     return parsed.netloc in allowed
+
+
+def _existing_application_for_program(user_id: int, program_id: int) -> Optional[BenefitApplication]:
+    """Return latest application for a user/program pair, if any."""
+    return (
+        BenefitApplication.query
+        .filter_by(user_id=user_id, program_id=program_id)
+        .order_by(BenefitApplication.created_at.desc(), BenefitApplication.id.desc())
+        .first()
+    )
 
 
 def _stream_storage_file(file_ref: str, download_name: str = 'document') -> object:
@@ -294,6 +306,13 @@ def create_application():
         if program.barangay_id and user.barangay_id != program.barangay_id:
             return jsonify({'error': 'Program not available for your barangay'}), 403
 
+        existing_application = _existing_application_for_program(user_id=user_id, program_id=program.id)
+        if existing_application:
+            return jsonify({
+                'error': 'You already submitted an application for this program.',
+                'application': existing_application.to_dict(),
+            }), 409
+
         # Tag-based eligibility validation
         if program.eligibility_criteria:
             criteria = program.eligibility_criteria
@@ -352,7 +371,17 @@ def create_application():
             status='pending',
         )
         db.session.add(app)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            existing_application = _existing_application_for_program(user_id=user_id, program_id=program.id)
+            if existing_application:
+                return jsonify({
+                    'error': 'You already submitted an application for this program.',
+                    'application': existing_application.to_dict(),
+                }), 409
+            raise
 
         return jsonify({'message': 'Application created successfully', 'application': app.to_dict()}), 201
     except ValidationError as e:

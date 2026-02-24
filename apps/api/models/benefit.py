@@ -5,7 +5,7 @@ try:
     from apps.api import db
 except ImportError:
     from apps.api import db
-from sqlalchemy import Index
+from sqlalchemy import Index, UniqueConstraint
 
 class BenefitProgram(db.Model):
     __tablename__ = 'benefit_programs'
@@ -137,6 +137,7 @@ class BenefitApplication(db.Model):
     
     # Indexes
     __table_args__ = (
+        UniqueConstraint('user_id', 'program_id', name='uq_benefit_app_user_program'),
         Index('idx_benefit_app_user', 'user_id'),
         Index('idx_benefit_app_program', 'program_id'),
         Index('idx_benefit_app_status', 'status'),

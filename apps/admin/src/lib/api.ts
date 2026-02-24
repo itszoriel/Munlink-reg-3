@@ -513,6 +513,7 @@ export const dashboardApi = {
     active_issues: number
     marketplace_items: number
     announcements: number
+    active_programs: number
   }>> =>
     apiClient.get('/api/admin/dashboard/stats').then(res => res.data),
   getUserGrowth: (range: string = 'last_30_days'): Promise<ApiResponse<{ series: Array<{ day: string; count: number }> }>> =>

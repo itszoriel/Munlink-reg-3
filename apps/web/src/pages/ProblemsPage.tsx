@@ -100,7 +100,7 @@ export default function ProblemsPage() {
   return (
     <div className="container-responsive py-12">
       <div className="mb-3">
-        <h1 className="text-fluid-3xl font-serif font-semibold">Problems in Municipality</h1>
+        <h1 className="text-fluid-3xl font-serif font-semibold">Community Concerns in Municipality</h1>
       </div>
 
       {isMismatch && (
@@ -112,20 +112,20 @@ export default function ProblemsPage() {
       {/* Barangay Filter Notice */}
       {selectedBarangay && (
         <div className="mb-4 p-3 rounded-lg border border-green-200 bg-green-50 text-sm text-green-900">
-          <strong>Filtering by Barangay:</strong> {selectedBarangay.name}. Note: Barangay-level filtering for problems is currently in development. Showing all problems in {selectedMunicipality?.name}.
+          <strong>Filtering by Barangay:</strong> {selectedBarangay.name}. Note: Barangay-level filtering for concerns is currently in development. Showing all concerns in {selectedMunicipality?.name}.
         </div>
       )}
 
       {/* Guest Location Required Message */}
       {!isAuthenticated && !guestLocationComplete && (
         <div className="mb-4 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
-          <p><strong>Select your location</strong> to view reported problems. Use the location selector above to choose your province and municipality.</p>
+          <p><strong>Select your location</strong> to view reported concerns. Use the location selector above to choose your province and municipality.</p>
         </div>
       )}
 
       <Card className="mb-6">
         <div className="flex flex-col gap-3">
-          <p className="text-sm sm:text-base">Browse reported problems in the municipality. Viewing is open to everyone. To file a new report, create an account and get verified.</p>
+          <p className="text-sm sm:text-base">Browse reported concerns in the municipality. Viewing is open to everyone. To file a new report, create an account and get verified.</p>
           <div className="flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
@@ -150,11 +150,11 @@ export default function ProblemsPage() {
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pt-2 border-t">
               <div className="flex flex-wrap items-center gap-2">
-                <button className={`btn text-sm ${tab==='all'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('all')}>All Problems</button>
+                <button className={`btn text-sm ${tab==='all'?'btn-primary':'btn-secondary'}`} onClick={() => setTab('all')}>All Concerns</button>
                 <GatedAction
                   required="fullyVerified"
                   onAllowed={() => setTab('mine')}
-                  featureDescription="View your submitted problem reports"
+                  featureDescription="View your submitted concern reports"
                 >
                   <button className={`btn text-sm ${tab==='mine'?'btn-primary':'btn-secondary'}`}>My Reports</button>
                 </GatedAction>
@@ -166,9 +166,9 @@ export default function ProblemsPage() {
                   if (isMismatch) { alert('Reporting is limited to your registered municipality'); return }
                   setOpen(true)
                 }}
-                featureDescription="Report a problem in your municipality"
+                featureDescription="Report a concern in your municipality"
               >
-                <button className="btn btn-primary text-sm sm:ml-auto hidden sm:inline-flex" disabled={isMismatch} title={isMismatch ? 'Reporting is limited to your municipality' : undefined}>Report a Problem</button>
+                <button className="btn btn-primary text-sm sm:ml-auto hidden sm:inline-flex" disabled={isMismatch} title={isMismatch ? 'Reporting is limited to your municipality' : undefined}>Report a Concern</button>
               </GatedAction>
             </div>
           </div>
@@ -185,7 +185,7 @@ export default function ProblemsPage() {
       ) : (
         <>
           {filtered.length === 0 ? (
-            <EmptyState title="No problems found" description="Adjust filters or check back later." />
+            <EmptyState title="No concerns found" description="Adjust filters or check back later." />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((p: any) => (
@@ -223,7 +223,7 @@ export default function ProblemsPage() {
           )}
         </>
       )}
-      <Modal isOpen={open} onClose={() => { setOpen(false); setForm({ category_id: '', title: '', description: '' }); setCreatedId(null) }} title="Report a Problem">
+      <Modal isOpen={open} onClose={() => { setOpen(false); setForm({ category_id: '', title: '', description: '' }); setCreatedId(null) }} title="Report a Concern">
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium mb-1">Category</label>
@@ -260,7 +260,7 @@ export default function ProblemsPage() {
                 const res = await issuesApi.create(payload)
                 const id = res?.data?.issue?.id
                 setCreatedId(id || null)
-                showToast('Problem reported successfully', 'success')
+                showToast('Concern reported successfully', 'success')
                 // Invalidate caches to reflect new issue immediately
                 invalidateMultiple([CACHE_KEYS.ISSUES, CACHE_KEYS.MY_ISSUES])
               } finally {
@@ -312,7 +312,7 @@ export default function ProblemsPage() {
               setFabExpanded(true)
             }
           }}
-          featureDescription="Report a problem in your municipality"
+          featureDescription="Report a concern in your municipality"
         >
           <motion.button
             className="relative flex items-center justify-center bg-gradient-to-r from-ocean-500 to-ocean-600 text-white shadow-lg shadow-ocean-500/30 hover:shadow-ocean-500/50 transition-shadow"
@@ -341,7 +341,7 @@ export default function ProblemsPage() {
                   transition={{ duration: 0.15 }}
                 >
                   <Plus className="w-5 h-5 flex-shrink-0" />
-                  <span className="text-sm font-medium whitespace-nowrap">Report Problem</span>
+                  <span className="text-sm font-medium whitespace-nowrap">Report Concern</span>
                 </motion.div>
               ) : (
                 <motion.div

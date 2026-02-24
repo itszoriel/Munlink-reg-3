@@ -221,8 +221,6 @@ def test_resident_cannot_apply_to_other_barangay_program():
         ids = _seed_benefits_fixture()
 
         resident_b_headers = _auth('resident', ids['resident_b_id'])
-        resident_a_headers = _auth('resident', ids['resident_a_id'])
-
         forbidden = client.post(
             '/api/benefits/applications',
             json={'program_id': ids['brgy_program_a_id']},
@@ -233,10 +231,47 @@ def test_resident_cannot_apply_to_other_barangay_program():
 
         allowed = client.post(
             '/api/benefits/applications',
-            json={'program_id': ids['brgy_program_a_id']},
-            headers=resident_a_headers,
+            json={'program_id': ids['muni_program_id']},
+            headers=resident_b_headers,
         )
         assert allowed.status_code == 201
+
+
+def test_resident_duplicate_program_application_returns_conflict():
+    app = create_app(BenefitsScopeTestConfig)
+    client = app.test_client()
+
+    with app.app_context():
+        db.create_all()
+        ids = _seed_benefits_fixture()
+
+        headers = _auth('resident', ids['resident_b_id'])
+
+        first = client.post(
+            '/api/benefits/applications',
+            json={'program_id': ids['muni_program_id']},
+            headers=headers,
+        )
+        assert first.status_code == 201
+        first_payload = first.get_json() or {}
+        first_app = (first_payload.get('application') or {})
+        assert first_app.get('program_id') == ids['muni_program_id']
+
+        duplicate = client.post(
+            '/api/benefits/applications',
+            json={'program_id': ids['muni_program_id']},
+            headers=headers,
+        )
+        assert duplicate.status_code == 409
+        duplicate_payload = duplicate.get_json() or {}
+        assert 'already submitted' in (duplicate_payload.get('error', '').lower())
+        assert (duplicate_payload.get('application') or {}).get('id') == first_app.get('id')
+
+        count = BenefitApplication.query.filter_by(
+            user_id=ids['resident_b_id'],
+            program_id=ids['muni_program_id'],
+        ).count()
+        assert count == 1
 
 
 def test_approved_benefit_application_queues_program_specific_notification(monkeypatch):

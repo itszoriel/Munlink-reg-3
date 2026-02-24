@@ -9,7 +9,7 @@ export default function ExportData({ defaultRange, onRangeChange }: { defaultRan
     { key: 'users', label: 'Users', desc: 'All residents in your municipality' },
     { key: 'benefits', label: 'Programs', desc: 'Active programs with benefits' },
     { key: 'requests', label: 'Document Requests', desc: 'Requests in selected range' },
-    { key: 'issues', label: 'Problems', desc: 'Reported problems in municipality' },
+    { key: 'issues', label: 'Community Concerns', desc: 'Reported concerns in municipality' },
     { key: 'items', label: 'Marketplace Items', desc: 'Uploaded items' },
     { key: 'announcements', label: 'Announcements', desc: 'Published announcements' },
   ]

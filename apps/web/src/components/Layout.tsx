@@ -276,7 +276,7 @@ export default function Layout() {
                 className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
               >
                 <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span>Problems</span>
+                <span>Community Concerns</span>
               </Link>
 
               <Link

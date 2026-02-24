@@ -67,7 +67,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         { icon: 'residents', label: 'Residents', path: '/residents', badge: null },
         { icon: 'programs', label: 'Programs', path: '/programs', badge: null },
         { icon: 'requests', label: 'Requests', path: '/requests', badge: null },
-        { icon: 'problems', label: 'Problems', path: '/problems', badge: null },
+        { icon: 'problems', label: 'Community Concerns', path: '/problems', badge: null },
         { icon: 'announcements', label: 'Announcements', path: '/announcements', badge: null },
       ],
     },

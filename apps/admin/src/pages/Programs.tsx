@@ -83,7 +83,7 @@ export default function Programs() {
     }
   }, [adminMunicipalityId, programsFresh, programsLoading, dataStore])
 
-  // Fetch applications (only once per tab visit, or if stale)
+  // Fetch applications (once per mount, or if stale)
   const fetchApplications = useCallback(async () => {
     if (applicationsFresh) return // Already have fresh data (even if empty)
     if (applicationsLoading) return // Already fetching
@@ -107,13 +107,13 @@ export default function Programs() {
     }
   }, [hasFetchedPrograms, programsFresh, fetchPrograms])
 
-  // Fetch applications when tab is active - only once per tab visit
+  // Prefetch applications on mount so badge/stat counts stay accurate after refresh
   useEffect(() => {
-    if (activeTab === 'applications' && !hasFetchedApplications && !applicationsFresh) {
+    if (!hasFetchedApplications && !applicationsFresh) {
       setHasFetchedApplications(true)
       fetchApplications()
     }
-  }, [activeTab, hasFetchedApplications, applicationsFresh, fetchApplications])
+  }, [hasFetchedApplications, applicationsFresh, fetchApplications])
 
   const pendingApplicationsCount = useMemo(() => applications.filter((a: any) => a.status === 'pending' || a.status === 'under_review').length, [applications])
   const approvedThisMonthCount = useMemo(() => {
