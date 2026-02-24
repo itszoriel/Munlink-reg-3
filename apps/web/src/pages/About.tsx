@@ -99,7 +99,7 @@ const munlinkTimeline: TimelineItem[] = [
   {
     title: 'Planned Deployment',
     date: 'Q1 2026',
-    description: 'Planning official rollout of MunLink to Zambales residents with document services, marketplace, benefit programs, and problem reporting features.',
+    description: 'Planning official rollout of MunLink to Zambales residents with document services, marketplace, benefit programs, and community concern reporting features.',
     icon: <CheckCircle2 className="w-5 h-5" />,
     color: 'purple',
   },
@@ -128,7 +128,7 @@ export default function About() {
               <span className="text-sm font-medium">Zambales Province</span>
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold leading-tight drop-shadow-2xl text-white">
-              About Serbisyo Zambaleño
+              About Munlink Zambales
             </h1>
           </>
         }
@@ -449,7 +449,7 @@ export default function About() {
               <ul className="space-y-3 text-sm text-gray-700">
                 <li className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-emerald-600 rounded-full mt-2 flex-shrink-0"></div>
-                  <span>Clear steps to reproduce the problem</span>
+                  <span>Clear steps to reproduce the issue</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-emerald-600 rounded-full mt-2 flex-shrink-0"></div>

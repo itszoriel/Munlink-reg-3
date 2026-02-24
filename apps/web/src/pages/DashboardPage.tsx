@@ -141,7 +141,7 @@ export default function DashboardPage() {
                 <div className="h-8 w-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
                   <AlertTriangle size={16} />
                 </div>
-                <span className="text-sm font-semibold text-gray-900">Report Problem</span>
+                <span className="text-sm font-semibold text-gray-900">Report Concern</span>
                 <ArrowRight size={16} className="ml-auto opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-amber-600" />
               </Link>
             </div>

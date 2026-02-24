@@ -1,5 +1,5 @@
 import { StatusBadge, Card, EmptyState } from '@munlink/ui'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { ArrowRight, ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import GatedAction from '@/components/GatedAction'
@@ -45,6 +45,7 @@ export default function ProgramsPage() {
   const [applicationsNotice, setApplicationsNotice] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
   const [openId, setOpenId] = useState<string | number | null>(null)
+  const submitInFlightRef = useRef(false)
   
   // Municipality scoping logic
   // Logged-in users: Can ONLY see programs from their registered municipality
@@ -808,6 +809,8 @@ export default function ProgramsPage() {
                   !eligibilityCheck?.overall
                 }
                 onClick={async () => {
+                  if (submitInFlightRef.current) return
+                  submitInFlightRef.current = true
                   setApplying(true)
                   try {
                     if (pendingApplicationId === null && selectedHasIncompleteRequiredDocs) {
@@ -856,11 +859,22 @@ export default function ProgramsPage() {
                     // Invalidate programs cache to reflect any slot/capacity changes
                     invalidateMultiple([CACHE_KEYS.BENEFITS_PROGRAMS])
                   } catch (e: any) {
+                    if (e?.response?.status === 409) {
+                      await refetchApplications()
+                      const existingNo = e?.response?.data?.application?.application_number
+                      setResult({
+                        error: existingNo
+                          ? `You already submitted an application for this program (Application No. ${existingNo}).`
+                          : (e?.response?.data?.error || 'You already submitted an application for this program.'),
+                      })
+                      return
+                    }
                     const errorMsg = e?.response?.data?.error || e?.message || 'Failed to submit application'
                     setResult({ error: errorMsg })
                     // Don't close modal on error so user can fix issues
                   } finally {
                     setApplying(false)
+                    submitInFlightRef.current = false
                   }
                 }}
               >

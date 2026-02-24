@@ -50,7 +50,7 @@ const defaultNavSections: NavSection[] = [
       { icon: 'residents', label: 'Residents', path: '/residents', badge: null, superAdminOnly: false },
       { icon: 'programs', label: 'Programs', path: '/programs', badge: null, superAdminOnly: false },
       { icon: 'requests', label: 'Requests', path: '/requests', badge: null, superAdminOnly: false },
-      { icon: 'problems', label: 'Problems', path: '/problems', badge: null, superAdminOnly: false },
+      { icon: 'problems', label: 'Community Concerns', path: '/problems', badge: null, superAdminOnly: false },
       { icon: 'announcements', label: 'Announcements', path: '/announcements', badge: null, superAdminOnly: false },
     ]
   },

@@ -5,7 +5,7 @@ import { useAdminStore } from '../lib/store'
 import { useCachedFetch } from '../lib/useCachedFetch'
 import { CACHE_KEYS } from '../lib/dataStore'
 import { StatCard, Card, Button, Select } from '@munlink/ui'
-import { Hand, Users, AlertTriangle, ShoppingBag, Megaphone } from 'lucide-react'
+import { Hand, Users, AlertTriangle, ShoppingBag, Megaphone, Gift } from 'lucide-react'
 
 export default function Dashboard() {
   const user = useAdminStore((s) => s.user)
@@ -40,6 +40,7 @@ export default function Dashboard() {
     active_problems: d?.active_issues ?? d?.active_problems ?? 0,
     marketplace_items: d?.marketplace_items ?? 0,
     announcements: d?.announcements ?? 0,
+    active_programs: d?.active_programs ?? 0,
   }
 
   // Process activity data
@@ -94,6 +95,7 @@ export default function Dashboard() {
     active_problems: activeProblemsCount || dash.active_problems || 0,
     marketplace_items: typeof totalMarket === 'number' ? totalMarket : (dash.marketplace_items ?? 0),
     announcements: announcements.length || dash.announcements || 0,
+    active_programs: dash.active_programs || 0,
   }
 
   // Build overview stats from cached data
@@ -113,7 +115,7 @@ export default function Dashboard() {
     { label: 'Verifications', value: verifications7, max: Math.max(10, verifications7), color: 'ocean' as const },
     { label: 'Documents', value: documents7, max: Math.max(10, documents7 || 10), color: 'forest' as const },
     { label: 'Marketplace', value: marketplace7, max: Math.max(10, marketplace7), color: 'sunset' as const },
-    { label: 'Problems', value: problems7, max: Math.max(10, problems7), color: 'red' as const },
+    { label: 'Community Concerns', value: problems7, max: Math.max(10, problems7), color: 'red' as const },
   ]
 
   // Build activity timeline
@@ -126,7 +128,7 @@ export default function Dashboard() {
   }
   for (const i of issues) {
     const ts = new Date(i.created_at || i.updated_at || Date.now()).getTime()
-    activity.push({ icon: '⚠️', text: `Problem: ${i.title ?? i.category ?? 'New problem'}`, who: i.created_by_name, ts, color: 'red' })
+    activity.push({ icon: '⚠️', text: `Concern: ${i.title ?? i.category ?? 'New concern'}`, who: i.created_by_name, ts, color: 'red' })
   }
   for (const it of items) {
     const ts = new Date(it.created_at || it.updated_at || Date.now()).getTime()
@@ -183,7 +185,7 @@ export default function Dashboard() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             <StatCard
               title="Pending Verifications"
               value={loading ? 0 : (finalDash?.pending_verifications ?? 0)}
@@ -191,7 +193,7 @@ export default function Dashboard() {
               animated={!loading}
             />
             <StatCard
-              title="Active Problems"
+              title="Active Concerns"
               value={loading ? 0 : (finalDash?.active_problems ?? 0)}
               icon={<AlertTriangle className="w-6 h-6" />}
               animated={!loading}
@@ -206,6 +208,12 @@ export default function Dashboard() {
               title="Announcements"
               value={loading ? 0 : (finalDash?.announcements ?? 0)}
               icon={<Megaphone className="w-6 h-6" />}
+              animated={!loading}
+            />
+            <StatCard
+              title="Active Programs"
+              value={loading ? 0 : (finalDash?.active_programs ?? 0)}
+              icon={<Gift className="w-6 h-6" />}
               animated={!loading}
             />
           </div>
@@ -305,5 +313,4 @@ export default function Dashboard() {
     </div>
   )
 }
-
 

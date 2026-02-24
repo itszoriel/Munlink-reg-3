@@ -67,7 +67,7 @@ export default function ServicesMenu() {
       {isOpen && (
         <div className="absolute right-0 mt-3 w-56 bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 p-2 z-50">
           <Link to="/documents" onClick={close} className="block px-3 py-2 rounded hover:bg-ocean-50">Documents</Link>
-          <Link to="/problems" onClick={close} className="block px-3 py-2 rounded hover:bg-ocean-50">Problems</Link>
+          <Link to="/problems" onClick={close} className="block px-3 py-2 rounded hover:bg-ocean-50">Community Concerns</Link>
           <Link to="/programs" onClick={close} className="block px-3 py-2 rounded hover:bg-ocean-50">Programs</Link>
         </div>
       )}

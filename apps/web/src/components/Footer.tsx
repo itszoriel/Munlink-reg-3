@@ -23,7 +23,7 @@ export default function Footer() {
               <div className="font-semibold text-gray-900 mb-3">Services</div>
               <ul className="space-y-2 text-gray-600">
                 <li><Link to="/documents" className="hover:text-ocean-700">Documents</Link></li>
-                <li><Link to="/problems" className="hover:text-ocean-700">Problems</Link></li>
+                <li><Link to="/problems" className="hover:text-ocean-700">Community Concerns</Link></li>
                 <li><Link to="/programs" className="hover:text-ocean-700">Programs</Link></li>
               </ul>
             </div>

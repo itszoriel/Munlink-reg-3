@@ -2002,7 +2002,8 @@ def get_dashboard_stats():
             'pending_verifications': 0,
             'active_issues': 0,
             'marketplace_items': 0,
-            'announcements': 0
+            'announcements': 0,
+            'active_programs': 0,
         }
         
         try:
@@ -2041,6 +2042,37 @@ def get_dashboard_stats():
                 )
             ).count()
             stats['marketplace_items'] = marketplace_items
+        except Exception:
+            pass  # Keep default 0
+
+        try:
+            # Active benefit programs; mirror Programs page scope/auto-expiry behavior
+            active_programs = 0
+            scope, denial = _get_benefit_scope()
+            if not denial and scope:
+                programs = _benefit_program_query_for_scope(scope).all()
+                changed = False
+                for p in programs:
+                    try:
+                        if p.is_active and p.duration_days and p.created_at:
+                            if p.created_at + timedelta(days=int(p.duration_days)) <= now:
+                                p.is_active = False
+                                p.is_accepting_applications = False
+                                p.completed_at = now
+                                changed = True
+                    except Exception:
+                        pass
+                if changed:
+                    db.session.commit()
+                active_programs = sum(1 for p in programs if p.is_active)
+            else:
+                active_programs = BenefitProgram.query.filter(
+                    and_(
+                        _scope_filter(BenefitProgram.municipality_id, municipality_id),
+                        BenefitProgram.is_active == True
+                    )
+                ).count()
+            stats['active_programs'] = active_programs
         except Exception:
             pass  # Keep default 0
         
