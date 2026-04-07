@@ -61,15 +61,15 @@
 | Verify Residents | ❌ | ❌ | ✅ (own municipality) | ❌ | ❌ |
 | View Residents | ❌ | ❌ | ✅ (own municipality) | ❌ | ❌ |
 | **Announcements** |
-| Create PROVINCE-scoped | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Create MUNICIPALITY-scoped | ❌ | ❌ | ✅ (own municipality) | ❌ | ❌ |
-| Create BARANGAY-scoped | ❌ | ❌ | ❌ | ✅ (own barangay) | ❌ |
-| Edit Own Announcements | ❌ | ✅ | ✅ | ✅ | ❌ |
-| Delete Own Announcements | ❌ | ✅ | ✅ | ✅ | ❌ |
-| View Province Announcements | ❌ | ✅ | ✅ | ✅ | ✅ |
-| View Municipality Announcements | ❌ | ✅ | ✅ (own) | ✅ (if in municipality) | ✅ (selected) |
-| View Barangay Announcements | ❌ | ✅ | ✅ (own municipality) | ✅ (own) | ✅ (selected) |
-| Share Cross-Municipality | ❌ | ❌ | ✅ (can share to other municipalities) | ❌ | ❌ |
+| Create PROVINCE-scoped | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Create MUNICIPALITY-scoped | ✅ | ❌ | ✅ (own municipality) | ❌ | ❌ |
+| Create BARANGAY-scoped | ✅ | ❌ | ❌ | ✅ (own barangay) | ❌ |
+| Edit Scoped Announcements | ✅ | ✅ (province) | ✅ (own municipality scope) | ✅ (own barangay scope) | ❌ |
+| Delete Scoped Announcements | ✅ | ✅ (province) | ✅ (own municipality scope) | ✅ (own barangay scope) | ❌ |
+| View Province Announcements | ✅ | ✅ | ✅ | ✅ | ✅ |
+| View Municipality Announcements | ✅ | ✅ | ✅ (own or shared target) | ✅ (if in municipality) | ✅ (selected/shared target) |
+| View Barangay Announcements | ✅ | ✅ | ✅ (own municipality) | ✅ (own) | ✅ (selected) |
+| Share Cross-Municipality | ✅ (municipality scope) | ❌ | ✅ (own municipality source only) | ❌ | ❌ |
 | **Document Requests** |
 | Process Requests | ❌ | ❌ | ✅ (own municipality) | ❌ | ❌ |
 | Generate Certificates | ❌ | ❌ | ✅ (own municipality) | ❌ | ❌ |
@@ -112,7 +112,7 @@
 
 | Role | Province | Municipality | Barangay |
 |------|----------|--------------|----------|
-| SuperAdmin | All (but no content creation) | All | All |
+| SuperAdmin | All | All | All |
 | Provincial Admin | Zambales only | All 13 municipalities | All barangays |
 | Municipal Admin | Zambales (implicit) | Own municipality only | All barangays in municipality |
 | Barangay Admin | Zambales (implicit) | Own municipality (implicit) | Own barangay only |
@@ -121,20 +121,20 @@
 ### Content Visibility (Announcements)
 
 **PROVINCE Scope:**
-- Created by: Provincial Admin
+- Created by: Provincial Admin or SuperAdmin
 - Visible to: All users in Zambales (all municipalities and barangays)
 - Cannot be shared cross-municipality (already province-wide)
 
 **MUNICIPALITY Scope:**
-- Created by: Municipal Admin
-- Visible to: All users in that specific municipality
-- Can be shared to other municipalities (creates copies)
-- Sharing requires target municipality selection
+- Created by: Municipal Admin or SuperAdmin
+- Visible to: Source municipality plus any additional valid Zambales municipalities in `shared_with_municipalities`
+- Registered residents can access it in their home municipality feed/detail or by explicitly browsing a targeted municipality
+- Guests do not access municipality announcement feed/detail in the current implementation
 
 **BARANGAY Scope:**
-- Created by: Barangay Admin
+- Created by: Barangay Admin or SuperAdmin
 - Visible to: All users in that specific barangay only
-- Cannot be shared cross-municipality (too granular)
+- Sharing does not apply in this implementation; legacy sharing metadata does not widen feed/detail access
 
 ---
 
@@ -192,7 +192,7 @@
 
 1. **SuperAdmin** accounts have mandatory 2FA and optional IP allowlisting for maximum security
 2. **Provincial/Municipal/Barangay Admins** use standard password authentication
-3. **Cross-municipality sharing** creates announcement copies (not references) to maintain data integrity
+3. **Announcement sharing** is active only for `MUNICIPALITY` scope via `shared_with_municipalities`; `public_viewable` remains deprecated compatibility metadata and does not drive feed/detail visibility
 4. **Scope validation** happens at both frontend (UI) and backend (API) levels
 5. **Audit logging** tracks all SuperAdmin actions for accountability
 6. **Session management** prevents concurrent sessions and enforces timeouts
@@ -205,6 +205,7 @@
 ### SuperAdmin
 - [ ] Cannot access without 2FA code
 - [ ] Can create all admin types
+- [ ] Can create PROVINCE, MUNICIPALITY, and BARANGAY announcements
 - [ ] Can view audit logs
 - [ ] Sessions expire after 1 hour
 - [ ] IP allowlist works correctly (if enabled)
@@ -218,7 +219,8 @@
 ### Municipal Admin
 - [ ] Can only see residents from own municipality
 - [ ] Can only process documents from own municipality
-- [ ] Can share announcements cross-municipality
+- [ ] Announcement create/update can share MUNICIPALITY announcements to additional valid Zambales municipalities
+- [ ] Announcement create/update keeps `public_viewable=False`
 - [ ] Cannot access province-wide or barangay-specific features
 
 ### Barangay Admin
@@ -229,7 +231,8 @@
 
 ### Resident
 - [ ] Cannot access any admin panels
-- [ ] Can only see announcements relevant to selected location
+- [ ] Can see announcements relevant to home location and municipality announcements shared to that location
+- [ ] Can browse other valid Zambales municipality/barangay announcement scopes explicitly
 - [ ] Can request documents, create marketplace listings, report problems
 - [ ] Profile updates persist correctly
 

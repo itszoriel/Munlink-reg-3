@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { adminApi, userApi, issueApi, marketplaceApi, announcementApi } from '../lib/api'
 import UserVerificationList from '../components/UserVerificationList'
 import { useNavigate } from 'react-router-dom'
@@ -5,7 +6,7 @@ import { useAdminStore } from '../lib/store'
 import { useCachedFetch } from '../lib/useCachedFetch'
 import { CACHE_KEYS } from '../lib/dataStore'
 import { StatCard, Card, Button, Select } from '@munlink/ui'
-import { Hand, Users, AlertTriangle, ShoppingBag, Megaphone, Gift } from 'lucide-react'
+import { BookOpen, Hand, Users, AlertTriangle, ShoppingBag, Megaphone, Gift } from 'lucide-react'
 
 export default function Dashboard() {
   const user = useAdminStore((s) => s.user)
@@ -191,31 +192,62 @@ export default function Dashboard() {
               value={loading ? 0 : (finalDash?.pending_verifications ?? 0)}
               icon={<Users className="w-6 h-6" />}
               animated={!loading}
+              onClick={() => navigate('/residents')}
             />
             <StatCard
               title="Active Concerns"
               value={loading ? 0 : (finalDash?.active_problems ?? 0)}
               icon={<AlertTriangle className="w-6 h-6" />}
               animated={!loading}
+              onClick={() => navigate('/problems')}
             />
             <StatCard
               title="Marketplace Items"
               value={loading ? 0 : (finalDash?.marketplace_items ?? 0)}
               icon={<ShoppingBag className="w-6 h-6" />}
               animated={!loading}
+              onClick={() => navigate('/transactions')}
             />
             <StatCard
               title="Announcements"
               value={loading ? 0 : (finalDash?.announcements ?? 0)}
               icon={<Megaphone className="w-6 h-6" />}
               animated={!loading}
+              onClick={() => navigate('/announcements')}
             />
             <StatCard
               title="Active Programs"
               value={loading ? 0 : (finalDash?.active_programs ?? 0)}
               icon={<Gift className="w-6 h-6" />}
               animated={!loading}
+              onClick={() => navigate('/programs')}
             />
+          </div>
+
+          <div className="mb-8">
+            <Card
+              title={<span className="text-xl font-bold">How to use this portal</span>}
+              subtitle="A quick guide for first-time municipal admins"
+              actions={<Button size="sm" onClick={() => navigate('/how-to-use')}>Open full guide</Button>}
+            >
+              <div className="grid gap-4 md:grid-cols-3">
+                <QuickGuideStep
+                  icon={<BookOpen className="w-5 h-5" />}
+                  title="Start from the dashboard"
+                  text="Check the summary cards first, then open the page that matches the task you need to finish."
+                />
+                <QuickGuideStep
+                  icon={<Users className="w-5 h-5" />}
+                  title="Handle one queue at a time"
+                  text="Residents, requests, concerns, announcements, programs, and reports each have their own working page."
+                />
+                <QuickGuideStep
+                  icon={<Megaphone className="w-5 h-5" />}
+                  title="Use the guide when unsure"
+                  text="Open the guide page if you need a simple walkthrough of the screens that are actually available."
+                />
+              </div>
+            </Card>
           </div>
 
           {/* Main Content Grid */}
@@ -314,3 +346,14 @@ export default function Dashboard() {
   )
 }
 
+function QuickGuideStep({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[color:var(--admin-accent-600)] shadow-sm">
+        {icon}
+      </div>
+      <h3 className="mt-3 text-sm font-bold text-slate-900">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+    </div>
+  )
+}

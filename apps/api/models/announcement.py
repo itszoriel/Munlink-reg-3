@@ -1,9 +1,12 @@
-"""MunLink Region 3 - Announcement Model
-Database model for scoped announcements with municipality/barangay targeting.
-"""
+"""MunLink Region 3 - Announcement Model."""
 from datetime import datetime, timezone
+import json
 from apps.api.utils.time import utc_now
 from sqlalchemy import Index
+from apps.api.utils.zambales_scope import (
+    is_valid_zambales_municipality,
+    validate_shared_municipalities,
+)
 
 try:
     from apps.api import db
@@ -18,6 +21,88 @@ def _to_naive_utc(dt):
     if dt.tzinfo:
         return dt.astimezone(timezone.utc).replace(tzinfo=None)
     return dt
+
+
+def normalize_shared_municipality_ids(source_municipality_id, municipality_ids, *, strict: bool = True):
+    """Normalize municipality-sharing targets for municipality announcements."""
+    if municipality_ids in (None, '', []):
+        return []
+
+    if isinstance(municipality_ids, str):
+        try:
+            municipality_ids = json.loads(municipality_ids)
+        except Exception:
+            if strict:
+                raise ValueError("shared_with_municipalities must be a list")
+            return []
+
+    if not isinstance(municipality_ids, list):
+        if strict:
+            raise ValueError("shared_with_municipalities must be a list")
+        return []
+
+    if strict:
+        validate_shared_municipalities(municipality_ids, raise_error=True)
+
+    try:
+        source_id = int(source_municipality_id) if source_municipality_id is not None else None
+    except (TypeError, ValueError):
+        source_id = None
+
+    normalized = []
+    seen = set()
+    for municipality_id in municipality_ids:
+        try:
+            municipality_id = int(municipality_id)
+        except (TypeError, ValueError):
+            if strict:
+                raise ValueError(f"Invalid municipality ID: {municipality_id}")
+            continue
+
+        if not is_valid_zambales_municipality(municipality_id):
+            if strict:
+                raise ValueError(f"Municipality ID {municipality_id} is not within Zambales province")
+            continue
+
+        if source_id is not None and municipality_id == source_id:
+            continue
+        if municipality_id in seen:
+            continue
+        seen.add(municipality_id)
+        normalized.append(municipality_id)
+
+    return normalized
+
+
+def get_announcement_municipality_audience_ids(announcement) -> list[int]:
+    """Return normalized municipality audience for a municipality-scoped announcement."""
+    scope = (getattr(announcement, 'scope', 'MUNICIPALITY') or 'MUNICIPALITY').upper()
+    if scope != 'MUNICIPALITY':
+        return []
+
+    audience = []
+    municipality_id = getattr(announcement, 'municipality_id', None)
+    if municipality_id is not None and is_valid_zambales_municipality(municipality_id):
+        audience.append(int(municipality_id))
+
+    shared = normalize_shared_municipality_ids(
+        municipality_id,
+        getattr(announcement, 'shared_with_municipalities', None),
+        strict=False,
+    )
+    for shared_id in shared:
+        if shared_id not in audience:
+            audience.append(shared_id)
+    return audience
+
+
+def announcement_targets_municipality(announcement, municipality_id) -> bool:
+    """Return True when a municipality-scoped announcement targets the given municipality."""
+    try:
+        municipality_id = int(municipality_id)
+    except (TypeError, ValueError):
+        return False
+    return municipality_id in get_announcement_municipality_audience_ids(announcement)
 
 
 class Announcement(db.Model):
@@ -41,8 +126,8 @@ class Announcement(db.Model):
     status = db.Column(db.String(20), nullable=False, default='DRAFT')  # DRAFT, PUBLISHED, ARCHIVED
     publish_at = db.Column(db.DateTime, nullable=True)
     expire_at = db.Column(db.DateTime, nullable=True)
-    shared_with_municipalities = db.Column(db.JSON, nullable=True)  # Array of municipality IDs for cross-municipality sharing
-    public_viewable = db.Column(db.Boolean, nullable=False, default=False)  # True = guests can view when scoped
+    shared_with_municipalities = db.Column(db.JSON, nullable=True)  # Active for MUNICIPALITY scope; stores additional target municipalities
+    public_viewable = db.Column(db.Boolean, nullable=False, default=False)  # Deprecated compatibility flag; feed/detail visibility does not consult it
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now, nullable=False)
@@ -70,7 +155,7 @@ class Announcement(db.Model):
         return f'<Announcement {self.title}>'
 
     def to_dict(self):
-        """Convert announcement to dictionary with scoped metadata and safe UTC datetimes."""
+        """Convert announcement to dictionary with scoped metadata and compatibility fields."""
         now = utc_now()
         status_value = (self.status or 'DRAFT').upper()
         publish_at = _to_naive_utc(self.publish_at)

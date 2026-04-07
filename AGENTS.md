@@ -92,8 +92,9 @@ This is the handoff guide for AI agents working in this repo. It reflects the cu
 ## Current Core Features (Code-Backed)
 - Announcements:
   - Scope-aware (`PROVINCE`, `MUNICIPALITY`, `BARANGAY`).
-  - Cross-municipality sharing via `shared_with_municipalities`.
-  - Guest visibility control via `public_viewable`.
+  - Municipality sharing is active via `shared_with_municipalities` and drives feed/detail/notification audiences for `MUNICIPALITY` announcements.
+  - Registered residents can browse other valid Zambales municipality/barangay scopes explicitly; guests remain province-only for announcements.
+  - `public_viewable` remains in the model/API for compatibility but does not drive feed/detail visibility.
 - Documents:
   - Request lifecycle + claim/verification.
   - Fee calculation (`apps/api/utils/fee_calculator.py`).

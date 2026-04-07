@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Building2, Megaphone, Users, TrendingUp } from 'lucide-react'
 import ProvincialAdminLayout from '../components/layout/ProvincialAdminLayout'
 import { announcementApi, handleApiError } from '../lib/api'
@@ -11,6 +12,7 @@ interface DashboardStats {
 }
 
 export default function ProvincialAdminDashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats>({
     total_announcements: 0,
     active_announcements: 0,
@@ -105,17 +107,38 @@ export default function ProvincialAdminDashboard() {
             {statCards.map((stat) => {
               const Icon = stat.icon
               return (
-                <div key={stat.label} className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                <button
+                  key={stat.label}
+                  type="button"
+                  onClick={() => navigate('/provincial/announcements')}
+                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow text-left"
+                >
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-4`}>
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <p className="text-sm font-medium text-gray-600 mb-1">{stat.label}</p>
                   <p className={`text-3xl font-bold ${stat.textColor}`}>{stat.value}</p>
-                </div>
+                </button>
               )
             })}
           </div>
         )}
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">How to use this portal</h2>
+              <p className="text-sm text-gray-600 mt-1">Province-wide announcements and reports are the main working areas here.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/provincial/how-to-use')}
+              className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            >
+              Open guide
+            </button>
+          </div>
+        </div>
 
         {/* Quick Info */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">

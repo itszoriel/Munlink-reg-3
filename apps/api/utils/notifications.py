@@ -7,6 +7,7 @@ from flask import current_app
 from sqlalchemy import or_
 
 from apps.api import db
+from apps.api.models.announcement import get_announcement_municipality_audience_ids
 from apps.api.models.notification import NotificationOutbox
 from apps.api.models.user import User
 from apps.api.utils.zambales_scope import (
@@ -259,17 +260,7 @@ def _announcement_recipients(announcement) -> List[User]:
     if scope == 'PROVINCE':
         query = query.filter(User.municipality_id.in_(ZAMBALES_MUNICIPALITY_IDS))
     elif scope == 'MUNICIPALITY':
-        muni_ids = []
-        if announcement.municipality_id and is_valid_zambales_municipality(announcement.municipality_id):
-            muni_ids.append(int(announcement.municipality_id))
-        shared = getattr(announcement, 'shared_with_municipalities', []) or []
-        for mid in shared:
-            try:
-                mid_int = int(mid)
-                if is_valid_zambales_municipality(mid_int):
-                    muni_ids.append(mid_int)
-            except Exception:
-                continue
+        muni_ids = get_announcement_municipality_audience_ids(announcement)
         if not muni_ids:
             return []
         query = query.filter(User.municipality_id.in_(muni_ids))

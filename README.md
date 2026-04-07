@@ -67,7 +67,7 @@ npm run dev
 - API CORS and URLs are driven by `.env` (see `env.example.txt`). CORS uses explicit origins (never wildcard) to support credentialed requests (`withCredentials: true`).
 - Zambales-only filters live in `apps/api/utils/zambales_scope.py` and `apps/web/src/lib/locations.ts` / `apps/admin/src/lib/locations.ts`.
 - Use `scripts/start_project.ps1` (Windows) to launch API + web with network helpers; archived one-off tools are in `scripts/archive/`.
-- Run `flask db upgrade` to apply migrations including scoped announcements (`20260306_scoped_announcements`), cross-municipality sharing (`20260117_sharing`), notification outbox/mobile fields (`20260312_notifications`), and super admin 2FA/audit tables (`20260118_superadmin_2fa_audit`).
+- Run `flask db upgrade` to apply migrations including scoped announcements (`20260306_scoped_announcements`), legacy announcement sharing/public-toggle schema (`20260117_sharing`, `20260201_public_viewable`), notification outbox/mobile fields (`20260312_notifications`), and super admin 2FA/audit tables (`20260118_superadmin_2fa_audit`).
 - **Auth Bootstrapping**: Frontend apps use `isAuthBootstrapped` flag to prevent race conditions when restoring authentication state from sessionStorage on page load. Components check this flag before fetching protected resources. Both web and admin apps use a `HAS_SESSION_KEY` flag to track if a user has ever logged in, preventing unnecessary token refresh attempts and 401 errors on fresh page loads. The admin app implements resilient bootstrap logic that:
   - Restores cached user from localStorage first for immediate UX
   - Attempts token refresh only if a session has existed before
@@ -109,7 +109,7 @@ npm run dev
 - **SMS capability**: Uses PhilSMS API v3; sends skipped when API key not configured or network errors occur
 - **⚠️ Carrier limitation**: PhilSMS currently delivers to **Globe/TM/GOMO networks only**. Smart/TNT users will not receive SMS (verified via testing). Email notifications work for all users regardless of carrier.
 - **Resident preferences**: Email ON by default, **SMS OFF by default** - users must enable SMS in Profile page. Both email and SMS require valid contact information.
-- **Cross-municipality sharing**: When announcements are shared with other municipalities (via `shared_with_municipalities`), residents from ALL shared municipalities receive notifications.
+- **Announcement sharing**: Municipality-scoped announcements can target the source municipality plus additional valid Zambales municipalities via `shared_with_municipalities`; notification fanout follows the same audience. `public_viewable` remains deprecated compatibility metadata and does not drive feed/detail visibility.
 
 ### Notification Delivery
 - **Queue system**: Notification outbox queues announcement publishes (province/municipality/barangay), benefit program creation/activation, benefit application status transitions (pending/under_review/approved/rejected/cancelled), document request submissions, and document status changes
@@ -155,9 +155,9 @@ npm run dev
 - Use `--dry-run` flag for testing: `python apps/api/scripts/cleanup_verification_images.py --dry-run`
 
 ### Location Filtering
-- **Header Location Selector**: Municipality and Barangay dropdowns in the header allow users to filter content by location (available to all users including guests). Province is auto-selected to Zambales and hidden from the UI.
+- **Header Location Selector**: Municipality and Barangay dropdowns in the header allow registered residents to filter content by location. Province is auto-selected to Zambales and hidden from the UI.
 - **Filtered Sections**: Announcements and Problems pages support location-based filtering:
-  - **Announcements**: Filters by province, municipality, and barangay. Province-wide announcements are always visible; municipality/barangay announcements follow selected header scope for guests and logged-in residents (read-only browsing).
+  - **Announcements**: Province-wide announcements are always visible. Registered residents can browse other valid Zambales municipality/barangay scopes; municipality announcements can also be shared to additional municipalities. Guests remain province-only for announcements in the current implementation.
   - **Problems**: Filters by province and municipality. Barangay-level filtering is planned for future development.
   - **Programs**: Resident program visibility is municipality-scoped, and barangay-specific programs are visible only to residents assigned to that barangay.
   - **Documents**: Shows public document types catalog (no location filtering); "My Requests" tab shows only the authenticated user's private requests (no location browsing for privacy).
@@ -165,12 +165,15 @@ npm run dev
 
 ## Announcements
 - **Scoped audiences**: province-wide (Zambales), municipality, or barangay; Olongapo and non-Zambales locations remain excluded.
-- **Scope-only visibility**: announcement visibility is driven strictly by scope and location matching (no cross-municipality sharing and no per-post public toggle).
+- **Municipality sharing**: one municipality-scoped announcement can target the source municipality plus additional valid Zambales municipalities through `shared_with_municipalities`.
+- **Feed and detail rules**: province announcements are globally visible; municipality announcements are visible to their source municipality plus shared target municipalities; barangay announcements remain exact-match only.
+- **Browsing vs sharing**: registered residents can browse other valid municipality/barangay scopes explicitly; sharing only affects municipality announcement audiences. Guests remain province-only in the current implementation.
+- **Compatibility fields**: `public_viewable` remains in the model/API for compatibility, but current public feed/detail routes do not consult it and admin CRUD continues forcing it to `False`.
 - **Image uploads**: Announcements support multiple image uploads via FormData (multipart/form-data); images are stored in municipality-scoped directories and displayed in announcement feeds.
-- **Resident feed**: verified residents default to their registered municipality/barangay and can browse other municipality/barangay announcement feeds via header filters (read-only). Guests can also browse via the same filters.
+- **Resident feed**: verified residents default to their registered municipality/barangay, including municipality announcements shared to their home municipality, and can browse other municipality/barangay announcement feeds via header filters (read-only).
 - **Roles**: `superadmin` (platform-level, can create all announcement types); `provincial_admin` (province-wide announcements only); `municipal_admin` (municipality announcements only); `barangay_admin` (barangay announcements only).
 - **Pinned announcements**: stay at the top of feeds (until `pinned_until` if set) and respect publish/expire windows.
-- **Migrations**: Run `flask db upgrade` to apply announcements migrations including scoped announcements (`20260306_scoped_announcements`) and cross-municipality sharing (`20260117_add_announcement_sharing`) after pulling new changes.
+- **Migrations**: Run `flask db upgrade` to apply announcements migrations including scoped announcements (`20260306_scoped_announcements`) and legacy sharing/public-toggle schema (`20260117_add_announcement_sharing`, `20260201_public_viewable`) after pulling new changes.
 
 ## Deployment
 
@@ -230,7 +233,7 @@ The project is configured for Railway deployment with three services:
 - **Marketplace**: Buy, sell, donate, or lend items with age-gated transactions; resident listings publish immediately (no admin pre-approval); transaction cards show item details, other party name, and a visual step-by-step progress indicator through the full lifecycle (pending, pickup scheduling, handover, receipt, completion)
 - **Problem reporting**: Report municipal issues with status tracking and admin triage
 - **Benefit programs**: Apply for municipal benefit programs with eligibility checking
-- **Announcements**: View province-wide, municipal, and barangay announcements with image support
+- **Announcements**: View province-wide, municipal, shared-municipality, and barangay announcements with image support
 - **Notifications**: Email and SMS notifications (configurable) for document status and announcements
 - **Profile management**: Update personal information, notification preferences, and view verification status; mobile number entered during registration is automatically copied to both phone and mobile fields for convenience
 
@@ -241,7 +244,7 @@ The project is configured for Railway deployment with three services:
 - **Marketplace moderation**: Monitor and moderate live marketplace listings (resident posts publish immediately)
 - **Problem triage**: Review and categorize problem reports, update status and resolution
 - **Benefit program management**: Municipal admins manage municipality-wide programs in their assigned municipality; barangay admins manage barangay-scoped programs in their assigned barangay, with image uploads and scoped approvals
-- **Announcements**: Create scoped announcements (municipality or barangay) with multiple image uploads, pinning, publish/expire scheduling, and cross-municipality sharing
+- **Announcements**: Create scoped announcements with multiple image uploads, pinning, publish/expire scheduling, and municipality-to-municipality sharing for municipality-scoped posts.
 - **Reports and analytics**: View transaction history, resident statistics, and activity reports
 
 ### Provincial Admin
