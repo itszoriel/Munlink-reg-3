@@ -1788,9 +1788,10 @@ def superadmin_verify_2fa():
         # Log successful login
         log_superadmin_login_attempt(user.email, success=True)
 
-        # Generate tokens
-        access_token = create_access_token(identity=str(user.id))
-        refresh_token = create_refresh_token(identity=str(user.id))
+        # Match the admin middleware contract by issuing superadmin role claims here too.
+        token_claims = {"role": user.role}
+        access_token = create_access_token(identity=str(user.id), additional_claims=token_claims)
+        refresh_token = create_refresh_token(identity=str(user.id), additional_claims=token_claims)
 
         # Build response
         response = jsonify({

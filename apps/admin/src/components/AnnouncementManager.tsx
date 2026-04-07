@@ -9,7 +9,7 @@ import { Plus, ChevronLeft, ChevronRight, Maximize2, X, Megaphone } from 'lucide
 import { announcementApi, handleApiError, mediaUrl } from '../lib/api'
 import { useCachedFetch } from '../lib/useCachedFetch'
 import { CACHE_KEYS } from '../lib/dataStore'
-import { EmptyState } from '@munlink/ui'
+import { EmptyState, Modal } from '@munlink/ui'
 import SafeImage from './SafeImage'
 import { useAdminStore } from '../lib/store'
 import { MUNICIPALITIES, getBarangaysByMunicipalityId } from '../lib/locations'
@@ -466,7 +466,7 @@ function AnnouncementDetailModal({
   staffMunicipalityId,
   staffBarangayId,
 }: AnnouncementDetailModalProps) {
-  const [editMode, setEditMode] = useState(true)
+  const editMode = true
   const toInputValue = (value?: string) => value ? value.slice(0, 16) : ''
   const [formData, setFormData] = useState({
     title: announcement.title,
@@ -488,11 +488,14 @@ function AnnouncementDetailModal({
   const [uploading, setUploading] = useState(false)
   const [images, setImages] = useState<string[]>(announcement.images || [])
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
-  const hasImageChanges = JSON.stringify(images) !== JSON.stringify(announcement.images || [])
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    void handleSave()
+  }
 
   // Clamp index when images array changes
   useEffect(() => {
@@ -595,28 +598,56 @@ function AnnouncementDetailModal({
     }
   }
 
-  return createPortal(
-    (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 pt-20 sm:pt-16 z-[1000]" role="dialog" aria-modal="true">
-        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto pb-24 sm:pb-4 shadow-2xl" tabIndex={-1} autoFocus>
-          <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Edit Announcement</h2>
-            <div className="flex items-center space-x-2">
+  return (
+    <>
+      <Modal
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose()
+        }}
+        title={
+          <div>
+            <div className="text-xl font-semibold text-gray-900">Edit Announcement</div>
+            <p className="mt-1 text-sm font-normal text-gray-500">
+              Update the content, scope, schedule, and images for this announcement.
+            </p>
+          </div>
+        }
+        size="lg"
+        footer={
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <button
+                type="button"
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="edit-announcement-form"
+                disabled={saving || uploading || (editMode && (!formData.title.trim() || !formData.content.trim()))}
+                className="px-4 py-2 text-sm font-medium text-white bg-zambales-green hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
+              >
+                {(saving || uploading) ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
-
-          {/* Form */}
-          <div className="space-y-4">
+        }
+      >
+        <form id="edit-announcement-form" onSubmit={handleSubmit} className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Review the announcement details below, then save your changes when you are ready.
+          </div>
             {/* Images */}
             <div>
               <label htmlFor="ann-images" className="block text-sm font-medium text-gray-700 mb-1">Images</label>
@@ -908,45 +939,8 @@ function AnnouncementDetailModal({
               <p>Created: {new Date(announcement.created_at).toLocaleString()}</p>
               <p>Updated: {new Date(announcement.updated_at).toLocaleString()}</p>
             </div>
-          </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-6 border-t mt-6">
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
-              >
-                {deleting ? 'Deleting...' : 'Delete'}
-              </button>
-
-              <div className="flex items-center space-x-3">
-                {(editMode || hasImageChanges || pendingFiles.length > 0) && (
-                  <>
-                    {editMode && (
-                      <button
-                        onClick={() => {
-                          setEditMode(true) // reset in case state was changed elsewhere
-                          onClose()
-                        }}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                    <button
-                      onClick={handleSave}
-                      disabled={saving || uploading || (editMode && (!formData.title.trim() || !formData.content.trim()))}
-                      className="px-4 py-2 text-sm font-medium text-white bg-zambales-green hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
-                    >
-                      {(saving || uploading) ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        </form>
+      </Modal>
         {lightboxOpen && images.length > 0 && (
           <div
             className="fixed inset-0 z-[1100] bg-black/80 flex items-center justify-center p-4"
@@ -994,9 +988,7 @@ function AnnouncementDetailModal({
             </div>
           </div>
         )}
-      </div>
-    ),
-    document.body
+    </>
   )
 }
 
@@ -1050,26 +1042,45 @@ function CreateAnnouncementModal({ onClose, onCreate, loading, allowedScopes, de
     }
   }
 
-  return createPortal(
-    (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 pt-20 sm:pt-16 z-[1000]" role="dialog" aria-modal="true">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto pb-24 sm:pb-4 shadow-2xl" tabIndex={-1} autoFocus>
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Create Announcement</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+  return (
+    <Modal
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+      title={
+        <div>
+          <div className="text-xl font-semibold text-gray-900">Create Announcement</div>
+          <p className="mt-1 text-sm font-normal text-gray-500">
+            Add the announcement details below and publish when ready.
+          </p>
+        </div>
+      }
+      size="lg"
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="create-announcement-form"
+            disabled={loading || !formData.title.trim() || !formData.content.trim()}
+            className="px-4 py-2 text-sm font-medium text-white bg-zambales-green hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
+          >
+            {loading ? 'Creating...' : 'Create Announcement'}
+          </button>
+        </div>
+      }
+    >
+      <form id="create-announcement-form" onSubmit={handleSubmit} className="space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          Complete the announcement details below. Use a clear title, a concise message, and the correct scope before publishing.
+        </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
               <input
@@ -1272,29 +1283,8 @@ function CreateAnnouncementModal({ onClose, onCreate, loading, allowedScopes, de
               />
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-end space-x-3 pt-6 border-t">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading || !formData.title.trim() || !formData.content.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-zambales-green hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
-              >
-                {loading ? 'Creating...' : 'Create Announcement'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-    ),
-    document.body
+      </form>
+    </Modal>
   )
 }
 

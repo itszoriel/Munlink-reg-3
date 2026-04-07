@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, type CSSProperties } from 'react'
-import { User, Globe } from 'lucide-react'
+import { User, Globe, BookOpen } from 'lucide-react'
 import { useAdminStore } from '../../lib/store'
 
 interface TopHeaderProps {
@@ -33,12 +33,17 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
     if (path === '/admins') return 'Admins'
     if (path === '/reports') return 'Reports'
     if (path === '/announcements') return 'Announcements'
+    if (path === '/transactions') return 'Transactions'
+    if (path === '/verify-ticket') return 'Verify Ticket'
+    if (path === '/how-to-use') return 'How to Use'
     if (path.startsWith('/provincial')) {
+      if (path.endsWith('/how-to-use')) return 'Provincial How to Use'
       if (path.includes('announcements')) return 'Provincial Announcements'
       if (path.includes('reports')) return 'Provincial Reports'
       return 'Provincial Dashboard'
     }
     if (path.startsWith('/barangay')) {
+      if (path.endsWith('/how-to-use')) return 'Barangay How to Use'
       if (path.includes('announcements')) return 'Barangay Announcements'
       if (path.includes('reports')) return 'Barangay Reports'
       return 'Barangay Dashboard'
@@ -91,9 +96,14 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
   const goToProfile = () => {
     navigate('/profile')
   }
+  const role = (user as any)?.role
+  const guidePath = role === 'provincial_admin'
+    ? '/provincial/how-to-use'
+    : role === 'barangay_admin'
+      ? '/barangay/how-to-use'
+      : '/how-to-use'
   // Align header to sidebar width (collapsed=84px, expanded=288px) on md+.
   const leftOffset = sidebarCollapsed ? 'md:left-[84px]' : 'md:left-[288px]'
-  const role = (user as any)?.role
   const portalTitle = role === 'superadmin'
     ? 'Super Admin Portal'
     : role === 'provincial_admin'
@@ -158,6 +168,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
               </div>
               <div className="py-2">
                 <button onClick={goToProfile} className="w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 transition-colors"><User className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">My Profile</span></button>
+                <button onClick={() => navigate(guidePath)} className="w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 transition-colors"><BookOpen className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">How to use</span></button>
                 <a href={PUBLIC_SITE_URL} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 transition-colors"><Globe className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">View Public Site</span></a>
               </div>
               <div className="px-4 py-3 border-t border-neutral-200">
@@ -192,6 +203,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
           {/* Menu items */}
           <div className="py-2 px-2 flex-1 overflow-y-auto">
             <button onClick={() => { setMenuOpen(false); goToProfile(); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-neutral-50 transition-colors"><User className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">My Profile</span></button>
+            <button onClick={() => { setMenuOpen(false); navigate(guidePath); }} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-neutral-50 transition-colors"><BookOpen className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">How to use</span></button>
             <a href={PUBLIC_SITE_URL} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-neutral-50 transition-colors"><Globe className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">View Public Site</span></a>
           </div>
 

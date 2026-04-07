@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import OperationalError as SAOperationalError, ProgrammingError as SAProgrammingError
 import sqlite3
 
-from apps.api.models.announcement import Announcement
+from apps.api.models.announcement import Announcement, announcement_targets_municipality
 from apps.api import db
 from apps.api.utils.zambales_scope import (
     ZAMBALES_MUNICIPALITY_IDS,
@@ -47,6 +47,30 @@ def _is_published_active(now, announcement: Announcement) -> bool:
     return True
 
 
+def _announcement_visible_in_feed(announcement: Announcement, effective_muni_id, effective_barangay_id) -> bool:
+    """Return whether the effective viewer scope can see the announcement in the feed."""
+    scope = (announcement.scope or '').upper()
+    if scope == 'PROVINCE':
+        return True
+    if scope == 'MUNICIPALITY':
+        return announcement_targets_municipality(announcement, effective_muni_id)
+    if scope == 'BARANGAY':
+        return bool(effective_barangay_id and announcement.barangay_id == effective_barangay_id)
+    return False
+
+
+def _announcement_visible_in_detail(announcement: Announcement, effective_muni_id, effective_barangay_id) -> bool:
+    """Return whether the effective viewer scope can open the announcement detail."""
+    scope = (announcement.scope or '').upper()
+    if scope == 'PROVINCE':
+        return True
+    if scope == 'MUNICIPALITY':
+        return announcement_targets_municipality(announcement, effective_muni_id)
+    if scope == 'BARANGAY':
+        return bool(effective_barangay_id and announcement.barangay_id == effective_barangay_id)
+    return False
+
+
 @announcements_bp.route('', methods=['GET'])
 def list_announcements():
     """Return announcements based on location scope filters.
@@ -57,7 +81,7 @@ def list_announcements():
       - Barangay announcements are visible only when exact barangay filter is matched.
       - Verified residents default to their own location scope.
       - Verified residents can browse other municipality/barangay scopes via header filters.
-      - Guests can browse scoped announcements via header filters (municipality/barangay).
+      - Guests remain province-only.
       - Pinned announcements (not expired) are sorted to the top, then newest published.
     """
     from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
@@ -117,18 +141,11 @@ def list_announcements():
                         else:
                             effective_barangay_id = None
         else:
-            # Guests default to province-wide only, unless they intentionally browse via header selector
+            # Guests stay province-wide only in the public feed.
             effective_muni_id = None
             effective_barangay_id = None
-            if browse and requested_municipality_id and is_valid_zambales_municipality(requested_municipality_id):
-                effective_muni_id = requested_municipality_id
-                if requested_barangay_id:
-                    from apps.api.models.municipality import Barangay
-                    brgy = db.session.get(Barangay, requested_barangay_id)
-                    if brgy and brgy.municipality_id == requested_municipality_id:
-                        effective_barangay_id = requested_barangay_id
 
-        # Validate municipality scope (for any non-province filter)
+        # Validate municipality scope (for resident browse only)
         if effective_muni_id and not is_valid_zambales_municipality(effective_muni_id):
             return jsonify({
                 'announcements': [],
@@ -152,22 +169,14 @@ def list_announcements():
                 # Keep municipality/barangay consistent
                 effective_barangay_id = None
 
-        # Build filters
+        # Build base filters, then apply visibility in Python so municipality sharing
+        # works consistently across SQLite tests and production databases.
         filters = [
             Announcement.status == 'PUBLISHED',
             or_(Announcement.publish_at == None, Announcement.publish_at <= now),
             or_(Announcement.expire_at == None, Announcement.expire_at > now),
             or_(Announcement.scope == 'PROVINCE', Announcement.municipality_id.in_(ZAMBALES_MUNICIPALITY_IDS)),
         ]
-
-        scope_filters = [Announcement.scope == 'PROVINCE']
-        if effective_muni_id:
-            muni_filter = and_(Announcement.scope == 'MUNICIPALITY', Announcement.municipality_id == effective_muni_id)
-            scope_filters.append(muni_filter)
-            if effective_barangay_id:
-                barangay_filter = and_(Announcement.scope == 'BARANGAY', Announcement.barangay_id == effective_barangay_id)
-                scope_filters.append(barangay_filter)
-        filters.append(or_(*scope_filters))
 
         pinned_active = and_(
             Announcement.pinned == True,
@@ -185,25 +194,28 @@ def list_announcements():
             publish_order.desc(),
             Announcement.created_at.desc(),
         )
-        paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+        visible_items = [
+            announcement for announcement in query.all()
+            if _announcement_visible_in_feed(announcement, effective_muni_id, effective_barangay_id)
+        ]
+        total = len(visible_items)
+        pages = (total + per_page - 1) // per_page if total else 0
+        start = (page - 1) * per_page
+        end = start + per_page
+        page_items = visible_items[start:end]
 
         guest_message = None
         if not has_verified_resident:
-            if effective_barangay_id:
-                guest_message = 'Browsing barangay announcements as a guest'
-            elif effective_muni_id:
-                guest_message = 'Browsing municipality announcements as a guest'
-            else:
-                guest_message = 'Use the header municipality/barangay filters to browse scoped announcements'
+            guest_message = 'Sign in to browse municipality and barangay announcements'
 
         return jsonify({
-            'announcements': [a.to_dict() for a in paginated.items],
-            'count': len(paginated.items),
+            'announcements': [a.to_dict() for a in page_items],
+            'count': len(page_items),
             'pagination': {
                 'page': page,
                 'per_page': per_page,
-                'total': paginated.total,
-                'pages': paginated.pages,
+                'total': total,
+                'pages': pages,
             },
             'message': guest_message
         }), 200
@@ -269,49 +281,28 @@ def get_announcement(announcement_id: int):
             )
 
             if is_verified_resident:
-                can_browse_selected_scope = bool(
-                    browse and requested_muni_id and is_valid_zambales_municipality(requested_muni_id)
-                )
-                # Municipality scope
-                if scope == 'MUNICIPALITY':
-                    allowed_muni_id = requested_muni_id if can_browse_selected_scope else user.municipality_id
-                    if allowed_muni_id != ann.municipality_id:
-                        return jsonify({'error': 'Announcement not found'}), 404
-                elif scope == 'BARANGAY':
-                    if can_browse_selected_scope:
-                        if requested_muni_id != ann.municipality_id:
-                            return jsonify({'error': 'Announcement not found'}), 404
-                        # Cross-location barangay detail requires explicit barangay filter match
-                        if requested_barangay_id:
-                            if requested_barangay_id != ann.barangay_id:
-                                return jsonify({'error': 'Announcement not found'}), 404
+                effective_muni_id = user.municipality_id
+                effective_barangay_id = user.barangay_id
+                if browse and requested_muni_id and is_valid_zambales_municipality(requested_muni_id):
+                    effective_muni_id = requested_muni_id
+                    if requested_barangay_id:
+                        from apps.api.models.municipality import Barangay
+                        requested_barangay = db.session.get(Barangay, requested_barangay_id)
+                        if requested_barangay and requested_barangay.municipality_id == requested_muni_id:
+                            effective_barangay_id = requested_barangay_id
+                        elif requested_muni_id == user.municipality_id:
+                            effective_barangay_id = user.barangay_id
                         else:
-                            # Keep default resident restriction unless a specific barangay filter is provided
-                            if (
-                                requested_muni_id != user.municipality_id
-                                or not user.barangay_id
-                                or user.barangay_id != ann.barangay_id
-                            ):
-                                return jsonify({'error': 'Announcement not found'}), 404
-                    else:
-                        if (
-                            user.municipality_id != ann.municipality_id
-                            or not user.barangay_id
-                            or user.barangay_id != ann.barangay_id
-                        ):
-                            return jsonify({'error': 'Announcement not found'}), 404
-            else:
-                # Guest or unverified: allow when explicitly browsing via selector
-                if not browse or not requested_muni_id or not is_valid_zambales_municipality(requested_muni_id):
+                            effective_barangay_id = None
+                    elif requested_muni_id != user.municipality_id:
+                        effective_barangay_id = None
+
+                if not _announcement_visible_in_detail(ann, effective_muni_id, effective_barangay_id):
                     return jsonify({'error': 'Announcement not found'}), 404
-                if scope == 'MUNICIPALITY':
-                    if requested_muni_id != ann.municipality_id:
-                        return jsonify({'error': 'Announcement not found'}), 404
-                elif scope == 'BARANGAY':
-                    if requested_muni_id != ann.municipality_id:
-                        return jsonify({'error': 'Announcement not found'}), 404
-                    if not requested_barangay_id or requested_barangay_id != ann.barangay_id:
-                        return jsonify({'error': 'Announcement not found'}), 404
+            else:
+                # Guests only get province details in this implementation.
+                if scope != 'PROVINCE':
+                    return jsonify({'error': 'Announcement not found'}), 404
 
         return jsonify(ann.to_dict()), 200
 

@@ -26,7 +26,7 @@ from apps.api.models.marketplace import TransactionAuditLog as MarketplaceTransa
 from apps.api.models.benefit import BenefitProgram
 from apps.api.models.benefit import BenefitApplication
 from apps.api.models.document import DocumentRequest, DocumentType
-from apps.api.models.announcement import Announcement
+from apps.api.models.announcement import Announcement, normalize_shared_municipality_ids
 from apps.api.models.transfer import TransferRequest
 from apps.api.utils.storage_handler import (
     save_announcement_image,
@@ -481,6 +481,44 @@ def _enforce_scope_permission(ctx, scope: str, municipality_id: int, barangay_id
         return True, None
 
     return False, (jsonify({'error': 'Forbidden'}), 403)
+
+
+def _shared_municipalities_input(data, is_multipart: bool):
+    """Return (field_present, raw_value) for shared municipality input."""
+    if is_multipart:
+        values = request.form.getlist('shared_with_municipalities')
+        if values:
+            if len(values) == 1:
+                return True, values[0]
+            return True, values
+    if 'shared_with_municipalities' in data:
+        return True, data.get('shared_with_municipalities')
+    return False, None
+
+
+def _normalize_announcement_sharing(scope: str, municipality_id: int, raw_shared, field_present: bool, existing_shared=None):
+    """Normalize share targets while preserving current ownership rules."""
+    try:
+        if scope != 'MUNICIPALITY':
+            candidate_shared = existing_shared
+            if field_present:
+                candidate_shared = normalize_shared_municipality_ids(municipality_id, raw_shared, strict=True)
+            elif existing_shared:
+                candidate_shared = normalize_shared_municipality_ids(municipality_id, existing_shared, strict=False)
+            if candidate_shared:
+                raise ValidationError(
+                    'shared_with_municipalities',
+                    'shared_with_municipalities is only supported for municipality-scoped announcements',
+                )
+            return None
+
+        if field_present:
+            normalized = normalize_shared_municipality_ids(municipality_id, raw_shared, strict=True)
+            return normalized or None
+
+        return existing_shared
+    except ValueError as exc:
+        raise ValidationError('shared_with_municipalities', str(exc)) from exc
 
 
 def _announcement_query_for_staff(ctx):
@@ -1593,6 +1631,7 @@ def create_announcement():
         expire_at = _parse_datetime(data.get('expire_at'), 'expire_at')
         pinned = bool(data.get('pinned', False))
         pinned_until = _parse_datetime(data.get('pinned_until'), 'pinned_until')
+        shared_field_present, shared_raw = _shared_municipalities_input(data, is_multipart)
 
         if not title or not content:
             return jsonify({'error': 'Title and content are required'}), 400
@@ -1612,6 +1651,12 @@ def create_announcement():
         allowed, denial = _enforce_scope_permission(ctx, scope, municipality_id, barangay_id)
         if not allowed:
             return denial
+        shared_with_municipalities = _normalize_announcement_sharing(
+            scope,
+            municipality_id,
+            shared_raw,
+            shared_field_present,
+        )
 
         now = utc_now()
         # Default publish_at for published announcements
@@ -1640,7 +1685,7 @@ def create_announcement():
             status=status,
             publish_at=publish_at,
             expire_at=expire_at,
-            shared_with_municipalities=None,
+            shared_with_municipalities=shared_with_municipalities,
             public_viewable=False,
             is_active=is_active_flag,
         )
@@ -1707,6 +1752,7 @@ def update_announcement(announcement_id):
                 data['pinned'] = data['pinned'].lower() in ('true', '1', 'yes')
         else:
             data = request.get_json(silent=True) or {}
+        shared_field_present, shared_raw = _shared_municipalities_input(data, is_multipart)
 
         announcement = db.session.get(Announcement, announcement_id)
         if not announcement:
@@ -1722,6 +1768,13 @@ def update_announcement(announcement_id):
         allowed, denial = _enforce_scope_permission(ctx, scope, municipality_id, barangay_id)
         if not allowed:
             return denial
+        shared_with_municipalities = _normalize_announcement_sharing(
+            scope,
+            municipality_id,
+            shared_raw,
+            shared_field_present,
+            existing_shared=announcement.shared_with_municipalities,
+        )
 
         now = utc_now()
 
@@ -1767,7 +1820,7 @@ def update_announcement(announcement_id):
         announcement.expire_at = expire_at
         announcement.is_active = is_active_flag
         announcement.public_viewable = False
-        announcement.shared_with_municipalities = None
+        announcement.shared_with_municipalities = shared_with_municipalities
         announcement.created_by_staff_id = announcement.created_by_staff_id or ctx['user'].id
         announcement.updated_at = utc_now()
 
@@ -3666,14 +3719,15 @@ def update_document_request_status(request_id: int):
         req.updated_at = now
         db.session.commit()
 
-        # Generate verification code for ALL pickup requests (free or paid) (best-effort)
+        # Generate verification code only for pickup requests that still require office payment (best-effort)
         if new_status in {'approved', 'barangay_approved'}:
             try:
-                # Check if this is a pickup request that needs a verification code
+                # Check if this is a pickup request that needs an office payment code
                 is_pickup = (req.delivery_method or '').lower() in {'physical', 'pickup'}
                 no_code_yet = not req.office_payment_code_hash
+                fee_due = _request_fee_due(req)
 
-                if is_pickup and no_code_yet:
+                if is_pickup and fee_due > 0 and no_code_yet:
                     # Generate and hash the payment code
                     payment_code = generate_office_payment_code()
                     code_hash = hash_office_payment_code(payment_code)
@@ -3786,7 +3840,10 @@ def verify_office_payment(request_id: int):
             return jsonify({'error': 'Request not found'}), 404
 
         # Verify admin has access to this municipality
-        if req.municipality_id != municipality_id:
+        if municipality_id == 'ALL':
+            if req.municipality_id not in ZAMBALES_MUNICIPALITY_IDS:
+                return jsonify({'error': 'Request outside allowed municipality scope'}), 403
+        elif req.municipality_id != municipality_id:
             return jsonify({'error': 'Access denied'}), 403
 
         # Get the payment code from request body
@@ -3889,12 +3946,18 @@ def resend_office_payment_code(request_id: int):
             return jsonify({'error': 'Request not found'}), 404
 
         # Verify admin has access to this municipality
-        if req.municipality_id != municipality_id:
+        if municipality_id == 'ALL':
+            if req.municipality_id not in ZAMBALES_MUNICIPALITY_IDS:
+                return jsonify({'error': 'Request outside allowed municipality scope'}), 403
+        elif req.municipality_id != municipality_id:
             return jsonify({'error': 'Access denied'}), 403
 
         # Verify this is a pickup request with office payment
         if (req.delivery_method or '').lower() not in {'physical', 'pickup'}:
             return jsonify({'error': 'This request is not for pickup'}), 400
+        fee_due = _request_fee_due(req)
+        if fee_due <= 0:
+            return jsonify({'error': 'No office payment is required for this request'}), 400
 
         if not req.office_payment_code_hash:
             return jsonify({'error': 'No office payment code exists for this request'}), 400
@@ -3977,17 +4040,31 @@ def admin_ready_for_pickup(request_id: int):
                 return jsonify({'error': 'Request outside allowed municipality scope'}), 403
         elif req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
+        doc_type = db.session.get(DocumentType, req.document_type_id) if req.document_type_id else None
         if ctx.get('role_lower') == 'barangay_admin':
             if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:
                 return jsonify({'error': 'Request not in your barangay'}), 403
+            barangay_allowed = {'barangay_processing', 'barangay_approved', 'barangay_rejected', 'cancelled'}
+            if doc_type and (doc_type.authority_level or '').lower() == 'barangay':
+                barangay_allowed = barangay_allowed | {'approved', 'processing', 'ready', 'completed', 'picked_up', 'rejected'}
+            if 'ready' not in barangay_allowed:
+                return jsonify({'error': 'Barangay admins cannot set this status for this request'}), 403
 
         # Only for pickup/physical requests
         if (req.delivery_method or '').lower() not in ('physical', 'pickup'):
             return jsonify({'error': 'Only pickup requests can be marked ready-for-pickup'}), 400
 
+        if doc_type and (doc_type.requirements or []):
+            requirements_submitted = are_requirements_submitted(doc_type, req.supporting_documents or [])
+            if not requirements_submitted:
+                return jsonify({'error': 'Cannot approve or process without required documents'}), 400
+
+        current = (req.status or 'pending').lower()
         fee_due = _request_fee_due(req)
         if fee_due > 0 and not _is_request_payment_settled(req):
             return jsonify({'error': 'Payment must be verified before marking ready-for-pickup'}), 400
+        if current not in {'processing', 'barangay_approved', 'ready'}:
+            return jsonify({'error': f'Invalid transition from {current} to ready'}), 400
 
         # Only update status to ready
         req.status = 'ready'
@@ -4073,6 +4150,12 @@ def admin_generate_claim_token(request_id: int):
                 return jsonify({'error': 'Request not in your barangay'}), 403
         if (req.delivery_method or '').lower() not in ('physical', 'pickup'):
             return jsonify({'error': 'Only pickup requests support claim tokens'}), 400
+        status = (req.status or '').lower()
+        if status != 'ready':
+            return jsonify({'error': f'Request not ready (status={status})'}), 400
+        fee_due = _request_fee_due(req)
+        if fee_due > 0 and not _is_request_payment_settled(req):
+            return jsonify({'error': 'Payment not yet verified for this request'}), 400
 
         # Generate code and token
         code = generate_pickup_code()
@@ -4293,7 +4376,10 @@ def admin_approve_manual_payment(request_id: int):
         req = db.session.get(DocumentRequest, request_id)
         if not req:
             return jsonify({'error': 'Request not found'}), 404
-        if req.municipality_id != municipality_id:
+        if municipality_id == 'ALL':
+            if req.municipality_id not in ZAMBALES_MUNICIPALITY_IDS:
+                return jsonify({'error': 'Request outside allowed municipality scope'}), 403
+        elif req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
         if ctx.get('role_lower') == 'barangay_admin':
             if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:
@@ -4353,7 +4439,10 @@ def admin_reject_manual_payment(request_id: int):
         req = db.session.get(DocumentRequest, request_id)
         if not req:
             return jsonify({'error': 'Request not found'}), 404
-        if req.municipality_id != municipality_id:
+        if municipality_id == 'ALL':
+            if req.municipality_id not in ZAMBALES_MUNICIPALITY_IDS:
+                return jsonify({'error': 'Request outside allowed municipality scope'}), 403
+        elif req.municipality_id != municipality_id:
             return jsonify({'error': 'Request not in your municipality'}), 403
         if ctx.get('role_lower') == 'barangay_admin':
             if not ctx.get('barangay_id') or req.barangay_id != ctx['barangay_id']:

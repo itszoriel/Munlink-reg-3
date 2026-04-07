@@ -20,12 +20,14 @@ import Announcements from './pages/Announcements'
 import Problems from './pages/Problems'
 import TransactionsPage from './pages/Transactions'
 import VerifyTicket from './pages/VerifyTicket'
+import AdminHowToUsePage from './pages/AdminHowToUsePage'
 
 // Provincial Admin
 import ProvincialAdminLoginPage from './pages/ProvincialAdminLoginPage'
 import ProvincialAdminDashboard from './pages/ProvincialAdminDashboard'
 import ProvincialAdminAnnouncements from './pages/ProvincialAdminAnnouncements'
 import ProvincialAdminReports from './pages/ProvincialAdminReports'
+import ProvincialHowToUsePage from './pages/ProvincialHowToUsePage'
 
 // Barangay Admin
 import BarangayAdminLoginPage from './pages/BarangayAdminLoginPage'
@@ -33,6 +35,7 @@ import BarangayAdminDashboard from './pages/BarangayAdminDashboard'
 import BarangayAdminAnnouncements from './pages/BarangayAdminAnnouncements'
 import BarangayAdminPrograms from './pages/BarangayAdminPrograms'
 import BarangayAdminReports from './pages/BarangayAdminReports'
+import BarangayHowToUsePage from './pages/BarangayHowToUsePage'
 
 // Role Selector
 import RoleSelector from './pages/RoleSelector'
@@ -128,6 +131,16 @@ export default function App() {
             <ProtectedRoute>
               <AdminLayout>
                 <Requests />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/how-to-use"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <AdminHowToUsePage />
               </AdminLayout>
             </ProtectedRoute>
           }
@@ -262,6 +275,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/provincial/how-to-use"
+          element={
+            <ProtectedRoute>
+              <ProvincialHowToUsePage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Barangay Admin routes */}
         <Route path="/barangay/login" element={<BarangayAdminLoginPage />} />
@@ -294,6 +315,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <BarangayAdminReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/barangay/how-to-use"
+          element={
+            <ProtectedRoute>
+              <BarangayHowToUsePage />
             </ProtectedRoute>
           }
         />

@@ -5,6 +5,7 @@ import Timeline, { type TimelineItem } from '../components/Timeline'
 import ScrollVelocity from '../components/ScrollVelocity'
 import { useScrollAnimation } from '../hooks/useScrollAnimation'
 import { useAppStore } from '@/lib/store'
+import { ZAMBALES_MUNICIPALITY_VISUALS } from '@/lib/municipalityVisuals'
 
 type FeatureItem = {
   icon: typeof Building
@@ -56,22 +57,7 @@ function FeatureCard({ feature, index }: { feature: FeatureItem; index: number }
   )
 }
 
-// Zambales municipalities data
-const zambalesMunicipalities = [
-  { name: 'Botolan', slug: 'botolan', landmark: '/landmarks/zambales/botolan/botolan_mt_pinatubo.png' },
-  { name: 'Cabangan', slug: 'cabangan', landmark: '/landmarks/zambales/cabangan/cabangan_municipal.png' },
-  { name: 'Candelaria', slug: 'candelaria', landmark: '/landmarks/zambales/candelaria/candelaria_municipal.png' },
-  { name: 'Castillejos', slug: 'castillejos', landmark: '/landmarks/zambales/castillejos/Castillejos_Ramon_Magsaysay_Ancestral_House,_Castillejos.jpg' },
-  { name: 'Iba', slug: 'iba', landmark: '/landmarks/zambales/iba/iba_municipal.png', isCapital: true },
-  { name: 'Masinloc', slug: 'masinloc', landmark: '/landmarks/zambales/masinloc/masinloc_church.png' },
-  { name: 'Palauig', slug: 'palauig', landmark: '/landmarks/zambales/palauig/palauig_municipal.png' },
-  { name: 'San Antonio', slug: 'san-antonio', landmark: '/landmarks/zambales/san-antonio/san_antonio_municipal.png' },
-  { name: 'San Felipe', slug: 'san-felipe', landmark: '/landmarks/zambales/san-felipe/san_felipe_arko.png' },
-  { name: 'San Marcelino', slug: 'san-marcelino', landmark: '/landmarks/zambales/san-marcelino/san_marcelino_municipal.png' },
-  { name: 'San Narciso', slug: 'san-narciso', landmark: '/landmarks/zambales/san-narciso/san_narciso_municipal.png' },
-  { name: 'Santa Cruz', slug: 'santa-cruz', landmark: '/landmarks/zambales/santa-cruz/Santa_Cruz_Municipal.png' },
-  { name: 'Subic', slug: 'subic', landmark: '/landmarks/zambales/subic/subic_municipality.png' },
-]
+const zambalesMunicipalities = ZAMBALES_MUNICIPALITY_VISUALS
 
 // MunLink development timeline
 const munlinkTimeline: TimelineItem[] = [

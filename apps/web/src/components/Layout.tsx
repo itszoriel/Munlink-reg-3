@@ -10,7 +10,7 @@ import Footer from './Footer'
 import AuthStatusBanner from './AuthStatusBanner'
 import { Toast } from '@munlink/ui'
 import { mediaUrl } from '@/lib/api'
-import { Menu, X, Home as HomeIcon, Bell, ShoppingBag, FileText, AlertCircle, GraduationCap, Info, MapPin, User, LogOut, LayoutDashboard, Activity } from 'lucide-react'
+import { Menu, X, Home as HomeIcon, Bell, ShoppingBag, FileText, AlertCircle, GraduationCap, Info, MapPin, User, LogOut, LayoutDashboard, Activity, BookOpen } from 'lucide-react'
 
 const isProtectedResidentRoute = (pathname: string) => (
   pathname.startsWith('/dashboard') ||
@@ -178,6 +178,7 @@ export default function Layout() {
                   </summary>
                   <div className="absolute right-0 mt-3 w-52 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 p-2 z-50">
                     <button onClick={() => { closeAccount(); navigate('/dashboard') }} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50 text-sm font-medium">Dashboard</button>
+                    <button onClick={() => { closeAccount(); navigate('/how-to-use') }} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50 text-sm font-medium">How to use</button>
                     <button onClick={() => { closeAccount(); navigate('/profile') }} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50 text-sm font-medium">Profile</button>
                     <hr className="my-2 border-gray-200" />
                     <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Activity</div>
@@ -351,6 +352,13 @@ export default function Layout() {
                 >
                   <User className="w-5 h-5" />
                   <span>Profile</span>
+                </button>
+                <button
+                  onClick={() => { setMobileOpen(false); navigate('/how-to-use'); }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-semibold"
+                >
+                  <BookOpen className="w-5 h-5" />
+                  <span>How to use</span>
                 </button>
 
                 <div className="pt-3 pb-2 border-t border-gray-200">

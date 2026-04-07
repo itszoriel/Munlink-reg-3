@@ -1,6 +1,6 @@
 import bcrypt
 
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, decode_token
 
 from apps.api import db
 from apps.api.app import create_app
@@ -19,6 +19,29 @@ class AuthHardeningConfig(Config):
 
 def _pw_hash(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+
+def _create_superadmin_and_2fa_code():
+    superadmin = User(
+        username='verify_super',
+        email='verify_super@example.com',
+        password_hash=_pw_hash('StrongPass123!'),
+        first_name='Verify',
+        last_name='Super',
+        role='superadmin',
+        email_verified=True,
+        admin_verified=True,
+        is_active=True,
+    )
+    db.session.add(superadmin)
+    db.session.commit()
+
+    verification = EmailVerificationCode.create_for_user(
+        user_id=superadmin.id,
+        purpose='2fa_login',
+        expiry_minutes=10,
+    )
+    return verification.session_id, verification.code
 
 
 def test_admin_login_rejects_superadmin_account():
@@ -93,27 +116,7 @@ def test_superadmin_verify_2fa_response_excludes_refresh_token_body():
 
     with app.app_context():
         db.create_all()
-        superadmin = User(
-            username='verify_super',
-            email='verify_super@example.com',
-            password_hash=_pw_hash('StrongPass123!'),
-            first_name='Verify',
-            last_name='Super',
-            role='superadmin',
-            email_verified=True,
-            admin_verified=True,
-            is_active=True,
-        )
-        db.session.add(superadmin)
-        db.session.commit()
-
-        verification = EmailVerificationCode.create_for_user(
-            user_id=superadmin.id,
-            purpose='2fa_login',
-            expiry_minutes=10,
-        )
-        session_id = verification.session_id
-        code = verification.code
+        session_id, code = _create_superadmin_and_2fa_code()
 
     resp = client.post('/api/auth/superadmin/verify-2fa', json={
         'session_id': session_id,
@@ -123,6 +126,90 @@ def test_superadmin_verify_2fa_response_excludes_refresh_token_body():
     body = resp.get_json() or {}
     assert 'access_token' in body
     assert 'refresh_token' not in body
+
+
+def test_superadmin_verify_2fa_access_token_includes_superadmin_role_claim():
+    app = create_app(AuthHardeningConfig)
+    client = app.test_client()
+
+    with app.app_context():
+        db.create_all()
+        session_id, code = _create_superadmin_and_2fa_code()
+
+        resp = client.post('/api/auth/superadmin/verify-2fa', json={
+            'session_id': session_id,
+            'code': code,
+        })
+
+        assert resp.status_code == 200
+        body = resp.get_json() or {}
+        claims = decode_token(body['access_token'])
+        assert claims.get('role') == 'superadmin'
+
+
+def test_superadmin_2fa_token_can_access_admin_blueprint():
+    app = create_app(AuthHardeningConfig)
+    client = app.test_client()
+
+    with app.app_context():
+        db.create_all()
+        session_id, code = _create_superadmin_and_2fa_code()
+
+    verify_resp = client.post('/api/auth/superadmin/verify-2fa', json={
+        'session_id': session_id,
+        'code': code,
+    })
+    token = (verify_resp.get_json() or {}).get('access_token')
+
+    resp = client.get(
+        '/api/admin/announcements',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    assert resp.status_code == 200
+
+
+def test_superadmin_2fa_token_still_accesses_superadmin_blueprint():
+    app = create_app(AuthHardeningConfig)
+    client = app.test_client()
+
+    with app.app_context():
+        db.create_all()
+        session_id, code = _create_superadmin_and_2fa_code()
+
+    verify_resp = client.post('/api/auth/superadmin/verify-2fa', json={
+        'session_id': session_id,
+        'code': code,
+    })
+    token = (verify_resp.get_json() or {}).get('access_token')
+
+    resp = client.get(
+        '/api/superadmin/admins',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    assert resp.status_code == 200
+
+
+def test_superadmin_2fa_token_still_passes_admin_register_auth_gate():
+    app = create_app(AuthHardeningConfig)
+    client = app.test_client()
+
+    with app.app_context():
+        db.create_all()
+        session_id, code = _create_superadmin_and_2fa_code()
+
+    verify_resp = client.post('/api/auth/superadmin/verify-2fa', json={
+        'session_id': session_id,
+        'code': code,
+    })
+    token = (verify_resp.get_json() or {}).get('access_token')
+
+    resp = client.post(
+        '/api/auth/admin/register',
+        json={},
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    assert resp.status_code == 400
+    assert (resp.get_json() or {}).get('error') == 'Request body is required'
 
 
 def test_public_upload_route_blocks_sensitive_categories():

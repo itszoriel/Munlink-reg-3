@@ -31,6 +31,7 @@ import MarketplaceItemPage from './pages/MarketplaceItemPage'
 import AnnouncementDetailPage from './pages/AnnouncementDetailPage'
 import TermsOfService from './pages/TermsOfService'
 import PrivacyPolicy from './pages/PrivacyPolicy'
+import ResidentHowToUsePage from './pages/ResidentHowToUsePage'
 
 function App() {
   const setAuth = useAppStore((s) => s.setAuth)
@@ -95,6 +96,7 @@ function App() {
           <Route path="verify-email" element={<VerifyEmailPage />} />
           <Route path="upload-id" element={<ProtectedRoute allow={["resident"]}><UploadIdPage /></ProtectedRoute>} />
           <Route path="dashboard" element={<ProtectedRoute allow={["resident"]}><DashboardPage /></ProtectedRoute>} />
+          <Route path="how-to-use" element={<ProtectedRoute allow={["resident"]}><ResidentHowToUsePage /></ProtectedRoute>} />
           <Route path="profile" element={<ProtectedRoute allow={["resident"]}><ProfilePage /></ProtectedRoute>} />
           <Route path="my-marketplace" element={<ProtectedRoute allow={["resident"]}><MyMarketplacePage /></ProtectedRoute>} />
           <Route path="marketplace" element={<MarketplacePage />} />
