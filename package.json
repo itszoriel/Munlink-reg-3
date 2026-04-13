@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "pretest": "node -e \"const fs=require('fs');['apps/web/dist','apps/admin/dist'].forEach((p)=>fs.rmSync(p,{recursive:true,force:true}));\"",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "clean": "turbo run clean",

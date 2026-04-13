@@ -245,6 +245,7 @@ The project is configured for Railway deployment with three services:
 - **Problem triage**: Review and categorize problem reports, update status and resolution
 - **Benefit program management**: Municipal admins manage municipality-wide programs in their assigned municipality; barangay admins manage barangay-scoped programs in their assigned barangay, with image uploads and scoped approvals
 - **Announcements**: Create scoped announcements with multiple image uploads, pinning, publish/expire scheduling, and municipality-to-municipality sharing for municipality-scoped posts.
+- **Municipality-aware dashboard**: Municipal admins now land on a dashboard hero that uses the assigned municipality's landmark artwork and seal so the portal feels locally branded instead of generic.
 - **Reports and analytics**: View transaction history, resident statistics, and activity reports
 
 ### Provincial Admin

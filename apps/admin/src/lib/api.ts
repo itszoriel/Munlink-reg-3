@@ -59,8 +59,34 @@ const hasHadSession = (): boolean => {
   }
 }
 
+function base64UrlDecode(input: string): string {
+  const pad = (str: string) => str + '='.repeat((4 - (str.length % 4)) % 4)
+  const b64 = pad(input).replace(/-/g, '+').replace(/_/g, '/')
+
+  try {
+    return decodeURIComponent(
+      atob(b64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+  } catch {
+    return ''
+  }
+}
+
+function decodeJwt(token: string): any | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    return JSON.parse(base64UrlDecode(parts[1]) || 'null')
+  } catch {
+    return null
+  }
+}
+
 // Cookie-based refresh using httpOnly cookie (like web app)
-async function doRefresh(): Promise<string | null> {
+async function doRefreshInternal(): Promise<string | null> {
   try {
     const resp = await axios.post(
       `${API_BASE_URL}/api/auth/refresh`,
@@ -82,6 +108,13 @@ async function doRefresh(): Promise<string | null> {
   return null
 }
 
+function doRefresh(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = doRefreshInternal().finally(() => { refreshPromise = null })
+  }
+  return refreshPromise
+}
+
 // Bootstrap auth from sessionStorage + cookie refresh
 export async function bootstrapAuth(): Promise<boolean> {
   isBootstrapping = true
@@ -92,8 +125,16 @@ export async function bootstrapAuth(): Promise<boolean> {
       const saved = sessionStorage.getItem('admin:access_token')
       if (saved) {
         setAccessToken(saved)
-        // Attempt background refresh to extend session
-        void doRefresh()
+        const payload = decodeJwt(saved)
+        const expSec = payload?.exp
+        const nowSec = Math.floor(Date.now() / 1000)
+        const isExpiredOrNearExpiry = !expSec || (expSec - nowSec) < 60
+
+        if (isExpiredOrNearExpiry) {
+          const refreshed = await doRefresh()
+          return !!refreshed
+        }
+
         return true
       }
     } catch { }
@@ -148,8 +189,7 @@ apiClient.interceptors.response.use(
 
       try {
         // Use cookie-based refresh (not localStorage token!)
-        refreshPromise = refreshPromise || doRefresh()
-        const newToken = await refreshPromise.finally(() => { refreshPromise = null })
+        const newToken = await doRefresh()
         if (newToken) {
           originalRequest.headers = originalRequest.headers || {}
           originalRequest.headers['Authorization'] = `Bearer ${newToken}`
