@@ -106,10 +106,9 @@ export default function DocumentsPage() {
       const shouldSyncMunicipality = !selectedMunicipality || Number(selectedMunicipality?.id) !== Number((user as any)?.municipality_id)
       if (!shouldSyncMunicipality) return
       // Set municipality from user's registered data
-      const { setMunicipality, setProvince } = useAppStore.getState()
+      const { setMunicipality } = useAppStore.getState()
       const userMunId = (user as any).municipality_id
       const userMunName = (user as any).municipality_name
-      const userProvName = (user as any).province_name
       
       // Create municipality object from user data
       setMunicipality({
@@ -117,15 +116,6 @@ export default function DocumentsPage() {
         name: userMunName,
         slug: (user as any).municipality_slug || userMunName.toLowerCase().replace(/\s+/g, '-'),
       } as any)
-      
-      // Also set province if available
-      if (userProvName && (!selectedProvince || Number((user as any)?.province_id || 0) !== Number(selectedProvince?.id))) {
-        setProvince({
-          id: (user as any).province_id || 0,
-          name: userProvName,
-          slug: (user as any).province_slug || userProvName.toLowerCase().replace(/\s+/g, '-'),
-        } as any)
-      }
     }
   }, [isAuthenticated, user, selectedMunicipality, selectedProvince])
 

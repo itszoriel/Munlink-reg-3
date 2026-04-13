@@ -205,10 +205,10 @@ export default function DashboardPage() {
                   <div>
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
                       <Sparkles className="h-3.5 w-3.5" />
-                      Municipality spotlight
+                      Municipality fact
                     </div>
-                    <h2 className="mt-4 text-2xl font-bold">{municipalityName}</h2>
-                    <p className="mt-3 text-sm leading-6 text-white/85">{municipalityVisual.spotlight}</p>
+                    <h2 className="mt-4 text-2xl font-bold text-white">{municipalityName}</h2>
+                    <p className="mt-3 text-sm leading-6 text-white/92">{municipalityVisual.spotlight}</p>
                   </div>
                   <img
                     src={municipalitySeal.src}
@@ -217,8 +217,16 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className="mt-5 rounded-2xl bg-slate-950/20 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/65">Good to know</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/65">Quick data</div>
                   <p className="mt-2 text-sm leading-6 text-white/90">{municipalityVisual.fact}</p>
+                  <a
+                    href={municipalityVisual.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex text-xs font-medium text-sky-100 underline decoration-white/40 underline-offset-4 transition hover:text-white"
+                  >
+                    {municipalityVisual.sourceLabel}
+                  </a>
                 </div>
               </div>
             </div>
@@ -283,13 +291,21 @@ export default function DashboardPage() {
             <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${municipalityVisual.theme.iconClass}`}>
               <MapPin className="h-6 w-6" />
             </div>
-            <h2 className="mt-4 text-2xl font-bold text-slate-900">About your municipality</h2>
+            <h2 className="mt-4 text-2xl font-bold text-slate-900">Quick fact about your municipality</h2>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              This dashboard now uses the same municipality image source shown on the About page so your home screen immediately feels tied to your local area.
+              This panel highlights a verified local fact about {municipalityName} alongside the municipality landmark shown on your dashboard.
             </p>
-            <div className="mt-5 rounded-2xl border border-white/60 bg-white/80 p-4">
-              <div className="text-sm font-semibold text-slate-900">{municipalityName}</div>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{municipalityVisual.fact}</p>
+            <div className="mt-5 rounded-2xl border border-slate-800/70 bg-slate-950 p-4 shadow-lg">
+              <div className="text-sm font-semibold text-white">{municipalityName}</div>
+              <p className="mt-2 text-sm leading-6 text-white/75">{municipalityVisual.fact}</p>
+              <a
+                href={municipalityVisual.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex text-xs font-medium text-sky-200 underline decoration-white/30 underline-offset-4 transition hover:text-white"
+              >
+                {municipalityVisual.sourceLabel}
+              </a>
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
