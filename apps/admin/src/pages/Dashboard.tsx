@@ -304,19 +304,19 @@ export default function Dashboard() {
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/30 via-transparent to-slate-950/30" />
           </div>
 
-          <div className="relative z-10 p-6 md:p-8 lg:p-9">
+          <div className="relative z-10 p-6 text-white md:p-8 lg:p-9">
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)] lg:items-end">
-              <div className="max-w-3xl rounded-[24px] border border-white/10 bg-slate-950/72 p-5 shadow-[0_24px_70px_rgba(2,6,23,0.5)] md:p-6">
+              <div className="max-w-3xl rounded-[24px] border border-white/10 bg-slate-950/72 p-5 text-white shadow-[0_24px_70px_rgba(2,6,23,0.5)] md:p-6">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur ${municipalityVisual.theme.badgeClass}`}>
+                  <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold text-white backdrop-blur ${municipalityVisual.theme.badgeClass}`}>
                     <MapPin className="h-4 w-4" />
                     {municipalityName}
                   </span>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/72 px-4 py-2 text-sm font-medium text-white/92">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/72 px-4 py-2 text-sm font-medium text-white">
                     <Building2 className="h-4 w-4" />
                     Municipal admin workspace
                   </span>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/72 px-4 py-2 text-sm font-medium text-white/88">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/72 px-4 py-2 text-sm font-medium text-white">
                     <CalendarDays className="h-4 w-4" />
                     {dateStr}
                   </span>
@@ -336,7 +336,7 @@ export default function Dashboard() {
                     <h1 className="text-3xl font-bold tracking-tight text-white [text-shadow:0_6px_20px_rgba(2,6,23,0.5)] md:text-4xl lg:text-5xl">
                       Welcome back, {adminName}
                     </h1>
-                    <p className="mt-3 max-w-xl text-base leading-7 text-white/95 md:text-lg">
+                    <p className="mt-3 max-w-xl text-base leading-7 text-white md:text-lg">
                       You are managing the <span className="font-semibold text-white">{municipalityName}</span> portal. Review residents, announcements, community concerns, and programs from one municipality-aware workspace.
                     </p>
                   </div>
@@ -365,12 +365,12 @@ export default function Dashboard() {
               <div className="rounded-[24px] border border-white/10 bg-slate-950/80 p-4 text-white shadow-[0_24px_70px_rgba(2,6,23,0.42)]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/85">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
                       <Sparkles className="h-3.5 w-3.5" />
                       Municipality fact
                     </div>
                     <h2 className="mt-3 text-2xl font-bold text-white">{municipalityName}</h2>
-                    <p className="mt-2 text-sm leading-6 text-white/92">{municipalityVisual.spotlight}</p>
+                    <p className="mt-2 text-sm leading-6 text-white">{municipalityVisual.spotlight}</p>
                   </div>
                   <img
                     src={municipalitySeal.src}
@@ -380,8 +380,8 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/82 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Quick data</div>
-                  <p className="mt-2 text-sm leading-6 text-white/95">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white">Quick data</div>
+                  <p className="mt-2 text-sm leading-6 text-white">
                     {municipalityVisual.operationsNote}
                   </p>
                   <a
