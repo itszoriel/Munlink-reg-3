@@ -474,11 +474,13 @@ export default function DocumentsPage() {
                     </>
                   )}
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-1">Purpose</label>
+                    <label className="block text-sm font-medium mb-1">Purpose <span className="text-red-500">*</span></label>
                     <select
                       className="input-field"
                       value={purposeType}
                       onChange={(e) => setPurposeType(e.target.value)}
+                      required
+                      aria-required="true"
                     >
                       <option value="">Select purpose</option>
                       {PURPOSE_OPTIONS.map((opt) => (
@@ -488,12 +490,14 @@ export default function DocumentsPage() {
                   </div>
                   {purposeType === 'other' && (
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium mb-1">Other Purpose</label>
+                      <label className="block text-sm font-medium mb-1">Other Purpose <span className="text-red-500">*</span></label>
                       <input
                         className="input-field"
                         value={purposeOther}
                         onChange={(e) => setPurposeOther(e.target.value)}
                         placeholder="Specify your purpose"
+                        required
+                        aria-required="true"
                       />
                     </div>
                   )}
@@ -513,7 +517,7 @@ export default function DocumentsPage() {
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium mb-1">Civil Status</label>
+                    <label className="block text-sm font-medium mb-1">Civil Status <span className="text-red-500">*</span></label>
                     <select
                       className="input-field"
                       value={civilStatus}
@@ -521,6 +525,8 @@ export default function DocumentsPage() {
                         setCivilStatus(e.target.value)
                         if (e.target.value !== 'other') setCivilStatusOther('')
                       }}
+                      required
+                      aria-required="true"
                     >
                       <option value="">Select civil status</option>
                       {CIVIL_STATUS_OPTIONS.map((opt) => (
@@ -530,13 +536,15 @@ export default function DocumentsPage() {
                   </div>
                   {civilStatus === 'other' && (
                     <div>
-                      <label className="block text-sm font-medium mb-1">Specify Civil Status</label>
+                      <label className="block text-sm font-medium mb-1">Specify Civil Status <span className="text-red-500">*</span></label>
                       <input
                         className="input-field"
                         value={civilStatusOther}
                         onChange={(e) => setCivilStatusOther(e.target.value)}
                         maxLength={30}
                         placeholder="Specify civil status"
+                        required
+                        aria-required="true"
                       />
                     </div>
                   )}
