@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAdminStore } from '../lib/store'
+import { resolvePublicSiteUrl } from '../lib/publicSiteUrl'
 
 export default function AdminHeader() {
   const { user, logout } = useAdminStore()
@@ -9,20 +10,7 @@ export default function AdminHeader() {
 
   const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
 
-  // Resolve public site URL similar to TopHeader logic
-  const PUBLIC_SITE_URL = (import.meta as any).env?.VITE_PUBLIC_SITE_URL || (() => {
-    try {
-      const { protocol, hostname, port } = window.location
-      const n = Number(port)
-      if (!Number.isNaN(n) && n > 0) {
-        const guess = n >= 3001 ? String(n - 1) : '3000'
-        return `${protocol}//${hostname}:${guess}`
-      }
-      return `${protocol}//${hostname}`
-    } catch {
-      return '/'
-    }
-  })()
+  const PUBLIC_SITE_URL = resolvePublicSiteUrl()
 
   const openPublicSite = () => {
     const url = PUBLIC_SITE_URL

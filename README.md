@@ -204,6 +204,7 @@ The project is configured for Railway deployment with three services:
 - `VITE_API_URL` (API service Railway URL)
 - `VITE_APP_NAME=Serbisyo Zambaleano Admin`
 - `VITE_PUBLIC_SITE_URL` (Web service Railway URL)
+  Keep this set explicitly in Railway; the admin container now writes this into `/env-config.js` at startup, so a redeploy is still required after changing it.
 
 ### Docker
 - Local development: `docker-compose up -d` for API + frontends
@@ -229,7 +230,7 @@ The project is configured for Railway deployment with three services:
 ## Features
 
 ### Residents
-- **Document requests**: Request official documents with QR code verification and claim ticket generation; generated digital documents are automatically emailed to the resident as PDF attachments; all pickup requests (free and paid) receive a verification code via email for identity verification at the office, with office payment status tracking
+- **Document requests**: Request official documents with QR code verification and claim ticket generation; the resident request form requires purpose and civil status before continuing; generated digital documents are automatically emailed to the resident as PDF attachments; all pickup requests (free and paid) receive a verification code via email for identity verification at the office, with office payment status tracking
 - **Marketplace**: Buy, sell, donate, or lend items with age-gated transactions; resident listings publish immediately (no admin pre-approval); transaction cards show item details, other party name, and a visual step-by-step progress indicator through the full lifecycle (pending, pickup scheduling, handover, receipt, completion)
 - **Problem reporting**: Report municipal issues with status tracking and admin triage
 - **Benefit programs**: Apply for municipal benefit programs with eligibility checking
