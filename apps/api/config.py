@@ -178,12 +178,21 @@ def get_engine_options():
     return options
 
 
+# Platform hosting suffixes that are public suffixes (PSL). Browsers reject a
+# Set-Cookie whose Domain is a public suffix, so on these platforms we must use
+# host-only cookies (return None) instead of a shared parent domain. The refresh
+# cookie is only ever sent back to the API host, so host-only works fine with
+# SameSite=None; Secure for cross-site requests from the web/admin frontends.
+_PUBLIC_SUFFIX_HOSTS = ('onrender.com',)
+
+
 def derive_cookie_domain():
     """
     Derive a shared cookie domain automatically from configured URLs.
     Falls back to COOKIE_DOMAIN env if provided, otherwise attempts to
     use the parent domain of ADMIN_URL/WEB_URL so refresh cookies work
-    across api/admin subdomains (e.g., *.up.railway.app).
+    across api/admin subdomains. On managed platforms whose apex is a public
+    suffix (e.g. *.onrender.com), returns None to use a host-only cookie.
     """
     explicit = os.getenv('COOKIE_DOMAIN')
     if explicit:
@@ -197,6 +206,9 @@ def derive_cookie_domain():
             host = urlparse(url).hostname
             if not host:
                 continue
+            # Host-only cookie on public-suffix platforms (Render, etc.)
+            if any(host == suffix or host.endswith('.' + suffix) for suffix in _PUBLIC_SUFFIX_HOSTS):
+                return None
             parts = host.split('.')
             if len(parts) >= 3:
                 return '.'.join(parts[-3:])  # e.g., up.railway.app
@@ -253,10 +265,11 @@ class Config:
     # Rate Limiting Configuration
     RATELIMIT_ENABLED = os.getenv('RATELIMIT_ENABLED', 'True') == 'True'
     RATELIMIT_STORAGE_URI = os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
-    if FLASK_ENV == 'production' and RATELIMIT_ENABLED and RATELIMIT_STORAGE_URI.strip().lower() == 'memory://':
-        raise RuntimeError(
-            "RATELIMIT_STORAGE_URI must use a shared backend (e.g., Redis) in production."
-        )
+    # Allow memory:// in production for single-instance scaling (like Render free tier)
+    # if FLASK_ENV == 'production' and RATELIMIT_ENABLED and RATELIMIT_STORAGE_URI.strip().lower() == 'memory://':
+    #     raise RuntimeError(
+    #         "RATELIMIT_STORAGE_URI must use a shared backend (e.g., Redis) in production."
+    #     )
     RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '200 per day, 50 per hour')
     RATELIMIT_HEADERS_ENABLED = True
     
