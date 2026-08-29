@@ -22,7 +22,7 @@ services:
   - type: web
     name: munlink-api
     runtime: docker
-    repo: https://github.com/itszoriel/munlink   # update if your remote differs
+    repo: https://github.com/itszoriel/Munlink-reg-3   # update if your remote differs
     region: singapore            # closest Render region to the Philippines
     plan: starter                # always-on: keeps the notification worker alive & avoids cold starts
     dockerfilePath: apps/api/Dockerfile
@@ -95,7 +95,7 @@ services:
   - type: web
     name: munlink-web
     runtime: docker
-    repo: https://github.com/itszoriel/munlink
+    repo: https://github.com/itszoriel/Munlink-reg-3
     region: singapore
     plan: starter
     dockerfilePath: ./Dockerfile.web
@@ -112,7 +112,7 @@ services:
   - type: web
     name: munlink-admin
     runtime: docker
-    repo: https://github.com/itszoriel/munlink
+    repo: https://github.com/itszoriel/Munlink-reg-3
     region: singapore
     plan: starter
     dockerfilePath: ./Dockerfile.admin
