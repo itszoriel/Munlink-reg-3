@@ -25,6 +25,10 @@ WORKDIR /app/packages/ui
 RUN npm run build
 
 # Build web app
+# VITE_API_URL is provided by Render as a build arg (from the service env var) and
+# baked into the static bundle. Set it to the API origin, e.g. https://munlink-api.onrender.com
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 WORKDIR /app/apps/web
 RUN npm run build
 

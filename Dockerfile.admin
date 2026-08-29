@@ -26,6 +26,10 @@ WORKDIR /app/packages/ui
 RUN npm run build
 
 # Build admin app
+# VITE_API_URL is provided by Render as a build arg (from the service env var) and
+# baked into the static bundle. Set it to the API origin, e.g. https://munlink-api.onrender.com
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 WORKDIR /app/apps/admin
 RUN npm run build
 
@@ -37,6 +41,7 @@ COPY --from=builder /app/apps/admin/dist /usr/share/nginx/html
 
 # Create startup script
 RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'API_PROXY_TARGET=${API_PROXY_TARGET:-munlink-api.onrender.com}' >> /start.sh && \
     echo 'cat > /usr/share/nginx/html/env-config.js << EOF' >> /start.sh && \
     echo 'window.__MUNLINK_CONFIG__ = {' >> /start.sh && \
     echo '  VITE_PUBLIC_SITE_URL: "${VITE_PUBLIC_SITE_URL:-}"' >> /start.sh && \
@@ -52,9 +57,9 @@ RUN echo '#!/bin/sh' > /start.sh && \
     echo '        try_files \$uri \$uri/ /index.html;' >> /start.sh && \
     echo '    }' >> /start.sh && \
     echo '    location /api/ {' >> /start.sh && \
-    echo '        proxy_pass https://api-munlink.up.railway.app;' >> /start.sh && \
+    echo "        proxy_pass https://\${API_PROXY_TARGET};" >> /start.sh && \
     echo '        proxy_ssl_server_name on;' >> /start.sh && \
-    echo '        proxy_set_header Host api-munlink.up.railway.app;' >> /start.sh && \
+    echo "        proxy_set_header Host \${API_PROXY_TARGET};" >> /start.sh && \
     echo '        proxy_set_header X-Real-IP \$remote_addr;' >> /start.sh && \
     echo '    }' >> /start.sh && \
     echo '    gzip on;' >> /start.sh && \
