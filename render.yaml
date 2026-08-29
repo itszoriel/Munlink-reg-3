@@ -24,7 +24,7 @@ services:
     runtime: docker
     repo: https://github.com/itszoriel/Munlink-reg-3   # update if your remote differs
     region: singapore            # closest Render region to the Philippines
-    plan: starter                # always-on: keeps the notification worker alive & avoids cold starts
+    plan: free                # always-on: keeps the notification worker alive & avoids cold starts
     dockerfilePath: apps/api/Dockerfile
     dockerContext: apps/api
     healthCheckPath: /health
@@ -97,7 +97,7 @@ services:
     runtime: docker
     repo: https://github.com/itszoriel/Munlink-reg-3
     region: singapore
-    plan: starter
+    plan: free
     dockerfilePath: ./Dockerfile.web
     dockerContext: .
     autoDeploy: true
@@ -114,7 +114,7 @@ services:
     runtime: docker
     repo: https://github.com/itszoriel/Munlink-reg-3
     region: singapore
-    plan: starter
+    plan: free
     dockerfilePath: ./Dockerfile.admin
     dockerContext: .
     autoDeploy: true
