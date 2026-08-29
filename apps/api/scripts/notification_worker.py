@@ -20,9 +20,8 @@ except ImportError:
     # This prevents 'import __init__' in app.py from picking up scripts/__init__.py
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
-    from app import create_app
-    from apps.api import db
-    from apps.api.utils.notification_delivery import process_batch
+    from app import create_app, db
+    from utils.notification_delivery import process_batch
 
 
 MAX_ATTEMPTS_DEFAULT = 5
