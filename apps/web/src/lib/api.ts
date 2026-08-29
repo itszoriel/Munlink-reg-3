@@ -1,9 +1,10 @@
 import axios from 'axios'
 
-// Default to Vite proxy in dev; use explicit env or production URL in prod
+// Default to Vite proxy in dev; use explicit env (baked at build time) in prod.
+// VITE_API_URL should be the API origin without a trailing /api (e.g. https://munlink-api.onrender.com).
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? '/api' : 'https://api-munlink.up.railway.app')
+  (import.meta.env.DEV ? '/api' : '')
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
