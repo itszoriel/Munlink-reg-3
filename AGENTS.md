@@ -15,8 +15,8 @@ This is the handoff guide for AI agents working in this repo. It reflects the cu
 ## Read First
 - `CLAUDE.md` (repo operating manual and guardrails).
 - `README.md` (setup and feature overview).
-- `PERMISSIONS_MATRIX.md` (role/scope matrix).
-- `design-system.md` and `docs/frontend-ui-guide/` (frontend patterns).
+- `docs/PERMISSIONS.md` (role/scope matrix).
+- `docs/ARCHITECTURE.md` and `docs/DESIGN.md` (architecture and frontend patterns).
 
 ## Non-Negotiable Constraints
 - **Zambales-only scope is mandatory.**
@@ -170,13 +170,17 @@ Backend setup (from repo docs):
 - Root runner: `npm run test`
 
 ## Deployment
-- Railway is primary:
+- Render is primary:
+  - `render.yaml`
+  - `apps/api/Dockerfile`
+  - `Dockerfile.web`
+  - `Dockerfile.admin`
+- Railway remains supported:
   - `railway.toml`
   - `apps/api/railway.toml`
   - `apps/web/railway.toml`
   - `apps/admin/railway.toml`
 - Docker is supported (`docker-compose.yml`, `Dockerfile.*`).
-- Render config is legacy (`render.yaml.bak`).
 
 ## Agent Working Rules (Condensed)
 - Follow existing patterns and file placement.
@@ -186,10 +190,10 @@ Backend setup (from repo docs):
 - Preserve Zambales-only constraints unless explicitly asked to expand scope.
 
 ## Useful Deep-Dive Docs
-- `PROJECT_ASSESSMENT.md`
-- `PROJECT_ERROR_CHECKLIST.md`
-- `PRODUCTION_READINESS_REPORT.md`
-- `SMS_NOTIFICATION_GUIDE.md`
-- `SMS_FINAL_VERIFICATION.md`
-- `DUAL_PAYMENT_VERIFICATION_REPORT.md`
-- `RAILWAY_DEPLOYMENT.md`
+- `docs/ARCHITECTURE.md`
+- `docs/PERMISSIONS.md`
+- `docs/DEPLOYMENT.md`
+- `docs/OPERATIONS.md`
+- `docs/TESTING.md`
+- `docs/SECURITY.md`
+- `docs/DESIGN.md`

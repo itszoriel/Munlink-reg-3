@@ -22,4 +22,4 @@
 # - Web: VITE_API_URL
 # - Admin: VITE_API_URL
 #
-# See RAILWAY_DEPLOYMENT.md for full setup instructions.
+# See docs/DEPLOYMENT.md for full setup instructions.

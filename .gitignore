@@ -29,6 +29,7 @@ env_*.txt
 # IDE
 .vscode/
 .idea/
+.claude/settings.local.json
 *.swp
 *.swo
 *~
@@ -55,9 +56,11 @@ uploads/**/*
 # Testing
 coverage/
 .pytest_cache/
+.pytest_tmp/
 .coverage
 tmp_pytest_run/
 tmp-tests/
+tmp-ui-smoke/
 
 # Turborepo
 .turbo/
@@ -70,9 +73,14 @@ pnpm-lock.yaml
 *.xlsx
 *.xls
 
-# Reference/temporary files
-# NOTE: public/reference/ is NOT ignored - it contains hero background images needed for production
-docs/
+# Local API runtime artifacts
+apps/api/tmp/
+instance/
+
+# Downloaded third-party development tools
+public/payment/stripe-cli-*/
+public/payment/stripe-cli-*.zip
+public/payment/stripe-windows-checksums.txt
 
 
 # Terminal Paste Image folder
