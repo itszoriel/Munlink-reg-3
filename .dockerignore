@@ -7,6 +7,14 @@ uploads
 tmp-tests
 venv
 apps/api/venv
+# Built frontend bundles (rebuilt inside the image) - never ship local copies
+dist
+apps/web/dist
+apps/admin/dist
+# Stripe CLI is a local dev tool - not needed in the built site/image
+public/payment/stripe-cli-1.35.0
+apps/web/dist/payment
+apps/admin/dist/payment
 .pytest_cache
 __pycache__
 *.pyc
