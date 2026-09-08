@@ -104,6 +104,8 @@ The repository uses two long-lived branches:
 
 Create feature branches from `testing` and merge them back into `testing` for validation. After lint, tests, and deployment checks pass, promote the tested commits to `main` through a reviewed pull request. Avoid committing unfinished experiments or unverified changes directly to `main`.
 
+Production releases are tagged from `main` using semantic versions such as `v1.0.0`. Pushing a version tag creates the corresponding GitHub release and retains only the 10 newest GitHub deployment records.
+
 ## Configuration
 
 Start with [env.example.txt](env.example.txt). Common integration groups are:

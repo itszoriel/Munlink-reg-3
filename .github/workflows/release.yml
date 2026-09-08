@@ -1,0 +1,67 @@
+name: Publish release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  deployments: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish release and prune deployments
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Create GitHub release
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists."
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "MunLink Zambales $GITHUB_REF_NAME" \
+              --generate-notes \
+              --verify-tag
+          fi
+
+      - name: Retain the 10 newest deployments
+        shell: bash
+        run: |
+          mapfile -t deployment_ids < <(
+            gh api --paginate \
+              "/repos/$GITHUB_REPOSITORY/deployments?per_page=100" \
+              --jq '.[].id'
+          )
+
+          total=${#deployment_ids[@]}
+          echo "Found $total deployment records."
+
+          if (( total <= 10 )); then
+            echo "Nothing to prune."
+            exit 0
+          fi
+
+          for (( index=10; index<total; index++ )); do
+            deployment_id=${deployment_ids[$index]}
+
+            gh api --method POST \
+              "/repos/$GITHUB_REPOSITORY/deployments/$deployment_id/statuses" \
+              -f state=inactive \
+              -f description='Pruned by the release retention workflow' \
+              >/dev/null
+
+            gh api --method DELETE \
+              "/repos/$GITHUB_REPOSITORY/deployments/$deployment_id" \
+              >/dev/null
+          done
+
+          echo "Removed $((total - 10)) old deployment records; retained 10."
