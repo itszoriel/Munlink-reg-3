@@ -4,6 +4,8 @@
 
 Render is the primary checked-in deployment configuration. The root `render.yaml` creates:
 
+Current service origins are `https://munlink-api-5s9w.onrender.com`, `https://munlink-web-9s3r.onrender.com`, and `https://munlink-admin-pk8j.onrender.com`. The frontend containers expose port `10000`, bind nginx to `0.0.0.0:$PORT`, and use `/` as their Render health check.
+
 | Service | Runtime | Build source | Health |
 | --- | --- | --- | --- |
 | `munlink-api` | Docker | `apps/api/Dockerfile` with `apps/api` context | `/health` |
