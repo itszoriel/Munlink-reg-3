@@ -93,6 +93,17 @@ flask db upgrade
 pytest
 ```
 
+## Branch workflow
+
+The repository uses two long-lived branches:
+
+| Branch | Purpose |
+| --- | --- |
+| `main` | Deployment-ready code. Only merge changes that have passed review and testing. |
+| `testing` | Integration branch for developing and validating new features before promotion to `main`. |
+
+Create feature branches from `testing` and merge them back into `testing` for validation. After lint, tests, and deployment checks pass, promote the tested commits to `main` through a reviewed pull request. Avoid committing unfinished experiments or unverified changes directly to `main`.
+
 ## Configuration
 
 Start with [env.example.txt](env.example.txt). Common integration groups are:
