@@ -553,7 +553,7 @@ export default function Residents() {
                           const id = String(r.id)
                           try {
                             setActionLoading(id)
-                            const res = await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || 'https://api-munlink.up.railway.app'}/api/admin/users/${id}/suspend`, {
+                            const res = await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || (import.meta as any).env?.VITE_API_URL || ''}/api/admin/users/${id}/suspend`, {
                               method: 'POST',
                               headers: { 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }
                             })

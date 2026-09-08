@@ -56,7 +56,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
     return 'Dashboard'
   }
   
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://api-munlink.up.railway.app'
+  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || ''
   const PUBLIC_SITE_URL = resolvePublicSiteUrl()
   const resolveImageUrl = (path?: string) => {
     if (!path) return undefined

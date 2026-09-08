@@ -1,4 +1,7 @@
-const DEFAULT_PUBLIC_SITE_URL = 'https://munlink.up.railway.app'
+// Last-resort fallback. Prefer setting VITE_PUBLIC_SITE_URL (build-time) or the runtime
+// window.__MUNLINK_CONFIG__.VITE_PUBLIC_SITE_URL (injected by Dockerfile.admin start script).
+const DEFAULT_PUBLIC_SITE_URL =
+  (typeof window !== 'undefined' && window.location?.origin) || ''
 
 function normalizeAbsoluteUrl(raw?: string | null): string | null {
   const value = raw?.trim()

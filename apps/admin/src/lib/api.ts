@@ -12,12 +12,13 @@ export const setAuthFailureHandler = (handler: AuthFailureHandler | null) => {
 }
 
 // API Configuration
-// Production URL for Railway deployment
-const PRODUCTION_API_URL = 'https://api-munlink.up.railway.app'
+// VITE_API_URL is baked in at build time (see Dockerfile.admin ARG). It should be the
+// API origin without a trailing /api (e.g. https://munlink-api.onrender.com).
+// Falls back to same-origin '' so the admin nginx /api/ proxy handles requests if unset.
 const API_BASE_URL =
   (import.meta as any).env?.VITE_API_BASE_URL ||
   (import.meta as any).env?.VITE_API_URL ||
-  PRODUCTION_API_URL
+  ''
 
 // In-memory access token (sessionStorage for persistence across page loads)
 let accessToken: string | null = null
