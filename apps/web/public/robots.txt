@@ -26,7 +26,7 @@ Disallow: /api/
 Disallow: /admin/
 
 # Sitemap location
-Sitemap: https://munlink-web-production-327f.up.railway.app/sitemap.xml
+Sitemap: https://munlink-web.onrender.com/sitemap.xml
 
 # Crawl delay (be respectful of server resources)
 Crawl-delay: 1
