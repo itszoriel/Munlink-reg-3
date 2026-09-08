@@ -302,6 +302,9 @@ class Config:
 
     # SMS / Notifications
     SMS_PROVIDER = os.getenv('SMS_PROVIDER', 'disabled')  # philsms | console | disabled
+    # Keep SMS unavailable until PhilSMS credits are replenished. Set to false
+    # together with a configured provider when service is ready to resume.
+    SMS_MAINTENANCE_MODE = os.getenv('SMS_MAINTENANCE_MODE', 'true').strip().lower() in ('1', 'true', 'yes', 'on')
     PHILSMS_API_KEY = os.getenv('PHILSMS_API_KEY', '')
     PHILSMS_SENDER_ID = os.getenv('PHILSMS_SENDER_ID', '')
     PHILSMS_BASE_URL = os.getenv('PHILSMS_BASE_URL', 'https://dashboard.philsms.com/api/v3')

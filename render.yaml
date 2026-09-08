@@ -84,6 +84,8 @@ services:
       # --- Misc ---
       - key: SMS_PROVIDER
         value: disabled
+      - key: SMS_MAINTENANCE_MODE
+        value: "true"
       - key: RATELIMIT_STORAGE_URI
         value: memory://          # single instance only; use Redis if you scale replicas
       - key: ID_RETENTION_DAYS

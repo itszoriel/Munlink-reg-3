@@ -58,7 +58,9 @@ export default function ProfilePage() {
 
   const smsStatus = form.sms_provider_status || {}
   const smsUnavailableReason = smsStatus && smsStatus.available === false ? (smsStatus.reason || 'unavailable') : null
-  const smsReasonCopy = smsUnavailableReason === 'not_configured'
+  const smsReasonCopy = smsUnavailableReason === 'maintenance_no_credits'
+    ? 'SMS notifications are temporarily under maintenance because service credits are currently unavailable.'
+    : smsUnavailableReason === 'not_configured'
     ? 'SMS temporarily unavailable: Provider not configured.'
     : smsUnavailableReason === 'philsms_unavailable'
       ? 'SMS temporarily unavailable: Service unreachable.'

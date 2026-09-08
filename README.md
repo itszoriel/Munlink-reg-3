@@ -100,11 +100,13 @@ Start with [env.example.txt](env.example.txt). Common integration groups are:
 - Database and auth: `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET_KEY`, `ADMIN_SECRET_KEY`
 - URLs and CORS: `WEB_URL`, `ADMIN_URL`, `BASE_URL`, `QR_BASE_URL`, `CORS_ALLOWED_ORIGINS`
 - Email: `SENDGRID_API_KEY`, `FROM_EMAIL`, or `SMTP_*`
-- SMS: `SMS_PROVIDER`, `PHILSMS_API_KEY`, `PHILSMS_SENDER_ID`, `PHILSMS_BASE_URL`
+- SMS: `SMS_PROVIDER`, `SMS_MAINTENANCE_MODE`, `PHILSMS_API_KEY`, `PHILSMS_SENDER_ID`, `PHILSMS_BASE_URL`
 - Storage: `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_SERVICE_KEY`
 - Payments: `STRIPE_*`, `MANUAL_QR_*`
 
 Frontend `VITE_*` values are normally embedded at build time. The admin container also supports runtime `VITE_PUBLIC_SITE_URL` injection through `/env-config.js`.
+
+SMS delivery is currently under maintenance because PhilSMS credits are unavailable. Keep `SMS_MAINTENANCE_MODE=true`; after replenishing credits and configuring a production API key, set it to `false` and change `SMS_PROVIDER` to `philsms`.
 
 ## Deployment
 

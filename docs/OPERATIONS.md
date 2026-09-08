@@ -50,6 +50,10 @@ python scripts/notification_worker.py --once
 
 The API also performs inline delivery attempts. Running the worker is still recommended so transient failures are retried.
 
+### SMS maintenance
+
+SMS delivery is currently paused because the PhilSMS account has no available credits. Keep `SMS_MAINTENANCE_MODE=true` so the API skips SMS attempts and the resident profile reports maintenance. After replenishing credits, configure a production API key, set `SMS_PROVIDER=philsms`, and set `SMS_MAINTENANCE_MODE=false`.
+
 ## Verification-image retention
 
 Preview cleanup:

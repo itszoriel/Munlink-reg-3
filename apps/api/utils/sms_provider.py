@@ -74,6 +74,15 @@ def _sanitize_message(text: str) -> str:
 def get_philsms_capability(force: bool = False, ttl_seconds: int | None = None) -> Dict[str, Any]:
     """Check PhilSMS account status with short-lived caching."""
     provider = (current_app.config.get('SMS_PROVIDER') or 'disabled').lower()
+    if current_app.config.get('SMS_MAINTENANCE_MODE', False):
+        return {
+            'provider': provider,
+            'available': False,
+            'reason': 'maintenance_no_credits',
+            'credit_balance': 0,
+            'status': 'maintenance',
+        }
+
     if provider != 'philsms':
         return {
             'provider': provider,
@@ -129,6 +138,9 @@ def send_sms(numbers: List[str], message: str) -> Dict[str, Any]:
     sanitized_message = _sanitize_message(message)
     if not sanitized_message:
         return {'status': 'skipped', 'reason': 'empty_message'}
+
+    if current_app.config.get('SMS_MAINTENANCE_MODE', False):
+        return {'status': 'skipped', 'reason': 'maintenance_no_credits'}
 
     if provider == 'disabled':
         return {'status': 'skipped', 'reason': 'sms_disabled'}
