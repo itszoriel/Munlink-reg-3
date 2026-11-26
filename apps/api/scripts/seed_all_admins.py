@@ -15,7 +15,6 @@ Usage:
 
 Environment Variables:
     ADMIN_BASE_EMAIL      - Base Gmail for plus addressing (e.g., munlinkadmin@gmail.com)
-    ADMIN_PASSWORD_SUFFIX - Suffix appended to municipality slug for password (e.g., ***REMOVED***)
     DATABASE_URL          - Database connection string (defaults to local SQLite)
 """
 import sys
@@ -56,7 +55,6 @@ def load_env_file(env_file: str = None):
 def get_config():
     """Get configuration from environment variables."""
     base_email = os.getenv('ADMIN_BASE_EMAIL', '')
-    password_suffix = os.getenv('ADMIN_PASSWORD_SUFFIX', '***REMOVED***')
     
     if not base_email:
         print("\nERROR: ADMIN_BASE_EMAIL environment variable is required.")
@@ -75,7 +73,6 @@ def get_config():
     
     return {
         'base_email': base_email,
-        'password_suffix': password_suffix,
     }
 
 
@@ -86,9 +83,18 @@ def generate_plus_email(base_email: str, slug: str) -> str:
     return f"{username}+{slug}@{domain}"
 
 
-def generate_password(slug: str, suffix: str) -> str:
-    """Generate password from municipality slug and suffix."""
-    return f"{slug}{suffix}"
+def generate_password(length: int = 16) -> str:
+    """Generate a random password that meets the API password policy."""
+    import secrets
+    import string
+
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        password = ''.join(secrets.choice(alphabet) for _ in range(length))
+        if (any(c.isupper() for c in password)
+                and any(c.islower() for c in password)
+                and any(c.isdigit() for c in password)):
+            return password
 
 
 def seed_all_admins(dry_run: bool = False):
@@ -101,7 +107,6 @@ def seed_all_admins(dry_run: bool = False):
     
     config = get_config()
     base_email = config['base_email']
-    password_suffix = config['password_suffix']
     
     app = create_app()
     
@@ -126,7 +131,7 @@ def seed_all_admins(dry_run: bool = False):
         print(f"  - {province_count} provinces")
         print(f"  - {municipality_count} active municipalities")
         print(f"\nBase email: {base_email}")
-        print(f"Password pattern: <slug>{password_suffix}")
+        print("Passwords: randomly generated per admin (shown once below)")
         print()
         
         # Statistics
@@ -182,7 +187,7 @@ def seed_all_admins(dry_run: bool = False):
                 
                 # Generate credentials
                 email = generate_plus_email(base_email, municipality.slug)
-                password = generate_password(municipality.slug, password_suffix)
+                password = generate_password()
                 
                 # Check if email already exists
                 if User.query.filter_by(email=email.lower()).first():

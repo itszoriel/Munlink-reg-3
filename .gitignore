@@ -89,3 +89,6 @@ public/payment/stripe-windows-checksums.txt
 # Tool artifacts
 .playwright-cli/
 output/
+
+# Generated admin credential exports (never commit)
+admin_credentials.txt

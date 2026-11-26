@@ -23,8 +23,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # Database URLs
-DEV_URL = "postgresql://postgres.lapooogulvdbhbvvycbe:***REMOVED***@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
-PROD_URL = "postgresql://postgres.xzkhavrjfaxsqxyptbgm:***REMOVED***@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from db_environments import get_database_url  # noqa: E402  (credentials come from env vars)
+
+DEV_URL = get_database_url('dev')
+PROD_URL = get_database_url('prod')
 
 
 def get_superadmin_from_dev():
