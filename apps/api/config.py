@@ -243,7 +243,7 @@ class Config:
     # JWT - JWT_SECRET_KEY is REQUIRED in production
     JWT_SECRET_KEY = _require_env('JWT_SECRET_KEY', 'jwt-dev-secret-for-local-development-only')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(
-        seconds=int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 86400))
+        seconds=int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 3600))
     )
     JWT_ALGORITHM = 'HS256'
     # Enable JWT in headers and cookies; use cookies for refresh token
@@ -262,6 +262,11 @@ class Config:
     # Admin Security - ADMIN_SECRET_KEY is REQUIRED in production
     ADMIN_SECRET_KEY = _require_env('ADMIN_SECRET_KEY', 'admin-dev-secret-for-local-development-only')
     
+    # Number of reverse proxies in front of the API (Render = 1). When set, the
+    # client IP is taken from X-Forwarded-For so rate limits and audit logs see
+    # real users instead of the proxy. Leave 0 when the API is reached directly.
+    TRUST_PROXY_HOPS = int(os.getenv('TRUST_PROXY_HOPS', 0))
+
     # Rate Limiting Configuration
     RATELIMIT_ENABLED = os.getenv('RATELIMIT_ENABLED', 'True') == 'True'
     RATELIMIT_STORAGE_URI = os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
@@ -270,7 +275,8 @@ class Config:
     #     raise RuntimeError(
     #         "RATELIMIT_STORAGE_URI must use a shared backend (e.g., Redis) in production."
     #     )
-    RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '200 per day, 50 per hour')
+    # Matches the limits previously hard-coded in apps/api/__init__.py.
+    RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '2000 per day; 500 per hour')
     RATELIMIT_HEADERS_ENABLED = True
     
     # File Uploads

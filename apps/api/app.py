@@ -78,7 +78,16 @@ def create_app(config_class=Config):
     """Application factory pattern"""
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+
+    # Behind a reverse proxy (Render), trust exactly the configured number of hops
+    # so request.remote_addr is the real client. The rightmost X-Forwarded-For entry
+    # is set by the proxy itself, so clients cannot spoof it.
+    proxy_hops = int(app.config.get('TRUST_PROXY_HOPS') or 0)
+    if proxy_hops > 0:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxy_hops, x_proto=proxy_hops)
+
     # Log database URL for debugging (masked)
     db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
     if 'postgresql' in db_url:
@@ -209,6 +218,17 @@ def create_app(config_class=Config):
         from apps.api.models.token_blacklist import TokenBlacklist
         jti = jwt_payload['jti']
         return TokenBlacklist.is_token_revoked(jti)
+
+    # Only real session tokens may authenticate requests. Anything else signed with
+    # the JWT key (e.g. old email-verification JWTs) is rejected everywhere.
+    @jwt.token_verification_loader
+    def only_session_tokens(jwt_header, jwt_payload):
+        from apps.api.utils.auth import SESSION_TOKEN_TYPES
+        return jwt_payload.get('type') in SESSION_TOKEN_TYPES
+
+    @jwt.token_verification_failed_loader
+    def reject_non_session_token(jwt_header, jwt_payload):
+        return jsonify({'error': 'Invalid token', 'code': 'INVALID_TOKEN_TYPE'}), 401
     
     # Register blueprints
     from apps.api.routes import (

@@ -71,8 +71,75 @@ from apps.api.utils import (
         save_profile_picture,
         save_verification_document,
     )
+from apps.api.utils.auth import read_verification_token, verification_email_matches
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+# Session lifetimes. Superadmin access tokens are short because that role can do the most damage.
+DEFAULT_ACCESS_TOKEN_LIFETIME = timedelta(hours=1)
+ROLE_ACCESS_TOKEN_LIFETIMES = {'superadmin': timedelta(minutes=15)}
+REFRESH_TOKEN_LIFETIME = timedelta(days=30)
+
+_dummy_password_hash: bytes | None = None
+
+
+def _spend_password_check_time(password: str) -> None:
+    """Run a bcrypt check for unknown accounts so response timing doesn't reveal them."""
+    global _dummy_password_hash
+    if _dummy_password_hash is None:
+        _dummy_password_hash = bcrypt.hashpw(secrets.token_bytes(16), bcrypt.gensalt())
+    try:
+        bcrypt.checkpw((password or '').encode('utf-8'), _dummy_password_hash)
+    except ValueError:
+        pass
+
+
+def access_token_lifetime(role: str | None) -> timedelta:
+    return ROLE_ACCESS_TOKEN_LIFETIMES.get(role or '', DEFAULT_ACCESS_TOKEN_LIFETIME)
+
+
+def _create_session_access_token(user_id, role: str | None) -> str:
+    """Create an access token whose lifetime depends on the role."""
+    return create_access_token(
+        identity=str(user_id),
+        expires_delta=access_token_lifetime(role),
+        additional_claims={"role": role},
+    )
+
+
+def _issue_session_tokens(user: User) -> tuple[str, str]:
+    """Start a new login session: a tracked refresh-token family plus an access token.
+
+    The caller commits the session. Refresh tokens are recorded so /refresh can
+    rotate them and detect reuse; this is shared by resident, admin, and
+    superadmin logins.
+    """
+    refresh_token = None
+    try:
+        from apps.api.models.refresh_token import RefreshTokenFamily, RefreshToken
+
+        family = RefreshTokenFamily.create_family(
+            user_id=user.id,
+            user_agent=request.headers.get('User-Agent'),
+            ip_address=request.remote_addr,
+        )
+        db.session.flush()
+        refresh_token = create_refresh_token(
+            identity=str(user.id),
+            expires_delta=REFRESH_TOKEN_LIFETIME,
+            additional_claims={"role": user.role, "family_id": family.family_id},
+        )
+        RefreshToken.create_token(
+            jti=decode_token(refresh_token)['jti'],
+            family=family,
+            expires_at=utc_now() + REFRESH_TOKEN_LIFETIME,
+        )
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.error("Refresh token tracking failed for user %s: %s", user.id, exc)
+        raise
+
+    return _create_session_access_token(user.id, user.role), refresh_token
 
 
 # Rate limiting helper - applies limiter if available
@@ -297,7 +364,7 @@ def register():
         db.session.commit()
 
         # Generate email verification token
-        verification_token = generate_verification_token(user.id, 'email')
+        verification_token = generate_verification_token(user.id, 'email', email=user.email)
         # Send verification email
         email_sent = False
         email_error = None
@@ -360,12 +427,13 @@ def login():
         ).first()
         
         if not user:
+            _spend_password_check_time(password)
             return jsonify({'error': 'Invalid credentials'}), 401
-        
+
         # Check password (supports both bcrypt and Werkzeug formats)
         if not verify_password(password, user.password_hash):
             return jsonify({'error': 'Invalid credentials'}), 401
-        
+
         # Check if account is active
         if not user.is_active:
             return jsonify({'error': 'Account is deactivated'}), 403
@@ -373,94 +441,25 @@ def login():
         # Super admins must use the dedicated 2FA flow
         if user.role == 'superadmin':
             return jsonify({'error': 'Super admin login requires 2FA. Please use the super admin login flow.', 'code': 'SUPERADMIN_LOGIN_REQUIRED'}), 403
-        
-        # Update last login
+
         user.last_login = utc_now()
-        
-        # Create refresh token (token rotation is optional - gracefully degrade if tables don't exist)
-        refresh_token = None
-        try:
-            from apps.api.models.refresh_token import RefreshTokenFamily, RefreshToken
-            
-            # Create token family for this session (for token rotation tracking)
-            family = RefreshTokenFamily.create_family(
-                user_id=user.id,
-                user_agent=request.headers.get('User-Agent'),
-                ip_address=request.remote_addr,
-            )
-            db.session.flush()  # Get family ID
-            
-            # Create refresh token with family_id in claims
-            refresh_expires = timedelta(days=30)
-            refresh_token = create_refresh_token(
-                identity=str(user.id),
-                expires_delta=refresh_expires,
-                additional_claims={
-                    "role": user.role,
-                    "family_id": family.family_id,
-                }
-            )
-            
-            # Track the refresh token JTI
-            refresh_jti = decode_token(refresh_token)['jti']
-            RefreshToken.create_token(
-                jti=refresh_jti,
-                family=family,
-                expires_at=utc_now() + refresh_expires,
-            )
-        except ImportError:
-            # Token rotation models not available, fall back to simple refresh token
-            current_app.logger.debug("Token rotation not available (ImportError)")
-        except Exception as e:
-            # Token rotation failed (likely table doesn't exist), fall back to simple refresh token
-            db.session.rollback()
-            current_app.logger.warning(f"Token rotation setup failed (falling back to simple token): {e}")
-        
-        # If token rotation failed or wasn't available, create simple refresh token
-        if refresh_token is None:
-            refresh_token = create_refresh_token(
-                identity=str(user.id),
-                expires_delta=timedelta(days=30),
-                additional_claims={"role": user.role}
-            )
-        
+        access_token, refresh_token = _issue_session_tokens(user)
         db.session.commit()
-        
-        # Create access token (subject must be a string) with role claim
-        access_token = create_access_token(
-            identity=str(user.id),
-            expires_delta=timedelta(hours=1),
-            additional_claims={"role": user.role}
-        )
-        
+
         resp = jsonify({
             'message': 'Login successful',
             'access_token': access_token,
             # refresh token is set via HttpOnly cookie for security
             'user': user.to_dict(include_sensitive=True, include_municipality=True)
         })
-        # Set refresh token in HttpOnly cookie (domain/path controlled by config)
         set_refresh_cookies(resp, refresh_token)
         return resp, 200
-    
+
     except Exception as e:
         db.session.rollback()
-        # Log the error for debugging
-        import traceback
-        try:
-            current_app.logger.error(f"Login error: {str(e)}")
-            current_app.logger.error(traceback.format_exc())
-        except:
-            pass
-        
-        # Create error response with CORS headers
-        response = jsonify({'error': 'Login failed', 'details': str(e) if current_app.config.get('DEBUG') else None})
-        # Add CORS headers manually as backup (after_request should also add them)
-        origin = request.headers.get('Origin')
-        if origin:
-            response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-        return response, 500
+        current_app.logger.exception("Login error: %s", e)
+        # CORS headers come from Flask-CORS; never reflect arbitrary origins here.
+        return jsonify({'error': 'Login failed'}), 500
 
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -591,24 +590,16 @@ def refresh():
                 
                 db.session.commit()
             else:
-                # No JTI - legacy token without rotation, just create access token
-                pass
-                
-        except ImportError:
-            # Token rotation models not available
-            pass
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.warning(f"Token rotation error: {e}")
-            # Continue without rotation - better UX than failing
+                return jsonify({'error': 'Invalid refresh token', 'code': 'INVALID_TOKEN'}), 401
 
-        # Create new access token (subject must be a string)
-        access_token = create_access_token(
-            identity=str(user_id),
-            expires_delta=timedelta(hours=1),
-            additional_claims={"role": role}
-        )
-        
+        except Exception as e:
+            # Fail closed: never issue tokens when rotation/reuse checks could not run.
+            db.session.rollback()
+            current_app.logger.error("Token rotation error for user %s: %s", uid, e)
+            return jsonify({'error': 'Session check failed. Please try again.', 'code': 'REFRESH_UNAVAILABLE'}), 503
+
+        access_token = _create_session_access_token(user_id, role)
+
         response_data = {'access_token': access_token}
         resp = jsonify(response_data)
         
@@ -656,12 +647,13 @@ def admin_login():
         ).first()
         
         if not user:
+            _spend_password_check_time(password)
             return jsonify({'error': 'Invalid credentials'}), 401
-        
+
         # Check password (supports both bcrypt and Werkzeug formats)
         if not verify_password(password, user.password_hash):
             return jsonify({'error': 'Invalid credentials'}), 401
-        
+
         # Superadmins must always use dedicated 2FA flow.
         if user.role == 'superadmin':
             return jsonify({
@@ -677,59 +669,10 @@ def admin_login():
         if not user.is_active:
             return jsonify({'error': 'Account is deactivated'}), 403
         
-        # Update last login
         user.last_login = utc_now()
-        
-        # Create refresh token (token rotation is optional)
-        refresh_token = None
-        try:
-            from apps.api.models.refresh_token import RefreshTokenFamily, RefreshToken
-            
-            family = RefreshTokenFamily.create_family(
-                user_id=user.id,
-                user_agent=request.headers.get('User-Agent'),
-                ip_address=request.remote_addr,
-            )
-            db.session.flush()
-            
-            refresh_expires = timedelta(days=30)
-            refresh_token = create_refresh_token(
-                identity=str(user.id),
-                expires_delta=refresh_expires,
-                additional_claims={
-                    "role": user.role,
-                    "family_id": family.family_id,
-                }
-            )
-            
-            refresh_jti = decode_token(refresh_token)['jti']
-            RefreshToken.create_token(
-                jti=refresh_jti,
-                family=family,
-                expires_at=utc_now() + refresh_expires,
-            )
-        except ImportError:
-            current_app.logger.debug("Token rotation not available")
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.warning(f"Token rotation failed: {e}")
-        
-        if refresh_token is None:
-            refresh_token = create_refresh_token(
-                identity=str(user.id),
-                expires_delta=timedelta(days=30),
-                additional_claims={"role": user.role}
-            )
-        
+        access_token, refresh_token = _issue_session_tokens(user)
         db.session.commit()
-        
-        # Create access token
-        access_token = create_access_token(
-            identity=str(user.id),
-            expires_delta=timedelta(hours=1),
-            additional_claims={"role": user.role}
-        )
-        
+
         resp = jsonify({
             'message': 'Admin login successful',
             'access_token': access_token,
@@ -737,22 +680,12 @@ def admin_login():
         })
         set_refresh_cookies(resp, refresh_token)
         return resp, 200
-    
+
     except Exception as e:
         db.session.rollback()
-        import traceback
-        current_app.logger.error(f"Admin login error: {str(e)}")
-        current_app.logger.error(traceback.format_exc())
-        
-        response = jsonify({
-            'error': 'Login failed',
-            'details': str(e) if current_app.config.get('DEBUG') else None
-        })
-        origin = request.headers.get('Origin')
-        if origin:
-            response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-        return response, 500
+        current_app.logger.exception("Admin login error: %s", e)
+        # CORS headers come from Flask-CORS; never reflect arbitrary origins here.
+        return jsonify({'error': 'Login failed'}), 500
 
 
 @auth_bp.route('/admin/register', methods=['POST'])
@@ -948,39 +881,47 @@ def admin_register():
 
 @auth_bp.route('/verify-email/<token>', methods=['GET'])
 def verify_email(token):
-    """Verify user email with token."""
+    """Verify user email with a signed verification token."""
+    invalid = (jsonify({'error': 'Invalid or expired verification link'}), 400)
     try:
-        # Decode the token
-        decoded = decode_token(token)
-        # flask_jwt_extended changed sub to string; identity is in sub
-        user_id = decoded.get('sub') or decoded.get('user_id')
-        token_type = decoded.get('type')
-        
-        if token_type != 'email':
-            return jsonify({'error': 'Invalid verification token'}), 400
-        
-        # Find user
-        try:
-            uid = int(user_id) if isinstance(user_id, str) else user_id
-        except Exception:
-            uid = user_id
-        user = db.session.get(User, uid)
-        
+        user = None
+        parsed = read_verification_token(token)
+        if parsed:
+            uid, email_fingerprint = parsed
+            user = db.session.get(User, uid)
+            if user and not verification_email_matches(email_fingerprint, user.email):
+                return invalid
+        else:
+            # Transition: links sent before this change were JWTs with type "email".
+            # They are still accepted here (and only here) until they expire.
+            try:
+                decoded = decode_token(token)
+            except Exception:
+                return invalid
+            if decoded.get('type') != 'email':
+                return invalid
+            try:
+                uid = int(decoded.get('sub') or decoded.get('user_id'))
+            except (TypeError, ValueError):
+                return invalid
+            user = db.session.get(User, uid)
+
         if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
+            return invalid
+
         if user.email_verified:
             return jsonify({'message': 'Email already verified'}), 200
-        
-        # Verify email
+
         user.email_verified = True
         user.email_verified_at = utc_now()
         db.session.commit()
-        
+
         return jsonify({'message': 'Email verified successfully'}), 200
-    
+
     except Exception as e:
-        return jsonify({'error': 'Email verification failed', 'details': str(e)}), 400
+        db.session.rollback()
+        current_app.logger.warning("Email verification failed: %s", e)
+        return invalid
 
 
 @auth_bp.route('/resend-verification', methods=['POST'])
@@ -1002,7 +943,7 @@ def resend_verification_email():
         if user.email_verified:
             return jsonify({'message': 'Email already verified'}), 200
 
-        verification_token = generate_verification_token(user.id, 'email')
+        verification_token = generate_verification_token(user.id, 'email', email=user.email)
         email_sent = False
         email_error = None
         try:
@@ -1047,7 +988,7 @@ def resend_verification_email_public():
         if user.email_verified:
             return jsonify({'message': 'Email already verified'}), 200
 
-        verification_token = generate_verification_token(user.id, 'email')
+        verification_token = generate_verification_token(user.id, 'email', email=user.email)
         email_sent = False
         email_error = None
         try:
@@ -1669,18 +1610,18 @@ def superadmin_login():
         user = User.query.filter_by(email=email).first()
 
         if not user:
+            _spend_password_check_time(password)
             log_superadmin_login_attempt(email, success=False, error_reason='User not found')
             return jsonify({'error': 'Invalid email or password'}), 401
 
-        # Check if user is a super admin
-        if user.role != 'superadmin':
-            log_superadmin_login_attempt(email, success=False, error_reason='Not a super admin')
-            return jsonify({'error': 'This account is not authorized for super admin access'}), 403
-
-        # Verify password
+        # Password first, so the response never reveals which emails exist or their roles.
         if not verify_password(password, user.password_hash):
             log_superadmin_login_attempt(email, success=False, error_reason='Invalid password')
             return jsonify({'error': 'Invalid email or password'}), 401
+
+        if user.role != 'superadmin':
+            log_superadmin_login_attempt(email, success=False, error_reason='Not a super admin')
+            return jsonify({'error': 'This account is not authorized for super admin access'}), 403
 
         # Check if account is active
         if not user.is_active:
@@ -1695,9 +1636,8 @@ def superadmin_login():
         )
 
         # Get IP address for email
-        ip_address = request.headers.get('X-Forwarded-For', '').split(',')[0].strip()
-        if not ip_address:
-            ip_address = request.headers.get('X-Real-IP') or request.remote_addr
+        # remote_addr is the real client IP once ProxyFix trusts the platform proxy.
+        ip_address = request.remote_addr
 
         # Send 2FA code via email
         try:
@@ -1781,17 +1721,12 @@ def superadmin_verify_2fa():
         if user.role != 'superadmin':
             return jsonify({'error': 'Unauthorized'}), 403
 
-        # Update last login
         user.last_login = utc_now()
+        # Tracked refresh token (so /refresh works) and a 15-minute access token.
+        access_token, refresh_token = _issue_session_tokens(user)
         db.session.commit()
 
-        # Log successful login
         log_superadmin_login_attempt(user.email, success=True)
-
-        # Match the admin middleware contract by issuing superadmin role claims here too.
-        token_claims = {"role": user.role}
-        access_token = create_access_token(identity=str(user.id), additional_claims=token_claims)
-        refresh_token = create_refresh_token(identity=str(user.id), additional_claims=token_claims)
 
         # Build response
         response = jsonify({
@@ -1855,9 +1790,8 @@ def superadmin_resend_code():
         )
 
         # Get IP address
-        ip_address = request.headers.get('X-Forwarded-For', '').split(',')[0].strip()
-        if not ip_address:
-            ip_address = request.headers.get('X-Real-IP') or request.remote_addr
+        # remote_addr is the real client IP once ProxyFix trusts the platform proxy.
+        ip_address = request.remote_addr
 
         # Send new code
         try:

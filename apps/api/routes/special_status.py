@@ -34,6 +34,7 @@ from apps.api.utils.constants import SPECIAL_STATUS_TYPES
 from apps.api.utils.zambales_scope import is_valid_zambales_municipality
 from apps.api.utils.admin_audit import log_admin_action
 from apps.api.utils.supabase_storage import get_signed_url
+from apps.api.utils.file_streaming import stream_storage_file as _stream_storage_file
 
 special_status_bp = Blueprint('special_status', __name__, url_prefix='/api')
 
@@ -69,66 +70,6 @@ def _save_status_document(file, user_id: int, status_type: str, doc_name: str) -
 
     # Return relative path
     return os.path.relpath(filepath, upload_folder)
-
-
-def _remote_content_allowed(url: str) -> bool:
-    allowed = current_app.config.get('ALLOWED_FILE_DOMAINS') or []
-    if not allowed:
-        return True
-    parsed = urlparse(url)
-    return parsed.netloc in allowed
-
-
-def _stream_storage_file(file_ref: str, download_name: str = 'document') -> object:
-    """Stream a stored file by URL or local path."""
-    if not file_ref:
-        raise FileNotFoundError("Missing file reference")
-
-    normalized = str(file_ref).replace('\\', '/').lstrip('/')
-    if normalized.startswith(('http://', 'https://')):
-        if not _remote_content_allowed(normalized):
-            raise PermissionError("Untrusted file domain")
-        resp = requests.get(normalized, timeout=15)
-        resp.raise_for_status()
-        content_type = resp.headers.get('Content-Type') or mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
-        return send_file(
-            BytesIO(resp.content),
-            mimetype=content_type,
-            as_attachment=False,
-            download_name=download_name,
-        )
-
-    upload_root = Path(current_app.config.get('UPLOAD_FOLDER') or 'uploads').resolve()
-    local_path = (upload_root / normalized).resolve()
-    if not str(local_path).startswith(str(upload_root)):
-        raise PermissionError("Invalid file path")
-
-    if local_path.exists():
-        content_type = mimetypes.guess_type(str(local_path))[0] or 'application/octet-stream'
-        return send_file(
-            str(local_path),
-            mimetype=content_type,
-            as_attachment=False,
-            download_name=download_name,
-        )
-
-    # Support DB values that store storage paths instead of absolute URLs.
-    try:
-        signed = get_signed_url(normalized, expires_in=300)
-        if signed and _remote_content_allowed(signed):
-            resp = requests.get(signed, timeout=15)
-            resp.raise_for_status()
-            content_type = resp.headers.get('Content-Type') or mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
-            return send_file(
-                BytesIO(resp.content),
-                mimetype=content_type,
-                as_attachment=False,
-                download_name=download_name,
-            )
-    except Exception:
-        pass
-
-    raise FileNotFoundError("File not found")
 
 
 def _parse_semester_dates():

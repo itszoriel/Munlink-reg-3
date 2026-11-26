@@ -3,6 +3,7 @@
 SCOPE: Zambales province only, excluding Olongapo City.
 """
 import json
+import os
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import urlparse
@@ -31,6 +32,7 @@ from apps.api.utils.zambales_scope import (
     ZAMBALES_MUNICIPALITY_IDS,
     is_valid_zambales_municipality,
 )
+from apps.api.utils.file_streaming import stream_storage_file as _stream_storage_file
 
 
 benefits_bp = Blueprint('benefits', __name__, url_prefix='/api/benefits')
@@ -56,14 +58,6 @@ def _as_list(value):
     return []
 
 
-def _remote_content_allowed(url: str) -> bool:
-    allowed = current_app.config.get('ALLOWED_FILE_DOMAINS') or []
-    if not allowed:
-        return True
-    parsed = urlparse(url)
-    return parsed.netloc in allowed
-
-
 def _existing_application_for_program(user_id: int, program_id: int) -> Optional[BenefitApplication]:
     """Return latest application for a user/program pair, if any."""
     return (
@@ -72,57 +66,6 @@ def _existing_application_for_program(user_id: int, program_id: int) -> Optional
         .order_by(BenefitApplication.created_at.desc(), BenefitApplication.id.desc())
         .first()
     )
-
-
-def _stream_storage_file(file_ref: str, download_name: str = 'document') -> object:
-    """Stream a stored file by URL or local path."""
-    if not file_ref:
-        raise FileNotFoundError("Missing file reference")
-
-    normalized = str(file_ref).replace('\\', '/').lstrip('/')
-    if normalized.startswith(('http://', 'https://')):
-        if not _remote_content_allowed(normalized):
-            raise PermissionError("Untrusted file domain")
-        resp = requests.get(normalized, timeout=15)
-        resp.raise_for_status()
-        content_type = resp.headers.get('Content-Type') or mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
-        return send_file(
-            BytesIO(resp.content),
-            mimetype=content_type,
-            as_attachment=False,
-            download_name=download_name,
-        )
-
-    upload_root = Path(current_app.config.get('UPLOAD_FOLDER') or 'uploads').resolve()
-    local_path = (upload_root / normalized).resolve()
-    if not str(local_path).startswith(str(upload_root)):
-        raise PermissionError("Invalid file path")
-
-    if local_path.exists():
-        content_type = mimetypes.guess_type(str(local_path))[0] or 'application/octet-stream'
-        return send_file(
-            str(local_path),
-            mimetype=content_type,
-            as_attachment=False,
-            download_name=download_name,
-        )
-
-    try:
-        signed = get_signed_url(normalized, expires_in=300)
-        if signed and _remote_content_allowed(signed):
-            resp = requests.get(signed, timeout=15)
-            resp.raise_for_status()
-            content_type = resp.headers.get('Content-Type') or mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
-            return send_file(
-                BytesIO(resp.content),
-                mimetype=content_type,
-                as_attachment=False,
-                download_name=download_name,
-            )
-    except Exception:
-        pass
-
-    raise FileNotFoundError("File not found")
 
 
 @benefits_bp.route('/programs', methods=['GET'])

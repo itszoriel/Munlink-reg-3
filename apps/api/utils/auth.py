@@ -232,26 +232,61 @@ def check_user_access_level(user, required_level):
     return user_level_value >= required_level_value
 
 
-def generate_verification_token(user_id, token_type='email'):
-    """Generate a verification token for email or password reset."""
-    from flask_jwt_extended import create_access_token
-    from datetime import timedelta
-    
-    # Create a short-lived token (24 hours for email verification, 1 hour for password reset)
-    expires_delta = timedelta(hours=24) if token_type == 'email' else timedelta(hours=1)
-    
-    additional_claims = {
-        'type': token_type,
-        'user_id': user_id,
-    }
-    
-    token = create_access_token(
-        identity=user_id,
-        expires_delta=expires_delta,
-        additional_claims=additional_claims
-    )
-    
-    return token
+EMAIL_VERIFICATION_MAX_AGE_SECONDS = 24 * 60 * 60
+_EMAIL_VERIFICATION_SALT = 'munlink-email-verification'
+SESSION_TOKEN_TYPES = ('access', 'refresh')
+
+
+def _email_fingerprint(email: str) -> str:
+    import hashlib
+
+    return hashlib.sha256((email or '').strip().lower().encode('utf-8')).hexdigest()[:16]
+
+
+def _email_verification_serializer():
+    from flask import current_app
+    from itsdangerous import URLSafeTimedSerializer
+
+    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=_EMAIL_VERIFICATION_SALT)
+
+
+def generate_verification_token(user_id, token_type='email', email=None):
+    """Create a signed email-verification token.
+
+    This is deliberately not a JWT: it can only verify an email address and is
+    never accepted as a login/session token. It is bound to the email address it
+    was sent to, so changing the address invalidates outstanding links.
+    """
+    if token_type != 'email':
+        raise ValueError('Only email verification tokens are supported')
+    payload = {'uid': int(user_id), 'em': _email_fingerprint(email or '')}
+    return _email_verification_serializer().dumps(payload)
+
+
+def read_verification_token(token):
+    """Return ``(user_id, email_fingerprint)`` for a valid, unexpired token, else None."""
+    from itsdangerous import BadSignature
+
+    try:
+        payload = _email_verification_serializer().loads(
+            token, max_age=EMAIL_VERIFICATION_MAX_AGE_SECONDS
+        )
+    except BadSignature:  # includes SignatureExpired
+        return None
+    if not isinstance(payload, dict):
+        return None
+    try:
+        user_id = int(payload.get('uid'))
+    except (TypeError, ValueError):
+        return None
+    return user_id, str(payload.get('em') or '')
+
+
+def verification_email_matches(fingerprint, email) -> bool:
+    """True when a token's email fingerprint matches the account's current email."""
+    import secrets
+
+    return bool(fingerprint) and secrets.compare_digest(fingerprint, _email_fingerprint(email))
 
 
 def verify_token_type(token_type):

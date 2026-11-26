@@ -15,10 +15,10 @@ migrate = Migrate()
 jwt = JWTManager()
 
 # Initialize rate limiter (will be configured with app in create_app)
+# Default limits and storage come from RATELIMIT_DEFAULT / RATELIMIT_STORAGE_URI
+# config so they can be tuned per environment.
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["2000 per day", "500 per hour"],
-    storage_uri="memory://",
     strategy="fixed-window"
 )
 
