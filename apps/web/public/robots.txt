@@ -26,7 +26,7 @@ Disallow: /api/
 Disallow: /admin/
 
 # Sitemap location
-Sitemap: https://munlink-web-9s3r.onrender.com/sitemap.xml
+Sitemap: https://munlink-zambales-of1v.onrender.com/sitemap.xml
 
 # Crawl delay (be respectful of server resources)
 Crawl-delay: 1

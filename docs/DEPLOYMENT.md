@@ -4,7 +4,7 @@
 
 Render is the primary checked-in deployment configuration. The root `render.yaml` creates:
 
-Service origins: `https://munlink-api-5s9w.onrender.com`, `https://munlink-zambales.onrender.com` (public site) and `https://munlink-zambales-admin.onrender.com` (admin).
+Service origins: `https://munlink-api-5s9w.onrender.com`, `https://munlink-zambales-of1v.onrender.com` (public site) and `https://munlink-zambales-admin.onrender.com` (admin).
 
 | Service | Runtime | Build source | Health |
 | --- | --- | --- | --- |
