@@ -3,7 +3,7 @@
 #
 # Three services deploy from this repo:
 #   1. munlink-api    - Flask API (Docker)         -> https://munlink-api-5s9w.onrender.com
-#   2. munlink-zambales       - Public site (static, never sleeps)     -> https://munlink-zambales.onrender.com
+#   2. munlink-zambales       - Public site (static, never sleeps)     -> https://munlink-zambales-of1v.onrender.com
 #   3. munlink-zambales-admin - Admin dashboard (static, never sleeps) -> https://munlink-zambales-admin.onrender.com
 #
 # NOTE ON URLS: Render derives the public URL from the service name. If a name is
@@ -67,16 +67,16 @@ services:
         sync: false
       # --- Cross-service URLs (used for CORS, cookies, email links, QR codes) ---
       - key: WEB_URL
-        value: https://munlink-zambales.onrender.com
+        value: https://munlink-zambales-of1v.onrender.com
       - key: ADMIN_URL
         value: https://munlink-zambales-admin.onrender.com
       - key: BASE_URL
         value: https://munlink-api-5s9w.onrender.com
       - key: QR_BASE_URL
-        value: https://munlink-zambales.onrender.com/verify
+        value: https://munlink-zambales-of1v.onrender.com/verify
       - key: CORS_ALLOWED_ORIGINS
         # Old Docker URLs stay allowed until those services are deleted.
-        value: https://munlink-zambales.onrender.com,https://munlink-zambales-admin.onrender.com,https://munlink-web-9s3r.onrender.com,https://munlink-admin-pk8j.onrender.com
+        value: https://munlink-zambales-of1v.onrender.com,https://munlink-zambales-admin.onrender.com
       # --- Auth cookies (cross-site: web/admin -> api) ---
       - key: JWT_COOKIE_SECURE
         value: "True"
@@ -168,4 +168,4 @@ services:
       - key: VITE_API_URL
         value: https://munlink-api-5s9w.onrender.com
       - key: VITE_PUBLIC_SITE_URL
-        value: https://munlink-zambales.onrender.com
+        value: https://munlink-zambales-of1v.onrender.com
