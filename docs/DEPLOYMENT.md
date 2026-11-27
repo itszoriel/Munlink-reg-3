@@ -29,7 +29,7 @@ The API image is multi-stage, runs as a non-root user, and exits if `flask db up
 The API is a free web service and sleeps after 15 idle minutes; the free Supabase project pauses after about a week without database activity. Keep both awake:
 
 1. In the Supabase SQL editor run `supabase/keep_alive.sql`. A `pg_cron` job calls `/health/db` every 10 minutes, which wakes Render and runs a real query.
-2. Create the Vault secret described in `supabase/notification_cron.sql`, set the same value as `INTERNAL_CRON_SECRET` on `munlink-api`, then run that file. Every 5 minutes the database calls `POST /internal/notifications/run`, so queued notifications are delivered even if the in-container worker stops.
+2. Notification delivery needs no manual step. On every start of `munlink-api`, `scripts/schedule_db_cron.py` (enabled by `SCHEDULE_DB_CRON_JOBS=true`) creates a random secret in Supabase Vault and schedules a `pg_cron` job that calls `POST /internal/notifications/run` every 5 minutes. The API reads the same secret from `vault.decrypted_secrets`, so nobody sees or copies it. Queued notifications are delivered even if the in-container worker stops. `supabase/notification_cron.sql` remains for rescheduling by hand; `INTERNAL_CRON_SECRET` overrides the Vault value if set.
 3. Add an external monitor (UptimeRobot or cron-job.org) on `/health/db` every 5-10 minutes. It keeps the API awake if the database job stops and emails you on outages. GitHub Actions schedules are too delayed for this.
 
 Only the API uses free instance hours (about 744 of 750 per month); static sites use none.

@@ -98,8 +98,12 @@ services:
       # Manual QR payment details shown to residents (was hard-coded in config.py).
       - key: MANUAL_PAY_TO_NUMBER
         value: "09764859463"
-      # Shared secret for /internal/* (pg_cron). Same value as Supabase Vault
-      # secret munlink_internal_cron_secret; see supabase/notification_cron.sql.
+      # On every start, scripts/schedule_db_cron.py ensures the pg_cron shared secret
+      # exists in Supabase Vault and schedules notification delivery against BASE_URL.
+      # Only this service sets the flag, so local runs never repoint the job.
+      - key: SCHEDULE_DB_CRON_JOBS
+        value: "true"
+      # Optional override for the /internal/* secret; normally read from Vault.
       - key: INTERNAL_CRON_SECRET
         sync: false
 

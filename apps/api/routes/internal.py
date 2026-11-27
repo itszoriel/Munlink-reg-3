@@ -1,25 +1,56 @@
 """
 Internal endpoints called by scheduled jobs (Supabase pg_cron through pg_net).
 
-They are not for browsers: every call must carry the shared secret from
-``INTERNAL_CRON_SECRET`` in the ``X-Cron-Secret`` header. When the variable is
-unset the endpoints are disabled. The database side keeps the same value in
-Supabase Vault (see supabase/notification_cron.sql).
+They are not for browsers: every call must carry the shared secret in the
+``X-Cron-Secret`` header. The secret lives in Supabase Vault as
+``munlink_internal_cron_secret`` (created by scripts/schedule_db_cron.py, so
+nobody ever has to see or copy it); ``INTERNAL_CRON_SECRET`` can override it.
+With neither available the endpoints are disabled.
 """
 from __future__ import annotations
 
 import hmac
+import time
 
 from flask import Blueprint, current_app, jsonify, request
+from sqlalchemy import text
 
 internal_bp = Blueprint('internal', __name__, url_prefix='/internal')
 
 MAX_ITEMS_PER_RUN = 100
+VAULT_SECRET_NAME = 'munlink_internal_cron_secret'
+_VAULT_TTL_SECONDS = 300
+_vault_cache: dict[str, object] = {'value': '', 'expires': 0.0}
+
+
+def _vault_secret() -> str:
+    """Shared secret from Supabase Vault, cached briefly; '' when unavailable."""
+    now = time.monotonic()
+    if now < float(_vault_cache['expires']):
+        return str(_vault_cache['value'])
+    value = ''
+    from apps.api import db
+    if db.engine.dialect.name == 'postgresql':
+        try:
+            value = db.session.execute(
+                text("SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = :name"),
+                {'name': VAULT_SECRET_NAME},
+            ).scalar() or ''
+        except Exception as exc:  # vault missing or not readable
+            db.session.rollback()
+            current_app.logger.warning("Cron secret lookup in Vault failed: %s", type(exc).__name__)
+    _vault_cache.update(value=value, expires=now + _VAULT_TTL_SECONDS)
+    return value
+
+
+def _expected_secret() -> str:
+    configured = str(current_app.config.get('INTERNAL_CRON_SECRET') or '')
+    return configured if configured else _vault_secret()
 
 
 def _authorized() -> bool | None:
     """True/False for a configured secret; None when the endpoints are disabled."""
-    expected = str(current_app.config.get('INTERNAL_CRON_SECRET') or '')
+    expected = _expected_secret()
     if len(expected) < 32:
         return None
     supplied = request.headers.get('X-Cron-Secret', '')

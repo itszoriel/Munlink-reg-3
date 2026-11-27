@@ -33,6 +33,8 @@ RUN mkdir -p uploads/region3 && chown -R munlink:munlink uploads
 # Startup:
 # - migrations must succeed, otherwise the container exits and Render keeps the
 #   previous deploy running instead of serving a half-migrated schema;
+# - the database-side notification schedule (Vault secret + pg_cron job) is
+#   ensured on every start; it never blocks start-up;
 # - the notification worker restarts itself if it crashes (pg_cron also calls
 #   /internal/notifications/run, so delivery continues either way);
 # - one gunicorn worker keeps the in-memory rate limits accurate on the single
@@ -42,6 +44,7 @@ RUN printf '%s\n' \
     'set -e' \
     'echo "Running database migrations..."' \
     'flask db upgrade heads' \
+    'python scripts/schedule_db_cron.py || true' \
     '(while true; do python scripts/notification_worker.py || true; echo "Notification worker exited; restarting in 5s"; sleep 5; done) &' \
     'exec gunicorn app:app --bind 0.0.0.0:${PORT} --workers 1 --threads 8 --timeout 120 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile -' \
     > /app/start.sh \
