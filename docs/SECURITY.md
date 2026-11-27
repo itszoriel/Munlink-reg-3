@@ -12,6 +12,8 @@
 - Use the shared password verification helper in `apps/api/utils/auth.py`.
 - Keep refresh cookies `httpOnly`, `Secure` in production, and configured with an appropriate `SameSite` policy.
 - Restrict credentialed CORS to explicit web and admin origins.
+- The refresh cookie is cross-site (each `*.onrender.com` host is its own site), so the double-submit CSRF cookie cannot work and `JWT_COOKIE_CSRF_PROTECT` stays off. Instead `reject_untrusted_origin` in `apps/api/app.py` refuses any POST/PUT/PATCH/DELETE whose `Origin` is not a CORS origin (`UNTRUSTED_ORIGIN`, 403), or that a browser marks `Sec-Fetch-Site: cross-site` without an `Origin`. Server-to-server callers send no `Origin` and are unaffected.
+- 2FA codes are stored only as an HMAC-SHA256 digest keyed with `SECRET_KEY` and bound to the login session (`EmailVerificationCode.hash_code`). The plain code exists in memory just long enough to email it (`plain_code`). Rotating `SECRET_KEY` invalidates outstanding codes.
 - Preserve rate limits on authentication, password reset, 2FA, and other abuse-prone routes.
 - Protected frontend calls wait for `isAuthBootstrapped`.
 - Only `access` and `refresh` JWTs authenticate requests. The verification loader in `apps/api/app.py` (`apps/api/utils/session_guard.py`) runs on every protected request and rejects other token types, tokens of missing or inactive accounts (`ACCOUNT_DISABLED`), and tokens whose login session has ended (`SESSION_REVOKED`).

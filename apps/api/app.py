@@ -206,6 +206,24 @@ def create_app(config_class=Config):
             "CORS configuration error: set WEB_URL/ADMIN_URL or CORS_ALLOWED_ORIGINS in production."
         )
     
+    app.config['TRUSTED_ORIGINS'] = frozenset(cors_origins)
+
+    # CSRF defence for the cross-site refresh cookie: browsers always send Origin
+    # on cross-origin writes, so reject state-changing requests from any site that
+    # is not ours. Server-to-server callers (Stripe, pg_cron) send no Origin.
+    @app.before_request
+    def reject_untrusted_origin():
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return None
+        origin = request.headers.get('Origin')
+        if origin is None:
+            if request.headers.get('Sec-Fetch-Site') == 'cross-site':
+                return jsonify({'error': 'Request origin not allowed', 'code': 'UNTRUSTED_ORIGIN'}), 403
+            return None
+        if origin.rstrip('/') not in app.config['TRUSTED_ORIGINS']:
+            return jsonify({'error': 'Request origin not allowed', 'code': 'UNTRUSTED_ORIGIN'}), 403
+        return None
+
     # Apply CORS globally with Flask-CORS
     CORS(app,
          origins=cors_origins,

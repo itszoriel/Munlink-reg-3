@@ -1714,7 +1714,7 @@ def superadmin_login():
 
         # Send 2FA code via email
         try:
-            send_2fa_code(email, verification.code, ip_address)
+            send_2fa_code(email, verification.plain_code, ip_address)
         except Exception as e:
             current_app.logger.error(f"Failed to send 2FA email: {e}")
             return jsonify({'error': 'Failed to send verification code. Please try again.'}), 500
@@ -1868,7 +1868,7 @@ def superadmin_resend_code():
 
         # Send new code
         try:
-            send_2fa_code(user.email, verification.code, ip_address)
+            send_2fa_code(user.email, verification.plain_code, ip_address)
         except Exception as e:
             current_app.logger.error(f"Failed to resend 2FA email: {e}")
             return jsonify({'error': 'Failed to send verification code'}), 500
