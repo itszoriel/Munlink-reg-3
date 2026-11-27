@@ -1,7 +1,7 @@
 import React from 'react'
 
 // Base skeleton styles
-const baseClass = 'bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 animate-shimmer rounded'
+const baseClass = 'bg-slate-200 animate-shimmer rounded'
 
 export type SkeletonProps = {
   className?: string
@@ -96,7 +96,7 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({
   showImage = false,
   className,
 }) => (
-  <div className={`bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden ${className || ''}`.trim()}>
+  <div className={`bg-white rounded-lg border border-slate-200/60 shadow-sm overflow-hidden ${className || ''}`.trim()}>
     {showImage && (
       <div className={`${baseClass} h-40 rounded-none`} />
     )}
@@ -132,7 +132,7 @@ export const SkeletonTable: React.FC<SkeletonTableProps> = ({
   columns = 4,
   className,
 }) => (
-  <div className={`bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden ${className || ''}`.trim()}>
+  <div className={`bg-white rounded-lg border border-slate-200/60 shadow-sm overflow-hidden ${className || ''}`.trim()}>
     {/* Header */}
     <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
       <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
@@ -162,13 +162,13 @@ export type SkeletonStatCardProps = {
 }
 
 export const SkeletonStatCard: React.FC<SkeletonStatCardProps> = ({ className }) => (
-  <div className={`bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 ${className || ''}`.trim()}>
+  <div className={`bg-white rounded-lg border border-slate-200/60 shadow-sm p-6 ${className || ''}`.trim()}>
     <div className="flex items-center justify-between">
       <div className="flex-1 space-y-2">
         <SkeletonText width="1/2" />
         <SkeletonHeading width="1/3" />
       </div>
-      <div className={`${baseClass} w-12 h-12 rounded-xl`} />
+      <div className={`${baseClass} w-12 h-12 rounded-lg`} />
     </div>
   </div>
 )

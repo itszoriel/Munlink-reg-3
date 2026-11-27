@@ -19,7 +19,7 @@ export default function TransferRequestCard({ t, munMap, canApprove, canDeny, ca
     : 'bg-forest-100 text-forest-700'
 
   return (
-    <div className="rounded-2xl border bg-white/80 backdrop-blur shadow-sm p-4 flex flex-col gap-3">
+    <div className="rounded-lg border bg-white shadow-sm p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <div className="font-semibold truncate">Transfer #{t.id}</div>
         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${badge}`}>{status === 'accepted' ? 'Completed' : status.charAt(0).toUpperCase() + status.slice(1)}</span>

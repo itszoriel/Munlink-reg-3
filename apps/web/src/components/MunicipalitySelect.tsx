@@ -90,7 +90,7 @@ export default function MunicipalitySelect() {
   )
 
   if (!selectedProvince) {
-    return <span className="text-sm text-gray-400 font-serif cursor-not-allowed" title="Select a province first">Municipality ▾</span>
+    return <span className="text-sm text-gray-400 cursor-not-allowed" title="Select a province first">Municipality ▾</span>
   }
 
   return (
@@ -98,14 +98,14 @@ export default function MunicipalitySelect() {
       <button
         type="button"
         onClick={handleToggle}
-        className="cursor-pointer select-none hover:text-ocean-700 font-serif whitespace-nowrap"
+        className="cursor-pointer select-none hover:text-ocean-700 whitespace-nowrap"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
           {selected ? selected.name : 'Municipality'} ▾
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-64 bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 p-2 z-50">
+        <div className="absolute right-0 mt-3 w-64 bg-white rounded-lg shadow-lg border border-white/50 p-2 z-50">
           <input
             type="text"
             placeholder="Search municipality..."

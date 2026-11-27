@@ -128,7 +128,7 @@ export default function Marketplace() {
           <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">Marketplace Management</h1>
           <p className="text-neutral-600">Monitor and moderate community marketplace listings</p>
         </div>
-        <div className="inline-flex rounded-xl border overflow-hidden">
+        <div className="inline-flex rounded-lg border overflow-hidden">
           <button className={`px-4 py-2 text-sm ${tab==='items'?'bg-ocean-600 text-white':'bg-white hover:bg-neutral-50'}`} onClick={()=>setTab('items')}>Items</button>
           <button className={`px-4 py-2 text-sm ${tab==='transactions'?'bg-ocean-600 text-white':'bg-white hover:bg-neutral-50'}`} onClick={()=>setTab('transactions')}>Transactions</button>
         </div>
@@ -138,12 +138,12 @@ export default function Marketplace() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
         {[
           { icon: 'total', label: 'Total Items', value: String(stats?.total_items ?? 0), color: 'ocean' },
-          { icon: 'pending', label: 'Pending Review', value: String(stats?.pending_items ?? 0), color: 'sunset' },
-          { icon: 'approved', label: 'Approved', value: String(stats?.approved_items ?? 0), color: 'forest' },
-          { icon: 'rejected', label: 'Rejected', value: String(stats?.rejected_items ?? 0), color: 'purple' },
+          { icon: 'pending', label: 'Pending Review', value: String(stats?.pending_items ?? 0), color: 'ocean' },
+          { icon: 'approved', label: 'Approved', value: String(stats?.approved_items ?? 0), color: 'ocean' },
+          { icon: 'rejected', label: 'Rejected', value: String(stats?.rejected_items ?? 0), color: 'ocean' },
         ].map((stat, i) => (
-          <div key={i} className="bg-white/70 backdrop-blur-xl rounded-2xl p-6 border border-white/50 shadow-lg hover:scale-105 transition-transform">
-            <div className={`inline-flex w-12 h-12 bg-${stat.color}-100 rounded-xl items-center justify-center mb-3`}>
+          <div key={i} className="bg-white rounded-lg p-6 border border-white/50 shadow-lg transition-transform">
+            <div className={`inline-flex w-12 h-12 bg-${stat.color}-100 rounded-lg items-center justify-center mb-3`}>
               {stat.icon === 'total' && <ShoppingBag className="w-6 h-6" aria-hidden="true" />}
               {stat.icon === 'pending' && <Hourglass className="w-6 h-6" aria-hidden="true" />}
               {stat.icon === 'approved' && <CheckCircle className="w-6 h-6" aria-hidden="true" />}
@@ -157,7 +157,7 @@ export default function Marketplace() {
       )}
 
       {tab === 'items' && (
-      <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/50 mb-6">
+      <div className="bg-white rounded-lg p-4 shadow-lg border border-white/50 mb-6">
         <div className="flex flex-col gap-3">
           {/* Type filter - horizontal scroll on mobile */}
           <div className="flex gap-2 overflow-x-auto pb-2">
@@ -167,7 +167,7 @@ export default function Marketplace() {
               { value: 'lend', label: 'Lend', icon: 'handshake' },
               { value: 'donate', label: 'Free', icon: 'gift' },
             ].map((type) => (
-              <button key={type.value} onClick={() => setFilter(type.value as any)} className={`shrink-0 px-3 py-2 rounded-xl font-medium transition-all text-sm ${filter === type.value ? 'bg-ocean-gradient text-white shadow-lg' : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'}`}>
+              <button key={type.value} onClick={() => setFilter(type.value as any)} className={`shrink-0 px-3 py-2 rounded-lg font-medium transition-all text-sm ${filter === type.value ? 'bg-ocean-gradient text-white shadow-lg' : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'}`}>
                 <span className="mr-1.5 inline-flex items-center">
                   {type.icon === 'store' && <Store className="w-4 h-4" aria-hidden="true" />}
                   {type.icon === 'money' && <BadgeDollarSign className="w-4 h-4" aria-hidden="true" />}
@@ -188,7 +188,7 @@ export default function Marketplace() {
               aria-label="Filter by status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="flex-1 sm:flex-none px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium"
+              className="flex-1 sm:flex-none px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-medium"
             >
               <option value="all">All Status</option>
               <option value="available">Approved</option>
@@ -196,9 +196,9 @@ export default function Marketplace() {
               <option value="rejected">Rejected</option>
             </select>
             {userRole === 'admin' ? (
-              <select name="municipalityFilter" id="marketplace-municipality-filter" aria-label="Filter by municipality" className="flex-1 sm:flex-none px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium"><option>All Municipalities</option></select>
+              <select name="municipalityFilter" id="marketplace-municipality-filter" aria-label="Filter by municipality" className="flex-1 sm:flex-none px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-medium"><option>All Municipalities</option></select>
             ) : (
-              <div className="flex-1 sm:flex-none px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium inline-flex items-center gap-2" aria-label="Municipality">
+              <div className="flex-1 sm:flex-none px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-medium inline-flex items-center gap-2" aria-label="Municipality">
                 <svg className="w-4 h-4 text-neutral-500" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm-2 6V6a2 2 0 114 0v2H8z"/></svg>
                 <span className="truncate max-w-[12rem]">{adminMunicipalityName || 'Municipality'}</span>
               </div>
@@ -212,15 +212,15 @@ export default function Marketplace() {
       {tab === 'items' && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {itemsLoading && rows.length === 0 && [...Array(8)].map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-lg p-4">
-            <div className="aspect-square skeleton rounded-xl mb-3" />
+          <div key={i} className="bg-white rounded-lg overflow-hidden shadow-lg p-4">
+            <div className="aspect-square skeleton rounded-lg mb-3" />
             <div className="h-4 w-40 skeleton rounded mb-2" />
             <div className="h-3 w-24 skeleton rounded" />
           </div>
         ))}
         {filtered.map((item: any) => (
-          <div key={item.id} className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105">
-            <div className="relative aspect-square bg-gradient-to-br from-ocean-200 to-forest-200">
+          <div key={item.id} className="group bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-lg transition-all duration-300 ">
+            <div className="relative aspect-square bg-ocean-200">
               {item.image && (
                 <img
                   src={mediaUrl(item.image)}
@@ -230,7 +230,7 @@ export default function Marketplace() {
                 />
               )}
               <div className="absolute top-3 left-3 z-10">
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-white backdrop-blur-md ${item.type === 'sell' ? 'bg-forest-500/90' : item.type === 'lend' ? 'bg-ocean-500/90' : 'bg-sunset-500/90'}`}>
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-white  ${item.type === 'sell' ? 'bg-forest-500/90' : item.type === 'lend' ? 'bg-ocean-500/90' : 'bg-sunset-500/90'}`}>
                   {item.type === 'sell' && <><BadgeDollarSign className="w-4 h-4" aria-hidden="true" /><span>For Sale</span></>}
                   {item.type === 'lend' && <><Handshake className="w-4 h-4" aria-hidden="true" /><span>For Lending</span></>}
                   {item.type === 'donate' && <><Gift className="w-4 h-4" aria-hidden="true" /><span>Free</span></>}
@@ -298,7 +298,7 @@ export default function Marketplace() {
 
 
       {tab === 'transactions' && (
-        <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/50">
+        <div className="bg-white rounded-lg p-4 shadow-lg border border-white/50">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Transactions</h2>
             <select className="border rounded px-2 py-1" value={txStatus} onChange={(e)=>setTxStatus(e.target.value)}>
@@ -379,8 +379,8 @@ export default function Marketplace() {
 
       {reviewItem && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setReviewItem(null) }}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setReviewItem(null)} />
-          <div className="relative bg-white w-full sm:w-[95%] sm:max-w-2xl xl:max-w-3xl max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl" tabIndex={-1} autoFocus>
+          <div className="absolute inset-0 bg-black/50 " onClick={() => setReviewItem(null)} />
+          <div className="relative bg-white w-full sm:w-[95%] sm:max-w-2xl xl:max-w-3xl max-h-[90vh] overflow-y-auto rounded-t-lg sm:rounded-lg shadow-lg" tabIndex={-1} autoFocus>
             {/* Header - sticky */}
             <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 sm:px-6 sm:py-4 flex items-start justify-between gap-3">
               <div>
@@ -395,7 +395,7 @@ export default function Marketplace() {
             <div className="p-4 sm:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <div className="relative aspect-[4/3] bg-neutral-100 rounded-xl overflow-hidden">
+                <div className="relative aspect-[4/3] bg-neutral-100 rounded-lg overflow-hidden">
                   {reviewImages[reviewSafeIndex] ? (
                     <SafeImage
                       src={mediaUrl(reviewImages[reviewSafeIndex])}
@@ -411,7 +411,7 @@ export default function Marketplace() {
                       <button
                         type="button"
                         aria-label="Previous image"
-                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white hover:bg-white rounded-full p-2 shadow"
                         onClick={() => setReviewIndex((i) => (i - 1 + reviewCount) % reviewCount)}
                       >
                         <ChevronLeft className="w-4 h-4" />
@@ -419,7 +419,7 @@ export default function Marketplace() {
                       <button
                         type="button"
                         aria-label="Next image"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white hover:bg-white rounded-full p-2 shadow"
                         onClick={() => setReviewIndex((i) => (i + 1) % reviewCount)}
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -505,8 +505,8 @@ export default function Marketplace() {
       )}
       {selectedTx && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={()=>setSelectedTx(null)}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div className="relative bg-white w-full sm:w-[95%] sm:max-w-4xl max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col" onClick={(e)=>e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black/50 " />
+          <div className="relative bg-white w-full sm:w-[95%] sm:max-w-4xl max-h-[90vh] overflow-hidden rounded-t-lg sm:rounded-lg shadow-lg flex flex-col" onClick={(e)=>e.stopPropagation()}>
             {/* Header - sticky */}
             <div className="flex-shrink-0 px-4 py-3 sm:px-6 sm:py-4 border-b flex items-start justify-between gap-4">
               <div>
@@ -531,7 +531,7 @@ export default function Marketplace() {
                 const name = u.user?.first_name ? `${u.user.first_name} ${u.user.last_name}` : (u.fallback || `#${u.id}`)
                 const initials = (u.user?.first_name||name||'').split(' ').map((s: string)=>s.charAt(0)).join('').slice(0,2)
                 return (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-200 bg-white/80">
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-neutral-200 bg-white">
                     {u.photo ? (
                       <img src={mediaUrl(u.photo)} alt={`${u.label} avatar`} className="w-10 h-10 rounded-full object-cover border" />
                     ) : (

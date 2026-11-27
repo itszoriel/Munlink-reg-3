@@ -41,7 +41,7 @@ export default function MarketplaceItemPage() {
         <Link to="/marketplace" className="text-sm text-ocean-700 hover:underline">Back to Marketplace</Link>
       </div>
       {loading ? (
-        <div className="h-64 rounded-xl bg-neutral-100" />
+        <div className="h-64 rounded-lg bg-neutral-100" />
       ) : !item ? (
         <div className="text-neutral-600">Item not found.</div>
       ) : (

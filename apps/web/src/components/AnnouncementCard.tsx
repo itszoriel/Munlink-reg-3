@@ -68,7 +68,7 @@ export default function AnnouncementCard({ id, title, content, municipality, bar
   const Inner = (
     <article
       onClick={handleClick}
-      className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-ocean-200 transition-all duration-300 cursor-pointer"
+      className="group relative bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-ocean-200 transition-all duration-300 cursor-pointer"
     >
       {/* Image section */}
       <div className="relative w-full aspect-[4/3] overflow-hidden bg-gray-100">
@@ -80,7 +80,7 @@ export default function AnnouncementCard({ id, title, content, municipality, bar
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+          <div className="h-full w-full bg-gray-100 flex items-center justify-center">
             <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -90,20 +90,20 @@ export default function AnnouncementCard({ id, title, content, municipality, bar
         {/* Top-left badges */}
         <div className="absolute top-3 left-3 flex items-center gap-2 flex-wrap">
           {scopeLabel && (
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-white/95 backdrop-blur-sm text-gray-800 shadow-sm">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-white text-gray-800 shadow-sm">
               {scopeLabel}
             </span>
           )}
           {pinned && (
             <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-ocean-600 text-white shadow-sm">
-              📌 Pinned
+              Pinned
             </span>
           )}
         </div>
 
         {/* Top-right priority badge */}
         <div className="absolute top-3 right-3">
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow-sm backdrop-blur-sm ${priorityStyles}`}>
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow-sm  ${priorityStyles}`}>
             {priority}
           </span>
         </div>

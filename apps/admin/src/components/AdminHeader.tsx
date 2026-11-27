@@ -67,7 +67,7 @@ export default function AdminHeader() {
             className="h-12 w-12 object-contain"
           />
           <div>
-            <h1 className="text-2xl font-serif font-bold text-zambales-green">
+            <h1 className="text-2xl font-bold text-zambales-green">
               {getMunicipalityName()} Admin Dashboard
             </h1>
             <p className="text-sm text-gray-600">
@@ -87,7 +87,7 @@ export default function AdminHeader() {
             <svg className="h-4 w-4 text-gray-600" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
           </button>
           {open && (
-            <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border p-2 z-50">
+            <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg border p-2 z-50">
               <button onClick={() => navigate('/profile')} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50">Profile</button>
               <button onClick={openPublicSite} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50">View Public Site</button>
               <div className="my-2 border-t" />

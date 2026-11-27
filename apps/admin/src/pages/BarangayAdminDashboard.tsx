@@ -59,7 +59,7 @@ export default function BarangayAdminDashboard() {
       label: 'Total Announcements',
       value: stats.total_announcements,
       icon: Megaphone,
-      color: 'from-emerald-500 to-green-600',
+      color: 'bg-navy-700',
       bgColor: 'bg-emerald-50',
       textColor: 'text-emerald-600'
     },
@@ -67,7 +67,7 @@ export default function BarangayAdminDashboard() {
       label: 'Active Announcements',
       value: stats.active_announcements,
       icon: TrendingUp,
-      color: 'from-green-500 to-teal-600',
+      color: 'bg-navy-700',
       bgColor: 'bg-green-50',
       textColor: 'text-green-600'
     },
@@ -75,7 +75,7 @@ export default function BarangayAdminDashboard() {
       label: 'Pinned Announcements',
       value: stats.pinned_announcements,
       icon: MapPin,
-      color: 'from-orange-500 to-amber-600',
+      color: 'bg-navy-700',
       bgColor: 'bg-orange-50',
       textColor: 'text-orange-600'
     },
@@ -83,7 +83,7 @@ export default function BarangayAdminDashboard() {
       label: 'Residents Reached',
       value: stats.residents_reached || '—',
       icon: Users,
-      color: 'from-blue-500 to-cyan-600',
+      color: 'bg-navy-700',
       bgColor: 'bg-blue-50',
       textColor: 'text-blue-600'
     }
@@ -94,7 +94,7 @@ export default function BarangayAdminDashboard() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-serif font-bold text-gray-900">Barangay Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Barangay Dashboard</h1>
           <p className="text-gray-600 mt-2">Overview for {barangayName}</p>
         </div>
 
@@ -102,8 +102,8 @@ export default function BarangayAdminDashboard() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 shadow-sm animate-pulse">
-                <div className="h-12 w-12 bg-gray-200 rounded-xl mb-4" />
+              <div key={i} className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
+                <div className="h-12 w-12 bg-gray-200 rounded-lg mb-4" />
                 <div className="h-4 bg-gray-200 rounded w-24 mb-2" />
                 <div className="h-8 bg-gray-200 rounded w-16" />
               </div>
@@ -118,9 +118,9 @@ export default function BarangayAdminDashboard() {
                   key={stat.label}
                   type="button"
                   onClick={() => navigate(stat.label === 'Residents Reached' ? '/barangay/reports' : '/barangay/announcements')}
-                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow text-left"
+                  className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow text-left"
                 >
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-4`}>
+                  <div className={`w-12 h-12 rounded-lg ${stat.color} flex items-center justify-center mb-4`}>
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <p className="text-sm font-medium text-gray-600 mb-1">{stat.label}</p>
@@ -131,7 +131,7 @@ export default function BarangayAdminDashboard() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">How to use this portal</h2>
@@ -140,7 +140,7 @@ export default function BarangayAdminDashboard() {
             <button
               type="button"
               onClick={() => navigate('/barangay/how-to-use')}
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               Open guide
             </button>
@@ -148,7 +148,7 @@ export default function BarangayAdminDashboard() {
         </div>
 
         {/* Quick Info */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white rounded-lg p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Barangay Admin Scope</h2>
           <div className="space-y-3 text-gray-700">
             <div className="flex items-start gap-3">

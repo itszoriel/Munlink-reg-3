@@ -522,7 +522,7 @@ export default function Requests() {
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {statusCards.map((item) => (
-          <button key={item.status} onClick={() => setStatusFilter(item.status as Status)} className={`text-left p-4 rounded-2xl transition-all ${statusFilter === item.status ? 'bg-white/90 backdrop-blur-xl shadow-xl scale-105 border-2 border-ocean-500' : 'bg-white/70 backdrop-blur-xl border border-white/50 hover:scale-105'}`}>
+          <button key={item.status} onClick={() => setStatusFilter(item.status as Status)} className={`text-left p-4 rounded-lg transition-all ${statusFilter === item.status ? 'bg-white shadow-md scale-105 border-2 border-ocean-500' : 'bg-white border border-white/50 '}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-2xl">
                 {(() => {
@@ -544,7 +544,7 @@ export default function Requests() {
         ))}
       </div>
 
-      <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-visible">
+      <div className="bg-white rounded-lg shadow-md border border-white/50 overflow-visible">
         <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-xl font-bold text-neutral-900">Recent Requests</h2>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -966,7 +966,7 @@ export default function Requests() {
       {rejectForId !== null && (
         <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center pt-20 md:pt-0 overflow-y-auto" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setRejectForId(null) }}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setRejectForId(null)} />
-          <div className="relative bg-white w-[92%] max-w-md max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 pb-24 sm:pb-5 my-auto" tabIndex={-1} autoFocus>
+          <div className="relative bg-white w-[92%] max-w-md max-h-[90vh] overflow-y-auto rounded-lg shadow-md border p-5 pb-24 sm:pb-5 my-auto" tabIndex={-1} autoFocus>
             <h3 className="text-lg font-semibold mb-2">Reject Request</h3>
             <p className="text-sm text-neutral-700 mb-3">Provide a reason to inform the resident.</p>
             <label htmlFor="reject-reason" className="block text-sm font-medium mb-1">Reason</label>
@@ -984,7 +984,7 @@ export default function Requests() {
       {paymentRejectForId !== null && (
         <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center pt-20 md:pt-0 overflow-y-auto" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setPaymentRejectForId(null) }}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setPaymentRejectForId(null)} />
-          <div className="relative bg-white w-[92%] max-w-md max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 pb-24 sm:pb-5 my-auto" tabIndex={-1} autoFocus>
+          <div className="relative bg-white w-[92%] max-w-md max-h-[90vh] overflow-y-auto rounded-lg shadow-md border p-5 pb-24 sm:pb-5 my-auto" tabIndex={-1} autoFocus>
             <h3 className="text-lg font-semibold mb-2">Reject Manual Payment</h3>
             <p className="text-sm text-neutral-700 mb-3">Provide a reason to inform the resident.</p>
             <label htmlFor="payment-reject-reason" className="block text-sm font-medium mb-1">Reason</label>
@@ -1002,7 +1002,7 @@ export default function Requests() {
       {reviewFor && (
         <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center pt-20 md:pt-0 overflow-y-auto" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setReviewFor(null) }}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setReviewFor(null)} />
-          <div className="relative bg-white w-[92%] max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 my-auto" tabIndex={-1} autoFocus>
+          <div className="relative bg-white w-[92%] max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg shadow-md border p-5 my-auto" tabIndex={-1} autoFocus>
             <h3 className="text-lg font-semibold mb-2">Request Review</h3>
             {(() => {
               let residentInput: any = reviewFor.resident_input || {}
@@ -1100,7 +1100,7 @@ export default function Requests() {
       {editFor && (
         <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center pt-20 md:pt-0 overflow-y-auto" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setEditFor(null) }}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setEditFor(null)} />
-          <div className="relative bg-white w-[92%] max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 pb-24 sm:pb-5 my-auto" tabIndex={-1} autoFocus>
+          <div className="relative bg-white w-[92%] max-w-lg max-h-[90vh] overflow-y-auto rounded-lg shadow-md border p-5 pb-24 sm:pb-5 my-auto" tabIndex={-1} autoFocus>
             <h3 className="text-lg font-semibold mb-2">Edit Request Content</h3>
             <div className="space-y-3">
               {(editFor.requestNumber || editFor.resident || editFor.document) && (
@@ -1182,7 +1182,7 @@ export default function Requests() {
       {historyFor !== null && (
         <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center pt-20 md:pt-0 overflow-y-auto" role="dialog" aria-modal="true" onKeyDown={(e)=> { if (e.key==='Escape') setHistoryFor(null) }}>
           <div className="absolute inset-0 bg-black/40" onClick={()=> setHistoryFor(null)} />
-          <div className="relative bg-white w-[92%] max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-xl border p-5 my-auto" tabIndex={-1} autoFocus>
+          <div className="relative bg-white w-[92%] max-w-lg max-h-[90vh] overflow-y-auto rounded-lg shadow-md border p-5 my-auto" tabIndex={-1} autoFocus>
             <h3 className="text-lg font-semibold mb-2">Request History</h3>
             <div className="text-sm text-neutral-600 mb-3">Request ID: {historyFor}</div>
             {loadingHistory ? (

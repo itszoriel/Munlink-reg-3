@@ -21,7 +21,7 @@ export default function Input({ label, type = 'text', value, placeholder, error,
         value={value}
         onChange={onChange}
         placeholder={placeholder || ' '}
-        className={`peer w-full px-4 pt-6 pb-2 ${icon ? 'pl-12' : ''} border-2 rounded-xl transition-all outline-none ${error ? 'border-red-500 focus:ring-red-500/10' : 'border-gray-300 focus:ring-2 focus:ring-ocean-500 focus:border-transparent'}`}
+        className={`peer w-full px-4 pt-6 pb-2 ${icon ? 'pl-12' : ''} border-2 rounded-lg transition-all outline-none ${error ? 'border-red-500 focus:ring-red-500/10' : 'border-gray-300 focus:ring-2 focus:ring-ocean-500 focus:border-transparent'}`}
       />
       <label className={`absolute ${icon ? 'left-12' : 'left-4'} top-2 text-xs transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:text-xs ${error ? 'text-red-500' : 'text-gray-500 peer-focus:text-ocean-600'}`}>
         {label}

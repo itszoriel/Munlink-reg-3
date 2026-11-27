@@ -29,7 +29,7 @@ export default function Profile() {
 
   return (
     <div className="max-w-xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
+      <div className="bg-white rounded-lg shadow-sm border p-6 md:p-8">
         {/* Header with photo */}
         <div className="flex flex-col items-center text-center mb-8">
           <div className="relative">

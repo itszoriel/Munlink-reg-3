@@ -55,7 +55,7 @@ export default function MobileNav() {
     : municipalItems
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-neutral-200 px-4 py-3 md:hidden z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 px-4 py-3 md:hidden z-50">
       <div className="flex items-center justify-around">
         {items.map((item) => (
           <NavLink

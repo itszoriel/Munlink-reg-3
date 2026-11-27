@@ -187,7 +187,7 @@ export function AdvancedDataTable<TData>({
   const selectedCount = Object.keys(rowSelection).length
 
   return (
-    <div className={`rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-hidden ${className || ''}`.trim()}>
+    <div className={`rounded-lg border border-slate-200/60 bg-white shadow-sm overflow-hidden ${className || ''}`.trim()}>
       {/* Toolbar */}
       <div className="px-4 py-3 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 flex-1">
@@ -202,7 +202,7 @@ export function AdvancedDataTable<TData>({
                 value={globalFilter ?? ''}
                 onChange={(e) => setGlobalFilter(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all outline-none"
+                className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all outline-none"
               />
             </div>
           )}
@@ -230,7 +230,7 @@ export function AdvancedDataTable<TData>({
               </button>
 
               {showColumnMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
                   {table.getAllLeafColumns()
                     .filter(col => col.id !== 'select' && col.getCanHide())
                     .map(column => (

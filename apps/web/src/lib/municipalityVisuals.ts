@@ -18,42 +18,21 @@ export type MunicipalityVisual = {
   theme: MunicipalityTheme
 }
 
+const civic: MunicipalityTheme = {
+  pageGradient: '',
+  badgeClass: 'border-white/30 bg-slate-950/40 text-white',
+  panelClass: 'border-slate-200 bg-white',
+  iconClass: 'bg-navy-50 text-navy-700',
+  chipClass: 'bg-navy-700 text-white',
+}
+
+// One civic look for every municipality; the landmark photo is what sets them apart.
 const themes = {
-  coast: {
-    pageGradient: 'from-sky-50 via-white to-cyan-100/60',
-    badgeClass: 'border-sky-300/35 bg-sky-500/20 text-white shadow-lg shadow-slate-950/20',
-    panelClass: 'border-sky-100 bg-gradient-to-br from-sky-50 to-cyan-50',
-    iconClass: 'bg-sky-100 text-sky-700',
-    chipClass: 'bg-sky-600 text-white',
-  },
-  civic: {
-    pageGradient: 'from-ocean-50 via-white to-emerald-100/50',
-    badgeClass: 'border-ocean-300/35 bg-ocean-500/20 text-white shadow-lg shadow-slate-950/20',
-    panelClass: 'border-ocean-100 bg-gradient-to-br from-ocean-50 to-emerald-50',
-    iconClass: 'bg-ocean-100 text-ocean-700',
-    chipClass: 'bg-ocean-600 text-white',
-  },
-  forest: {
-    pageGradient: 'from-emerald-50 via-white to-lime-100/50',
-    badgeClass: 'border-emerald-300/35 bg-emerald-500/20 text-white shadow-lg shadow-slate-950/20',
-    panelClass: 'border-emerald-100 bg-gradient-to-br from-emerald-50 to-lime-50',
-    iconClass: 'bg-emerald-100 text-emerald-700',
-    chipClass: 'bg-emerald-600 text-white',
-  },
-  sunset: {
-    pageGradient: 'from-amber-50 via-white to-orange-100/50',
-    badgeClass: 'border-amber-300/35 bg-amber-500/20 text-white shadow-lg shadow-slate-950/20',
-    panelClass: 'border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50',
-    iconClass: 'bg-amber-100 text-amber-700',
-    chipClass: 'bg-amber-600 text-white',
-  },
-  royal: {
-    pageGradient: 'from-indigo-50 via-white to-violet-100/50',
-    badgeClass: 'border-indigo-300/35 bg-indigo-500/20 text-white shadow-lg shadow-slate-950/20',
-    panelClass: 'border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50',
-    iconClass: 'bg-indigo-100 text-indigo-700',
-    chipClass: 'bg-indigo-600 text-white',
-  },
+  coast: civic,
+  civic,
+  forest: civic,
+  sunset: civic,
+  royal: civic,
 } satisfies Record<string, MunicipalityTheme>
 
 export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [

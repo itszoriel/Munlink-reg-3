@@ -217,7 +217,7 @@ export default function ProgramsPage() {
         const userDob = (currentUser as any).date_of_birth
         if (!userDob) {
           ageCheck.passed = false
-          ageCheck.message = '❌ Does not meet age requirement (Date of birth is required)'
+          ageCheck.message = 'Does not meet age requirement (Date of birth is required)'
         } else {
           const today = new Date()
           const birthDate = new Date(userDob)
@@ -234,13 +234,13 @@ export default function ProgramsPage() {
             if (maxAge !== null) {
               ageCheck.passed = age >= minAge && age <= maxAge
               ageCheck.message = ageCheck.passed
-                ? `✅ Meets age requirement (${age} years old, required: ${minAge}-${maxAge})`
-                : `❌ Does not meet age requirement (${age} years old, required: ${minAge}-${maxAge})`
+                ? `Meets age requirement (${age} years old, required: ${minAge}-${maxAge})`
+                : `Does not meet age requirement (${age} years old, required: ${minAge}-${maxAge})`
             } else {
               ageCheck.passed = age >= minAge
               ageCheck.message = ageCheck.passed
-                ? `✅ Meets age requirement (${age} years old, minimum ${minAge})`
-                : `❌ Does not meet age requirement (${age} years old, minimum ${minAge} required)`
+                ? `Meets age requirement (${age} years old, minimum ${minAge})`
+                : `Does not meet age requirement (${age} years old, minimum ${minAge} required)`
             }
           }
         }
@@ -254,13 +254,13 @@ export default function ProgramsPage() {
         
         if (!userMunicipalityId) {
           locationCheck.passed = false
-          locationCheck.message = '❌ Not registered in required municipality (Municipality information required)'
+          locationCheck.message = 'Not registered in required municipality (Municipality information required)'
         } else if (programMunicipalityId && userMunicipalityId !== programMunicipalityId) {
           locationCheck.passed = false
-          locationCheck.message = '❌ Not registered in required municipality'
+          locationCheck.message = 'Not registered in required municipality'
         } else {
           locationCheck.passed = true
-          locationCheck.message = '✅ Registered in required municipality'
+          locationCheck.message = 'Registered in required municipality'
         }
       }
     }
@@ -331,7 +331,7 @@ export default function ProgramsPage() {
   return (
     <div className="container-responsive py-12">
       <div className="mb-3">
-        <h1 className="text-fluid-3xl font-serif font-semibold">Programs with Benefits</h1>
+        <h1 className="text-fluid-3xl font-semibold">Programs with Benefits</h1>
         <p className="text-gray-600">Explore available programs. You can view details without logging in; applying requires an account.</p>
       </div>
 
@@ -883,14 +883,14 @@ export default function ProgramsPage() {
             </div>
             {result && result.error && (
               <div className="mt-3 rounded-lg border p-3 text-sm bg-red-50 border-red-200 text-red-800">
-                <div className="font-medium mb-1">❌ Submission Failed</div>
+                <div className="font-medium mb-1">Submission Failed</div>
                 <div>{result.error}</div>
               </div>
             )}
             {result && result.application_number && (
               <div className="mt-3 rounded-lg border p-3 text-sm flex items-center justify-between bg-green-50 border-green-200">
                 <div>
-                  ✅ Submitted • Application No.: <span className="font-medium">{result.application_number}</span>
+                  Submitted • Application No.: <span className="font-medium">{result.application_number}</span>
                 </div>
                 <StatusBadge status={result.status} />
               </div>

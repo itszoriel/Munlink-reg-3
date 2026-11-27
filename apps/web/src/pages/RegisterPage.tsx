@@ -111,7 +111,7 @@ export default function RegisterPage() {
             className="h-16 w-16 object-contain opacity-90"
           />
         </div>
-        <h2 className="text-fluid-3xl font-serif font-semibold text-center mb-2 text-ocean-700">
+        <h2 className="text-fluid-3xl font-semibold text-center mb-2 text-ocean-700">
           Create Account
         </h2>
         <p className="text-center text-sm text-gray-600 mb-6">
@@ -334,7 +334,7 @@ export default function RegisterPage() {
           </div>
           
           {/* Terms and Privacy Agreement */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 space-y-4 shadow-sm">
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-5 space-y-4 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-800 mb-3">Agreement Required</h3>
             <div className="space-y-3">
             <div className="flex items-start gap-3">

@@ -106,7 +106,7 @@ export default function ProtectedRoute({ children, allow, showGate = true }: Pro
   return (
     <div className="container-responsive py-12">
       <div className="max-w-lg mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl border p-8">
+        <div className="bg-white rounded-lg shadow-md border p-8">
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-shrink-0 w-14 h-14 rounded-full bg-ocean-100 flex items-center justify-center">
               <IconComponent className="w-7 h-7 text-ocean-600" />

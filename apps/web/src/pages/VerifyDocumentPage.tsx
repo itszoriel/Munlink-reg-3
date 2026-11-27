@@ -39,10 +39,10 @@ export default function VerifyDocumentPage() {
             <img
               src={seal.src}
               alt={seal.alt}
-              className="h-12 w-12 rounded-2xl object-contain bg-white border border-[var(--color-border)] shadow-sm"
+              className="h-12 w-12 rounded-lg object-contain bg-white border border-[var(--color-border)] shadow-sm"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
-            <h1 className="text-3xl font-serif font-semibold">Verify Document</h1>
+            <h1 className="text-3xl font-semibold">Verify Document</h1>
           </div>
         )
       })()}
@@ -52,7 +52,7 @@ export default function VerifyDocumentPage() {
           <div className="h-4 w-80 skeleton" />
         </div>
       ) : (
-        <div className={`rounded-xl border p-5 ${valid ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50'}`}>
+        <div className={`rounded-lg border p-5 ${valid ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50'}`}>
           <div className="text-xl font-bold mb-2">{valid ? 'Valid MunLink Document' : 'Invalid or Not Found'}</div>
           <div className="space-y-1 text-sm">
             <div><span className="font-medium">Request #:</span> {data?.request_number || requestNumber}</div>

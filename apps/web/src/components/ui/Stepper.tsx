@@ -31,9 +31,9 @@ export default function Stepper({ steps, current }: Props) {
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-300 ${
                     isCompleted
-                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-110'
+                      ? 'bg-emerald-500 text-white shadow-lg scale-110'
                       : isCurrent
-                      ? 'bg-ocean-gradient text-white shadow-lg shadow-ocean-500/30 scale-110 ring-4 ring-ocean-500/20'
+                      ? 'bg-ocean-gradient text-white shadow-lg scale-110 ring-4 ring-ocean-500/20'
                       : 'bg-white border-2 border-gray-300 text-gray-500'
                   }`}
                 >

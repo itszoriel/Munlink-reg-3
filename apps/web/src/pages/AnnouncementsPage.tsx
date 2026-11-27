@@ -90,7 +90,7 @@ export default function AnnouncementsPage() {
     <div className="container-responsive py-12">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-fluid-3xl font-serif font-semibold text-gray-900">Updates & Announcements</h1>
+          <h1 className="text-fluid-3xl font-semibold text-gray-900">Updates & Announcements</h1>
           <p className="text-gray-600 text-sm mt-1">Stay updated with the latest news and important information</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -99,9 +99,9 @@ export default function AnnouncementsPage() {
             <button
               key={p}
               onClick={() => setPriority(p)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 priority===p
-                  ? 'bg-ocean-600 text-white shadow-md shadow-ocean-500/30 scale-105'
+                  ? 'bg-ocean-600 text-white shadow-md scale-105'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
               }`}
             >
@@ -109,7 +109,7 @@ export default function AnnouncementsPage() {
             </button>
           ))}
           {/* Hide read toggle */}
-          <label className="ml-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer select-none">
+          <label className="ml-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer select-none">
             <input
               type="checkbox"
               checked={hideRead}

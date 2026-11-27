@@ -194,12 +194,12 @@ export default function ProvincialAdminAnnouncements() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-serif font-bold text-gray-900">Province-Wide Announcements</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Province-Wide Announcements</h1>
             <p className="text-gray-600 mt-2">Manage announcements for all 13 municipalities in Zambales</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="hidden sm:flex items-center gap-2 px-6 py-3 bg-ocean-gradient text-white rounded-xl hover:shadow-lg transition-shadow"
+            className="hidden sm:flex items-center gap-2 px-6 py-3 bg-ocean-gradient text-white rounded-lg hover:shadow-lg transition-shadow"
           >
             <Plus className="w-5 h-5" />
             <span className="font-medium">New Announcement</span>
@@ -210,7 +210,7 @@ export default function ProvincialAdminAnnouncements() {
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 shadow-sm animate-pulse">
+              <div key={i} className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
                 <div className="h-6 bg-gray-200 rounded w-2/3 mb-4" />
                 <div className="h-4 bg-gray-200 rounded w-full mb-2" />
                 <div className="h-4 bg-gray-200 rounded w-3/4" />
@@ -225,7 +225,7 @@ export default function ProvincialAdminAnnouncements() {
             action={
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="hidden sm:block px-6 py-3 bg-ocean-gradient text-white rounded-xl hover:shadow-lg transition-shadow"
+                className="hidden sm:block px-6 py-3 bg-ocean-gradient text-white rounded-lg hover:shadow-lg transition-shadow"
               >
                 Create Announcement
               </button>
@@ -234,7 +234,7 @@ export default function ProvincialAdminAnnouncements() {
         ) : (
           <div className="space-y-4">
             {announcements.map((announcement) => (
-              <div key={announcement.id} className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div key={announcement.id} className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
@@ -298,8 +298,8 @@ export default function ProvincialAdminAnnouncements() {
 
         {/* Create/Edit Modal */}
         {isFormOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-start md:items-center justify-center p-4 pt-20 md:pt-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 my-auto">
+          <div className="fixed inset-0 bg-black/50 z-[60] flex items-start md:items-center justify-center p-4 pt-20 md:pt-4 overflow-y-auto">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 my-auto">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 {editingAnnouncement ? 'Edit Announcement' : 'Create Province-Wide Announcement'}
               </h2>
@@ -393,14 +393,14 @@ export default function ProvincialAdminAnnouncements() {
                   <button
                     type="submit"
                     disabled={formLoading}
-                    className="flex-1 py-3 bg-ocean-gradient text-white rounded-xl hover:shadow-lg transition-shadow disabled:opacity-50"
+                    className="flex-1 py-3 bg-ocean-gradient text-white rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50"
                   >
                     {formLoading ? 'Saving...' : editingAnnouncement ? 'Update' : 'Create'}
                   </button>
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
+                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     Cancel
                   </button>
@@ -420,7 +420,7 @@ export default function ProvincialAdminAnnouncements() {
             transition={{ duration: 0.2 }}
           >
             <motion.button
-              className="relative flex items-center justify-center bg-ocean-gradient text-white shadow-lg hover:shadow-xl transition-shadow"
+              className="relative flex items-center justify-center bg-ocean-gradient text-white shadow-lg hover:shadow-md transition-shadow"
               onClick={() => {
                 if (fabExpanded) {
                   setShowCreateModal(true)

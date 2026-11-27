@@ -105,11 +105,11 @@ export const Modal: React.FC<ModalProps> = ({ open, onOpenChange, title, childre
       aria-modal="true"
       style={{ zIndex: 1000 }}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/50 " />
       <div
         ref={modalRef}
         tabIndex={-1}
-        className={`relative w-full ${sizeClasses[size]} max-h-[95vh] sm:max-h-[90vh] flex flex-col bg-[var(--color-card,#fff)] text-[var(--color-card-foreground,#111)] border border-[var(--color-border,#e5e7eb)] shadow-2xl ${isFullSize ? 'rounded-none' : 'rounded-t-2xl sm:rounded-2xl'} animate-modal-slide-up ${className || ''}`.trim()}
+        className={`relative w-full ${sizeClasses[size]} max-h-[95vh] sm:max-h-[90vh] flex flex-col bg-[var(--color-card,#fff)] text-[var(--color-card-foreground,#111)] border border-[var(--color-border,#e5e7eb)] shadow-lg ${isFullSize ? 'rounded-none' : 'rounded-t-lg sm:rounded-lg'} animate-modal-slide-up ${className || ''}`.trim()}
         onClick={(e) => e.stopPropagation()}
         style={{
           animation: 'modal-slide-up 0.3s ease-out forwards',

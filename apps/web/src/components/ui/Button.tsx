@@ -24,10 +24,10 @@ export default function Button({
   disabled,
 }: Props) {
   const variants: Record<string, string> = {
-    primary: 'bg-ocean-gradient text-white shadow-card hover:scale-105',
+    primary: 'bg-ocean-gradient text-white shadow-card ',
     secondary: 'bg-gray-100 text-gray-800 hover:bg-gray-200',
     ghost: 'bg-transparent text-ocean-600 hover:bg-ocean-50',
-    danger: 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:scale-105',
+    danger: 'bg-red-600 text-white ',
   }
   const sizes: Record<string, string> = {
     sm: 'px-3 py-1.5 text-sm',
@@ -39,7 +39,7 @@ export default function Button({
     <button
       onClick={onClick}
       disabled={disabled || loading}
-      className={`${variants[variant]} ${sizes[size]} rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 justify-center min-h-[44px] whitespace-normal break-words ${className}`}
+      className={`${variants[variant]} ${sizes[size]} rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 justify-center min-h-[44px] whitespace-normal break-words ${className}`}
     >
       {loading ? (
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

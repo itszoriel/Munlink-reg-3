@@ -217,7 +217,7 @@ export default function AdminGuideContent({ variant }: { variant: Variant }) {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-3xl border border-white/60 bg-white/85 p-6 shadow-xl backdrop-blur md:p-8">
+      <section className="rounded-lg border border-white/60 bg-white p-6 shadow-md md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
@@ -230,7 +230,7 @@ export default function AdminGuideContent({ variant }: { variant: Variant }) {
             <p className="mt-3 text-base leading-7 text-slate-600 md:text-lg">{roleDescriptions[variant]}</p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
             <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
               <ShieldCheck className="h-4 w-4" />
               Scope reminder
@@ -241,7 +241,7 @@ export default function AdminGuideContent({ variant }: { variant: Variant }) {
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {quickSteps.map((step, index) => (
-            <div key={step} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div key={step} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
                 {index + 1}
               </div>
@@ -257,7 +257,7 @@ export default function AdminGuideContent({ variant }: { variant: Variant }) {
         ))}
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-2xl font-bold text-slate-900">What to remember</h2>
         <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
           <li>Use the dashboard first, then open the page that matches the task you need to finish.</li>
@@ -273,8 +273,8 @@ function GuideCard({ section }: { section: GuideSection }) {
   const Icon = section.icon
 
   return (
-    <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+    <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+      <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
         <Icon className="h-6 w-6" />
       </div>
       <h2 className="mt-4 text-xl font-bold text-slate-900">{section.title}</h2>
@@ -291,7 +291,7 @@ function GuideCard({ section }: { section: GuideSection }) {
       </ol>
       <Link
         to={section.href}
-        className="mt-5 inline-flex items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+        className="mt-5 inline-flex items-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
       >
         {section.hrefLabel}
       </Link>

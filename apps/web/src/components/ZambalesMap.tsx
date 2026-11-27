@@ -26,7 +26,7 @@ const pins: Pin[] = [
 
 export default function ZambalesMap() {
   return (
-    <div className="overflow-hidden rounded-xl shadow">
+    <div className="overflow-hidden rounded-lg shadow">
       <MapContainer center={center} zoom={9} style={{ height: 420, width: '100%' }} scrollWheelZoom={false}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

@@ -63,7 +63,7 @@ export default function Problems() {
         <p className="text-neutral-600">Review, track, and resolve issues reported by residents. Use the status filters to manage the workflow from submission to resolution.</p>
       </div>
 
-      <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-md border border-white/50 overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-xl font-bold text-neutral-900">Reported Concerns</h2>
           <div className="inline-flex gap-2 overflow-x-auto pb-2">

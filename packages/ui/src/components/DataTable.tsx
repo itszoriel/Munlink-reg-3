@@ -25,7 +25,7 @@ export type DataTableProps<R = any> = {
 
 export function DataTable<R = any>({ columns, data, emptyState, onRowClick, pagination, className }: DataTableProps<R>) {
   return (
-    <div className={`rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-card-foreground)] overflow-hidden ${className || ''}`.trim()}>
+    <div className={`rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-card-foreground)] overflow-hidden ${className || ''}`.trim()}>
       <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 border-b border-[var(--color-border)] text-sm font-semibold">
         {columns.map((c, idx) => (
           <div key={c.key} className={c.className || (idx === columns.length - 1 ? 'text-right' : '')}>{c.header}</div>

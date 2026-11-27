@@ -13,7 +13,6 @@ import Dashboard from './pages/Dashboard'
 import Residents from './pages/Residents'
 import Programs from './pages/Programs'
 import Requests from './pages/Requests'
-import Admins from './pages/Admins'
 import Reports from './pages/Reports'
 import Profile from './pages/Profile'
 import Announcements from './pages/Announcements'
@@ -82,7 +81,7 @@ export default function App() {
   // Show nothing while bootstrapping to prevent flash of unauthenticated state
   if (!isAuthBootstrapped) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-ocean-50 to-white">
+      <div className="fixed inset-0 flex items-center justify-center bg-ocean-50">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-ocean-600 border-r-transparent"></div>
           <p className="mt-4 text-sm text-gray-600">Loading...</p>
@@ -92,7 +91,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-ocean-50 to-white">
+    <div className="min-h-screen bg-ocean-50">
       <Routes>
         {/* Admin routes (modern layout) */}
         <Route
@@ -171,16 +170,6 @@ export default function App() {
             <ProtectedRoute>
               <AdminLayout>
                 <Problems />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admins"
-          element={
-            <ProtectedRoute>
-              <AdminLayout>
-                <Admins />
               </AdminLayout>
             </ProtectedRoute>
           }

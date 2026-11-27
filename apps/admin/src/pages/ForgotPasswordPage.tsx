@@ -23,7 +23,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 px-6 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-6 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img
@@ -32,13 +32,13 @@ export default function ForgotPasswordPage() {
             className="h-14 w-14 mx-auto mb-3 object-contain"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
           />
-          <h1 className="text-2xl font-serif font-bold text-gray-900">Admin password reset</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Admin password reset</h1>
           <p className="text-sm text-gray-600 mt-1">
             Enter your admin email to receive a reset link.
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+        <div className="bg-white rounded-lg shadow-md border border-gray-100 p-8">
           {submitted ? (
             <div className="text-center space-y-4">
               <div className="mx-auto w-12 h-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-sm font-semibold">
@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
                 </label>
                 <input
                   type="email"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
                   placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="w-full py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-60 disabled:cursor-not-allowed "
               >
                 {submitting ? 'Sending...' : 'Send reset link'}
               </button>

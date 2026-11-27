@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import AdminAuthPanel from '@/components/AdminAuthPanel'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { authApi, handleApiError } from '../lib/api'
@@ -50,85 +51,14 @@ export default function ProvincialAdminLoginPage() {
 
   return (
     <div className="fixed inset-0 flex">
-      {/* Left Panel - Background */}
-      <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden">
-        <img
-          src="/assets/provincial.jpg"
-          alt="Provincial Admin Login"
-          className="absolute inset-0 h-full w-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/20 to-black/30" />
-
-        {/* Zambales Province Logo Watermark */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <motion.img
-            src="/logos/provinces/zambales.png"
-            alt="Zambales Province Seal"
-            className="w-[500px] h-[500px] object-contain opacity-10"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 0.1, scale: 1 }}
-            transition={{ duration: 0.8 }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-          />
-        </div>
-
-        <div className="absolute inset-0 bg-grid-pattern opacity-[0.05]" />
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
-          <div className="max-w-lg">
-            {/* Header */}
-            <motion.div
-              className="mb-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl">
-                  <Building2 className="w-10 h-10 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-serif font-bold text-white mb-1">Provincial Admin</h1>
-                  <p className="text-indigo-100 text-lg">Zambales Portal</p>
-                </div>
-              </div>
-              <p className="text-white/90 text-lg leading-relaxed">
-                Manage province-wide announcements and communications for all 13 municipalities in Zambales.
-              </p>
-            </motion.div>
-
-            {/* Features */}
-            <motion.div
-              className="space-y-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              {features.map((feature, i) => {
-                const Icon = feature.icon
-                return (
-                  <motion.div
-                    key={feature.label}
-                    className="flex items-start gap-4 bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/15 transition-colors"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-                  >
-                    <div className="p-2 bg-white/10 rounded-lg">
-                      <Icon className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">{feature.label}</p>
-                      <p className="text-sm text-indigo-100">{feature.desc}</p>
-                    </div>
-                  </motion.div>
-                )
-              })}
-            </motion.div>
-          </div>
-        </div>
-      </div>
+      <AdminAuthPanel
+        image="/assets/provincial.jpg"
+        office="Provincial staff"
+        title="Provincial admin sign-in"
+        description={'Province-wide announcements and reports across the 13 municipalities of Zambales.'}
+        features={features}
+        wide
+      />
 
       {/* Right Panel - Login Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
@@ -141,11 +71,11 @@ export default function ProvincialAdminLoginPage() {
             {/* Mobile Header */}
             <div className="lg:hidden mb-8 text-center">
               <div className="inline-flex items-center gap-3 mb-4">
-                <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl">
+                <div className="p-2.5 bg-violet-600 rounded-lg">
                   <Building2 className="w-8 h-8 text-white" />
                 </div>
                 <div className="text-left">
-                  <h1 className="text-2xl font-serif font-bold text-gray-900">Provincial Admin</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">Provincial Admin</h1>
                   <p className="text-sm text-gray-600">Zambales Portal</p>
                 </div>
               </div>
@@ -155,7 +85,7 @@ export default function ProvincialAdminLoginPage() {
             <p className="text-gray-600 mb-8">Sign in to manage province-wide announcements</p>
 
             {error && (
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-100 mb-6 animate-shake">
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-100 mb-6 animate-shake">
                 <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -177,7 +107,7 @@ export default function ProvincialAdminLoginPage() {
                     type="text"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 shadow-sm"
+                    className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 shadow-sm"
                     placeholder="Enter your username or email"
                     required
                     disabled={loading}
@@ -199,7 +129,7 @@ export default function ProvincialAdminLoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full pl-12 pr-12 py-3.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 shadow-sm"
+                    className="w-full pl-12 pr-12 py-3.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 shadow-sm"
                     placeholder="Enter your password"
                     required
                     disabled={loading}
@@ -237,7 +167,7 @@ export default function ProvincialAdminLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="relative w-full py-4 px-6 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
+                className="relative w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
               >
                 <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}>
                   Sign in

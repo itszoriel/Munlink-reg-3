@@ -318,7 +318,7 @@ export default function Residents() {
             </div>
           </div>
           <div className="mb-6">
-            <div className="inline-flex rounded-xl border border-neutral-200 bg-white overflow-hidden">
+            <div className="inline-flex rounded-lg border border-neutral-200 bg-white overflow-hidden">
               {[
                 { key: 'residents', label: 'Residents' },
                 { key: 'transfers', label: 'Transfer Requests' },
@@ -334,11 +334,11 @@ export default function Residents() {
 
           {/* Residents Toolbar: Search + Filters */}
           {activeTab==='residents' && (
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 md:p-6 shadow-lg border border-white/50 mb-6">
+          <div className="bg-white rounded-lg p-4 md:p-6 shadow-lg border border-white/50 mb-6">
             <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 items-stretch">
               <div className="flex-1 min-w-0">
                 <div className="relative">
-                  <input type="search" name="resident_search" id="resident-search" aria-label="Search residents by name, email, or ID number" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by name, email, or ID number..." className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:border-ocean-500 focus:ring-2 focus:ring-ocean-500/20 transition-all" />
+                  <input type="search" name="resident_search" id="resident-search" aria-label="Search residents by name, email, or ID number" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by name, email, or ID number..." className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:border-ocean-500 focus:ring-2 focus:ring-ocean-500/20 transition-all" />
                   <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
               </div>
@@ -354,7 +354,7 @@ export default function Residents() {
                       key={status.value}
                       onClick={() => setFilter(status.value as any)}
                       aria-pressed={filter === status.value}
-                      className={`shrink-0 px-4 py-2 rounded-xl font-medium transition-all ${filter === status.value ? 'bg-ocean-gradient text-white shadow-lg' : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'}`}
+                      className={`shrink-0 px-4 py-2 rounded-lg font-medium transition-all ${filter === status.value ? 'bg-ocean-gradient text-white shadow-lg' : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'}`}
                     >
                       {status.label}
                       <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${filter === status.value ? 'bg-white/20' : 'bg-neutral-200'}`}>{status.count}</span>
@@ -388,7 +388,7 @@ export default function Residents() {
 
           {/* Transfer Requests Tab */}
           {activeTab==='transfers' && (
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-6 shadow-lg border border-white/50 mb-6">
+          <div className="bg-white rounded-lg p-6 shadow-lg border border-white/50 mb-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-semibold">Municipality Transfer Requests</h2>
@@ -457,7 +457,7 @@ export default function Residents() {
 
           {/* Special Status Requests Tab */}
           {activeTab==='special_status' && (
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-6 shadow-lg border border-white/50 mb-6">
+          <div className="bg-white rounded-lg p-6 shadow-lg border border-white/50 mb-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-semibold">Pending Special Status Requests</h2>
@@ -490,7 +490,7 @@ export default function Residents() {
             ) : (
               <div className="space-y-3">
                 {pendingStatuses.map((s: any) => (
-                  <div key={s.id} className="rounded-xl border bg-white px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div key={s.id} className="rounded-lg border bg-white px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                       <div className="font-semibold">
                         {(s.user?.first_name || '') + ' ' + (s.user?.last_name || '') || s.user?.username || 'Resident'}
@@ -515,14 +515,14 @@ export default function Residents() {
           {/* Residents Table */}
           {activeTab==='residents' && (
           <DataTable
-            className="data-table bg-white/70 backdrop-blur-xl"
+            className="data-table bg-white "
             columns={[
               { key: 'resident', header: 'Resident', className: 'md:col-span-3 xl:col-span-3', render: (r: any) => (
                 <div className="flex items-center h-10 gap-3 min-w-0">
                   {r.profile_picture ? (
-                    <img src={mediaUrl(r.profile_picture)} alt={r.name} className="w-10 h-10 rounded-xl object-cover" />
+                    <img src={mediaUrl(r.profile_picture)} alt={r.name} className="w-10 h-10 rounded-lg object-cover" />
                   ) : (
-                    <div className="w-10 h-10 rounded-xl bg-ocean-gradient text-white flex items-center justify-center font-bold">{r.avatar}</div>
+                    <div className="w-10 h-10 rounded-lg bg-ocean-gradient text-white flex items-center justify-center font-bold">{r.avatar}</div>
                   )}
                   <div className="min-w-0">
                     <div className="font-medium truncate">{r.name}</div>
@@ -578,19 +578,19 @@ export default function Residents() {
                   ) : (
                     <>
                       <button
-                        className={`icon-btn ${r.status==='suspended' ? 'success' : 'danger'}`}
+                        className="btn-secondary min-h-[36px] px-3 py-1.5 text-sm"
                         onClick={(e: React.MouseEvent) => {
                           e.stopPropagation()
                           void handleSuspendToggle(r)
                         }}
                         disabled={actionLoading === String(r.id)}
-                        title={r.status==='suspended' ? 'Unsuspend' : 'Suspend'}
-                        aria-label={r.status==='suspended' ? 'Unsuspend' : 'Suspend'}
+                        title={r.status==='suspended' ? 'Reactivate account' : 'Suspend account'}
+                        aria-label={r.status==='suspended' ? `Reactivate ${r.name || 'resident'}` : `Suspend ${r.name || 'resident'}`}
                       >
                         {r.status==='suspended' ? (
-                          <RotateCcw className="w-4 h-4" aria-hidden="true" />
+                          <><RotateCcw className="w-4 h-4" aria-hidden="true" />Reactivate</>
                         ) : (
-                          <Pause className="w-4 h-4" aria-hidden="true" />
+                          <><Pause className="w-4 h-4 text-red-700" aria-hidden="true" />Suspend</>
                         )}
                       </button>
                       <button title="Open" aria-label="Open" className="icon-btn" onClick={(e: React.MouseEvent) => { e.stopPropagation(); openResident(r) }}>
@@ -756,7 +756,7 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
         {loading && !data && (
           <div className="space-y-4">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-neutral-200 rounded-xl animate-pulse" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-neutral-200 rounded-lg animate-pulse" />
               <div className="flex-1 space-y-2">
                 <div className="h-5 w-32 bg-neutral-200 rounded animate-pulse" />
                 <div className="h-4 w-48 bg-neutral-200 rounded animate-pulse" />
@@ -777,9 +777,9 @@ function ResidentDetailModal({ userId, basic, onClose, onStatusChange }: { userI
           <>
             <div className="flex items-start gap-4">
               {data?.profile_picture ? (
-                <img src={mediaUrl(data.profile_picture)} alt={data?.name || ''} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover" />
+                <img src={mediaUrl(data.profile_picture)} alt={data?.name || ''} className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover" />
               ) : (
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-ocean-gradient rounded-xl flex items-center justify-center text-white font-bold">{(data?.first_name?.[0]||'U')+(data?.last_name?.[0]||'')}</div>
+                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-ocean-gradient rounded-lg flex items-center justify-center text-white font-bold">{(data?.first_name?.[0]||'U')+(data?.last_name?.[0]||'')}</div>
               )}
               <div>
                 <h3 className="text-lg font-semibold">{[data?.first_name, data?.last_name].filter(Boolean).join(' ') || 'Unknown'}</h3>

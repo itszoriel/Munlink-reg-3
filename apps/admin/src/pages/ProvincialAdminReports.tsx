@@ -74,19 +74,19 @@ export default function ProvincialAdminReports() {
       label: 'Total Province-Wide Announcements',
       value: reportData.total_province_announcements,
       icon: BarChart3,
-      color: 'from-indigo-500 to-violet-600',
+      color: 'bg-navy-700',
     },
     {
       label: 'Announcements This Month',
       value: reportData.announcements_this_month,
       icon: Calendar,
-      color: 'from-green-500 to-emerald-600',
+      color: 'bg-navy-700',
     },
     {
       label: 'Announcements Last Month',
       value: reportData.announcements_last_month,
       icon: TrendingUp,
-      color: 'from-blue-500 to-cyan-600',
+      color: 'bg-navy-700',
     },
   ]
 
@@ -100,12 +100,12 @@ export default function ProvincialAdminReports() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-serif font-bold text-gray-900">Province-Wide Reports</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Province-Wide Reports</h1>
             <p className="text-gray-600 mt-2">Analytics and statistics for Zambales province-wide announcements</p>
           </div>
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Download className="w-5 h-5" />
             <span className="font-medium">Export CSV</span>
@@ -116,8 +116,8 @@ export default function ProvincialAdminReports() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 shadow-sm animate-pulse">
-                <div className="h-12 w-12 bg-gray-200 rounded-xl mb-4" />
+              <div key={i} className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
+                <div className="h-12 w-12 bg-gray-200 rounded-lg mb-4" />
                 <div className="h-4 bg-gray-200 rounded w-24 mb-2" />
                 <div className="h-8 bg-gray-200 rounded w-16" />
               </div>
@@ -128,8 +128,8 @@ export default function ProvincialAdminReports() {
             {statCards.map((stat) => {
               const Icon = stat.icon
               return (
-                <div key={stat.label} className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-4`}>
+                <div key={stat.label} className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+                  <div className={`w-12 h-12 rounded-lg ${stat.color} flex items-center justify-center mb-4`}>
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <p className="text-sm font-medium text-gray-600 mb-1">{stat.label}</p>
@@ -141,7 +141,7 @@ export default function ProvincialAdminReports() {
         )}
 
         {/* Growth Rate Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white rounded-lg p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Growth Analysis</h2>
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -153,16 +153,16 @@ export default function ProvincialAdminReports() {
                 <p className="text-sm text-gray-500">vs last month</p>
               </div>
             </div>
-            <div className={`p-4 rounded-xl ${Number(growthRate) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div className={`p-4 rounded-lg ${Number(growthRate) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
               <TrendingUp className={`w-12 h-12 ${Number(growthRate) >= 0 ? 'text-green-600' : 'text-red-600'}`} />
             </div>
           </div>
         </div>
 
         {/* Coverage Map Placeholder */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white rounded-lg p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Provincial Coverage</h2>
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
             <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 font-medium">Coverage visualization coming soon</p>
             <p className="text-sm text-gray-500 mt-2">View announcement reach across all 13 municipalities</p>
@@ -170,7 +170,7 @@ export default function ProvincialAdminReports() {
         </div>
 
         {/* Info Notice */}
-        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-6">
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
           <div className="flex items-start gap-3">
             <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-white text-xs font-bold">i</span>

@@ -113,8 +113,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       className={`
         flex flex-col items-center justify-center text-center
         ${compact ? 'py-6 px-4' : 'py-12 px-6'}
-        rounded-2xl border border-[var(--color-border,#e5e7eb)] 
-        bg-gradient-to-b from-[var(--color-card,#ffffff)] to-[var(--color-card-alt,#fafafa)]
+        rounded-lg border border-[var(--color-border,#e5e7eb)] 
+        bg-white
         ${className || ''}
       `.trim().replace(/\s+/g, ' ')}
     >
@@ -123,8 +123,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         ${compact ? 'mb-3' : 'mb-4'}
         flex items-center justify-center
         ${compact ? 'w-14 h-14' : 'w-20 h-20'}
-        rounded-2xl
-        bg-gradient-to-br from-gray-100 to-gray-50
+        rounded-lg
+        bg-gray-100
         text-gray-400
       `}>
         {iconNode}

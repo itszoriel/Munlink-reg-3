@@ -56,12 +56,12 @@ export default function MyDocumentRequestsPage() {
       >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-fluid-3xl font-serif font-semibold text-gray-900">My Document Requests</h1>
+            <h1 className="text-fluid-3xl font-semibold text-gray-900">My Document Requests</h1>
             <p className="text-gray-600 text-sm mt-1">Track and manage all your document requests</p>
           </div>
           <Link
             to="/documents"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-ocean-600 text-white font-semibold hover:bg-ocean-700 shadow-md hover:shadow-lg transition-all"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-ocean-600 text-white font-semibold hover:bg-ocean-700 shadow-md hover:shadow-lg transition-all"
           >
             <FileText size={18} />
             Request New Document
@@ -74,9 +74,9 @@ export default function MyDocumentRequestsPage() {
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 statusFilter === status
-                  ? 'bg-ocean-600 text-white shadow-md shadow-ocean-500/30 scale-105'
+                  ? 'bg-ocean-600 text-white shadow-md scale-105'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
               }`}
             >
@@ -132,14 +132,14 @@ export default function MyDocumentRequestsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
-                className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-ocean-200 transition-all duration-300"
+                className="group bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-ocean-200 transition-all duration-300"
               >
                 <div className="p-6 space-y-4">
                   {/* Header with Document Type */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-md">
+                        <div className="h-10 w-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-md">
                           <FileText size={20} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -182,7 +182,7 @@ export default function MyDocumentRequestsPage() {
                   <div className="pt-2">
                     <Link
                       to={`/dashboard/requests/${request.id}`}
-                      className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all ${
+                      className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all ${
                         isReadyForPickup
                           ? 'bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg'
                           : 'bg-ocean-50 text-ocean-700 hover:bg-ocean-100 border border-ocean-200'

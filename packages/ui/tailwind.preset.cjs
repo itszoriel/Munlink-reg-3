@@ -1,6 +1,30 @@
-/** Tailwind preset for SerbisyoZambaleño shared tokens and utilities */
+/**
+ * Tailwind preset for MunLink Zambales.
+ *
+ * One calm civic palette: deep navy for actions and structure, slate neutrals,
+ * provincial green only for the seal/brand mark, and standard semantic colours
+ * (emerald success, amber warning, red error). Legacy palette names (ocean,
+ * primary, sky, blue, indigo, cyan) all resolve to navy so older markup follows
+ * the brand without per-file edits.
+ */
 const colors = require('tailwindcss/colors')
 const plugin = require('tailwindcss/plugin')
+
+const navy = {
+  50: '#f2f5fa',
+  100: '#e3e9f3',
+  200: '#c5d1e5',
+  300: '#9aaed0',
+  400: '#6a85b5',
+  500: '#46659c',
+  600: '#2f4d82',
+  700: '#243d6b',
+  800: '#1c3157',
+  900: '#14233f',
+  950: '#0c1628',
+}
+
+const flat = (hex) => `linear-gradient(${hex}, ${hex})`
 
 module.exports = {
   theme: {
@@ -10,55 +34,15 @@ module.exports = {
         xs: '480px',
       },
       colors: {
-        /* SerbisyoZambaleño Unified Design System */
-        ocean: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-        },
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-        },
-        forest: {
-          50: '#ecfdf5',
-          100: '#d1fae5',
-          200: '#a7f3d0',
-          300: '#6ee7b7',
-          400: '#34d399',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-          800: '#065f46',
-          900: '#064e3b',
-        },
-        sunset: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#f59e0b',
-          600: '#d97706',
-          700: '#b45309',
-          800: '#92400e',
-          900: '#78350f',
-        },
+        navy,
+        primary: navy,
+        ocean: navy,
+        sky: navy,
+        blue: navy,
+        indigo: navy,
+        cyan: navy,
+        forest: colors.emerald,
+        sunset: colors.amber,
         purple: colors.violet,
         yellow: colors.amber,
         neutral: colors.slate,
@@ -68,8 +52,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        // Display serif retired: headings use the same sans face.
+        serif: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       container: {
         center: true,
@@ -82,12 +67,13 @@ module.exports = {
         },
       },
       boxShadow: {
-        card: '0 10px 25px -10px rgba(0,0,0,0.15)',
+        card: '0 1px 2px 0 rgb(15 23 42 / 0.06)',
       },
+      // Kept as names for older markup; rendered as flat brand colours.
       backgroundImage: {
-        'ocean-gradient': 'linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)',
-        'forest-gradient': 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-        'sunset-gradient': 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        'ocean-gradient': flat(navy[700]),
+        'forest-gradient': flat('#047857'),
+        'sunset-gradient': flat('#b45309'),
       },
       keyframes: {
         float: {
@@ -112,7 +98,7 @@ module.exports = {
         },
       },
       animation: {
-        float: 'float 6s ease-in-out infinite',
+        float: 'none',
         'fade-in-up': 'fadeInUp 0.6s ease-out',
         shimmer: 'shimmer 2s infinite',
         'slide-in-right': 'slideInRight 0.3s ease-out',
@@ -159,14 +145,15 @@ module.exports = {
           paddingTop: theme('spacing.2'),
           paddingBottom: theme('spacing.2'),
           color: theme('colors.white'),
-          backgroundColor: theme('colors.ocean.600'),
-          borderRadius: theme('borderRadius.lg'),
-          transitionProperty: 'background-color, transform, color',
+          backgroundColor: theme('colors.navy.700'),
+          borderRadius: theme('borderRadius.md'),
+          transitionProperty: 'background-color, color',
           transitionDuration: '150ms',
         },
         '.card': {
           backgroundColor: theme('colors.white'),
           borderRadius: theme('borderRadius.lg'),
+          border: `1px solid ${theme('colors.slate.200')}`,
           boxShadow: theme('boxShadow.card'),
           padding: theme('spacing.6'),
           minWidth: 0,
