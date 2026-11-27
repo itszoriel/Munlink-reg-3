@@ -41,7 +41,7 @@ def _create_superadmin_and_2fa_code():
         purpose='2fa_login',
         expiry_minutes=10,
     )
-    return verification.session_id, verification.code
+    return verification.session_id, verification.plain_code
 
 
 def test_admin_login_rejects_superadmin_account():

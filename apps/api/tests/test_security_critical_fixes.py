@@ -358,7 +358,7 @@ def test_failed_superadmin_2fa_is_audited():
         superadmin = _add_superadmin()
         code = EmailVerificationCode.create_for_user(superadmin.id, '2fa_login', expiry_minutes=10)
         session_id = code.session_id
-        wrong = '000000' if code.code != '000000' else '111111'
+        wrong = '000000' if code.plain_code != '000000' else '111111'
 
     resp = client.post('/api/auth/superadmin/verify-2fa', json={'session_id': session_id, 'code': wrong})
     assert resp.status_code == 401
@@ -373,7 +373,7 @@ def test_superadmin_session_is_short_lived_and_refreshable():
     with app.app_context():
         superadmin = _add_superadmin()
         code = EmailVerificationCode.create_for_user(superadmin.id, '2fa_login', expiry_minutes=10)
-        session_id, plain = code.session_id, code.code
+        session_id, plain = code.session_id, code.plain_code
 
     resp = client.post('/api/auth/superadmin/verify-2fa', json={'session_id': session_id, 'code': plain})
     assert resp.status_code == 200, resp.get_json()

@@ -7,7 +7,11 @@ Used for:
 """
 from datetime import datetime, timedelta
 from apps.api.utils.time import utc_now
+import hashlib
+import hmac
 import secrets
+
+from flask import current_app
 
 try:
     from apps.api import db
@@ -23,7 +27,9 @@ class EmailVerificationCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
 
-    code = db.Column(db.String(6), nullable=False)
+    # HMAC-SHA256 of the code (keyed with SECRET_KEY); the plain code is only
+    # held in memory long enough to email it, so a database leak exposes no live code.
+    code = db.Column(db.String(64), nullable=False)
     purpose = db.Column(db.String(50), nullable=False)  # '2fa_login', 'password_reset', 'email_change'
 
     expires_at = db.Column(db.DateTime, nullable=False)
@@ -79,6 +85,15 @@ class EmailVerificationCode(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
+    # Plain code for the caller to send; never persisted.
+    plain_code = None
+
+    @staticmethod
+    def hash_code(code: str, purpose: str, session_id: str | None) -> str:
+        key = (current_app.config.get('SECRET_KEY') or '').encode('utf-8')
+        message = f"{purpose}:{session_id or ''}:{code}".encode('utf-8')
+        return hmac.new(key, message, hashlib.sha256).hexdigest()
+
     @staticmethod
     def generate_code() -> str:
         """Generate a cryptographically secure 6-digit code."""
@@ -115,15 +130,18 @@ class EmailVerificationCode(db.Model):
         ).update({'used': True})
         db.session.commit()
 
+        plain = cls.generate_code()
+        session_id = cls.generate_session_id() if purpose == '2fa_login' else None
         code = cls(
             user_id=user_id,
-            code=cls.generate_code(),
+            code=cls.hash_code(plain, purpose, session_id),
             purpose=purpose,
-            session_id=cls.generate_session_id() if purpose == '2fa_login' else None,
+            session_id=session_id,
             expires_at=utc_now() + timedelta(minutes=expiry_minutes)
         )
         db.session.add(code)
         db.session.commit()
+        code.plain_code = plain
         return code
 
     @classmethod
@@ -164,7 +182,8 @@ class EmailVerificationCode(db.Model):
             verification.mark_used()
             return False, 'Too many failed attempts', verification
 
-        if not secrets.compare_digest(str(verification.code), str(code or '')):
+        submitted = cls.hash_code(str(code or '').strip(), purpose, verification.session_id)
+        if not hmac.compare_digest(str(verification.code), submitted):
             verification.increment_attempts()
             remaining = max_attempts - verification.attempts
             if remaining > 0:
