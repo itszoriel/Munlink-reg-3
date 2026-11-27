@@ -54,6 +54,27 @@ The API also performs inline delivery attempts. Running the worker is still reco
 
 SMS delivery is currently paused because the PhilSMS account has no available credits. Keep `SMS_MAINTENANCE_MODE=true` so the API skips SMS attempts and the resident profile reports maintenance. After replenishing credits, configure a production API key, set `SMS_PROVIDER=philsms`, and set `SMS_MAINTENANCE_MODE=false`.
 
+## Private storage migration
+
+Sensitive files uploaded before the private bucket was used are still in the public bucket and referenced by public URL. The API keeps reading them, but they stay publicly reachable until they are moved. Deploy the API first, then run against dev before prod:
+
+```powershell
+# Report only
+python apps/api/scripts/migrate_private_storage.py --env dev
+
+# Copy to the private bucket and rewrite database references to storage paths
+python apps/api/scripts/migrate_private_storage.py --env dev --apply
+
+# Optional, after checking the app: also delete each public copy
+python apps/api/scripts/migrate_private_storage.py --env dev --apply --delete-public
+
+# Leftover sensitive files nobody references (old ID re-uploads, failed requests)
+python apps/api/scripts/migrate_private_storage.py --env dev --orphans
+python apps/api/scripts/migrate_private_storage.py --env dev --orphans --apply
+```
+
+The script uses `DEV_*` / `PROD_*` credentials (or `--env current` for the API's own `DATABASE_URL`, `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`), creates the private bucket when it is missing, refuses to run if that bucket is public, and can be re-run safely. Files that exist only on an old server's local disk are reported as missing; they cannot be recovered by the script.
+
 ## Verification-image retention
 
 Preview cleanup:
@@ -62,7 +83,7 @@ Preview cleanup:
 python apps/api/scripts/cleanup_verification_images.py --dry-run
 ```
 
-Run the cleanup command on a schedule after configuring `ID_RETENTION_DAYS`. The audit record remains after the underlying sensitive file is removed.
+Run the cleanup command on a schedule after configuring `ID_RETENTION_DAYS`. It deletes ID and selfie images of residents verified (or deactivated) more than that many days ago, and clears a database reference only after the file is gone. Verified residents keep full access after their images are removed. The audit record remains after the underlying sensitive file is removed.
 
 ## Health and status
 
@@ -73,7 +94,7 @@ Run the cleanup command on a schedule after configuring `ID_RETENTION_DAYS`. The
 ## Storage checks
 
 - Confirm the configured upload directory is writable.
-- Confirm the manual payment-proof bucket is private.
+- Confirm the private bucket (`SUPABASE_PRIVATE_BUCKET`) is private and has no storage policies.
 - Confirm the service key is available only to the API.
 - Confirm generated PDFs can be uploaded and retrieved using the expected authorization path.
 - Treat local `uploads/` as runtime data; it is gitignored.

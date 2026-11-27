@@ -25,7 +25,7 @@ sys.path.insert(0, str(project_root))
 from apps.api import create_app, db
 from apps.api.models.user import User
 from apps.api.models.admin_audit_log import AdminAuditLog
-from apps.api.utils.storage_handler import delete_file
+from apps.api.utils.storage_handler import delete_stored_file
 import click
 
 
@@ -51,7 +51,12 @@ def cleanup_verification_images(dry_run):
             db.or_(
                 db.and_(User.admin_verified.is_(True), User.admin_verified_at < cutoff_date),
                 db.and_(User.is_active.is_(False), User.updated_at < cutoff_date)
-            )
+            ),
+            db.or_(
+                User.valid_id_front.isnot(None),
+                User.valid_id_back.isnot(None),
+                User.selfie_with_id.isnot(None),
+            ),
         ).all()
 
         deleted_count = 0
@@ -68,14 +73,16 @@ def cleanup_verification_images(dry_run):
 
                 try:
                     if not dry_run:
-                        # Delete file
-                        delete_file(file_path)
-
-                        # Clear DB reference
+                        # Clear the DB reference only once the file is gone,
+                        # so a failed delete is retried on the next run.
+                        if not delete_stored_file(file_path):
+                            print(f"  ERROR deleting {field} for user {user.id}: storage refused the delete")
+                            error_count += 1
+                            continue
                         setattr(user, field, None)
                         user_deleted += 1
                     else:
-                        print(f"  Would delete: {file_path}")
+                        print(f"  Would delete {field} for user {user.id}")
                         user_deleted += 1
 
                 except Exception as e:
@@ -101,7 +108,7 @@ def cleanup_verification_images(dry_run):
                     db.session.add(log)
 
                 deleted_count += user_deleted
-                print(f"User {user.id} ({user.email}): {user_deleted} files {'would be ' if dry_run else ''}deleted")
+                print(f"User {user.id}: {user_deleted} files {'would be ' if dry_run else ''}deleted")
 
         if not dry_run:
             db.session.commit()

@@ -31,7 +31,6 @@ from apps.api.models.transfer import TransferRequest
 from apps.api.utils.storage_handler import (
     save_announcement_image,
     save_verification_document,
-    get_file_url,
 )
 from apps.api.utils import save_document_request_file
 from apps.api.utils.validators import ValidationError
@@ -70,11 +69,9 @@ from apps.api.utils.zambales_scope import (
     validate_municipality_in_zambales,
 )
 from apps.api.utils.fee_calculator import calculate_document_fee, are_requirements_submitted
-from apps.api.utils.supabase_storage import get_signed_url
+from apps.api.utils.supabase_storage import redact_file_entries
 from apps.api.utils.file_streaming import (
-    fetch_remote_file,
     references_request_upload,
-    send_file_bytes,
     stream_storage_file as _stream_storage_file,
 )
 
@@ -156,26 +153,6 @@ def _benefit_program_in_scope(program: BenefitProgram, scope: dict) -> bool:
 ADMIN_ROLES = ('superadmin', 'provincial_admin', 'municipal_admin', 'barangay_admin')
 ANNOUNCEMENT_SCOPES = {'PROVINCE', 'MUNICIPALITY', 'BARANGAY'}
 ANNOUNCEMENT_STATUSES = {'DRAFT', 'PUBLISHED', 'ARCHIVED'}
-
-
-def _manual_bucket() -> str:
-    return (
-        current_app.config.get('SUPABASE_PRIVATE_BUCKET')
-        or os.getenv('SUPABASE_PRIVATE_BUCKET')
-        or 'munlinkprivate-files'
-    )
-
-
-def _manual_proof_url(storage_path: str) -> str | None:
-    if not storage_path:
-        return None
-    try:
-        return get_signed_url(storage_path, expires_in=3600, bucket=_manual_bucket())
-    except Exception:
-        try:
-            return get_file_url(storage_path)
-        except Exception:
-            return None
 
 
 def _request_fee_due(request_obj: DocumentRequest) -> float:
@@ -793,8 +770,6 @@ def get_resident_document(user_id, doc_type):
     Query params:
     - reason (required): Why the admin is viewing this document
     """
-    from flask import send_file
-    from apps.api.utils.auth import permission_required
     from apps.api.utils.admin_audit import log_resident_id_viewed
     from apps.api.models.municipality import Municipality
     import os
@@ -867,47 +842,19 @@ def get_resident_document(user_id, doc_type):
             req=request
         )
 
-        # Serve file
-        # If Supabase URL, fetch it server-side and return bytes (no redirect to avoid CORS)
-        if file_path.startswith(('http://', 'https://')):
-            ext = os.path.splitext(urlparse(file_path).path)[1].lower() or '.jpg'
-            try:
-                data, content_type = fetch_remote_file(file_path)
-            except PermissionError as e:
-                current_app.logger.warning(
-                    "Blocked resident document fetch for user %s: %s", user.id, e
-                )
-                return jsonify({'error': 'Invalid file URL'}), 403
-            except requests.RequestException as e:
-                current_app.logger.error("Failed to fetch resident document from storage: %s", e)
-                return jsonify({'error': 'Failed to fetch image from storage'}), 502
-            return send_file_bytes(data, content_type, f"{doc_type}{ext}")
-
-        # If local file, serve it
-        upload_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-        upload_dir_abs = os.path.abspath(upload_dir)
-        full_path = os.path.abspath(os.path.join(upload_dir, file_path))
-
-        # Validate path is within upload directory (prevent path traversal)
-        if not full_path.startswith(upload_dir_abs + os.sep):
-            current_app.logger.warning(f"Path traversal attempt detected: {file_path}")
+        # Stream from private storage (legacy URLs and local paths still resolve).
+        source_path = urlparse(file_path).path if file_path.startswith(('http://', 'https://')) else file_path
+        ext = os.path.splitext(source_path)[1].lower() or '.jpg'
+        try:
+            return _stream_storage_file(file_path, download_name=f"{doc_type}{ext}")
+        except PermissionError as e:
+            current_app.logger.warning("Blocked resident document fetch for user %s: %s", user.id, e)
             return jsonify({'error': 'Invalid file path'}), 403
-
-        if not os.path.exists(full_path):
-            return jsonify({'error': 'File not found on server'}), 404
-
-        # Determine MIME type
-        mime_types = {
-            'jpg': 'image/jpeg',
-            'jpeg': 'image/jpeg',
-            'png': 'image/png',
-            'gif': 'image/gif',
-            'webp': 'image/webp'
-        }
-        ext = file_path.split('.')[-1].lower()
-        mime_type = mime_types.get(ext, 'application/octet-stream')
-
-        return send_file(full_path, mimetype=mime_type)
+        except FileNotFoundError:
+            return jsonify({'error': 'File not found'}), 404
+        except requests.RequestException as e:
+            current_app.logger.error("Failed to fetch resident document from storage: %s", e)
+            return jsonify({'error': 'Failed to fetch image from storage'}), 502
 
     except Exception as e:
         # Log the full error for debugging
@@ -3078,7 +3025,7 @@ def admin_upload_document_request_files(request_id: int):
         req.updated_at = utc_now()
         db.session.commit()
 
-        return jsonify({'message': 'Files uploaded', 'files': saved, 'request': req.to_dict()}), 200
+        return jsonify({'message': 'Files uploaded', 'files': redact_file_entries(saved), 'request': req.to_dict()}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to upload files', 'details': str(e)}), 500
@@ -4268,13 +4215,8 @@ def admin_get_manual_payment_proof(request_id: int):
         if (req.payment_method or '') != 'manual_qr':
             return jsonify({'error': 'Payment method is not manual QR'}), 400
 
-        source = req.manual_payment_proof_path
-        if not str(source).startswith(('http://', 'https://')):
-            signed = _manual_proof_url(source)
-            source = signed or source
-
         filename = f"{req.request_number or req.id}-manual-proof"
-        return _stream_storage_file(source, download_name=filename)
+        return _stream_storage_file(req.manual_payment_proof_path, download_name=filename)
     except PermissionError:
         return jsonify({'error': 'File access denied'}), 403
     except FileNotFoundError:

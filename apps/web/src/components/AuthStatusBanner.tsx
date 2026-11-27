@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAppStore } from '@/lib/store'
+import { hasUploadedIdDocuments } from '@/lib/verification'
 
 export default function AuthStatusBanner() {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
@@ -8,7 +9,7 @@ export default function AuthStatusBanner() {
   const user = useAppStore((s) => s.user)
 
   // Check if user already has ID documents uploaded
-  const hasIdDocuments = user?.valid_id_front || user?.valid_id_back
+  const hasIdDocuments = hasUploadedIdDocuments(user)
 
   if (!isAuthenticated) return null
   if (emailVerified && adminVerified) return null

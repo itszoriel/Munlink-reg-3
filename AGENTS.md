@@ -161,6 +161,7 @@ Backend setup (from repo docs):
 ## Operational Scripts (`apps/api/scripts`)
 - `create_superadmin.py` - create initial superadmin account.
 - `cleanup_verification_images.py` - verification image retention cleanup.
+- `migrate_private_storage.py` - move sensitive uploads from the public bucket to the private bucket (dry run by default).
 - `notification_worker.py` - send queued notifications.
 - `run_migrations.py` - helper for migration execution.
 - `seed_data.py` - seed Region 3 location/reference data.

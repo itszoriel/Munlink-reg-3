@@ -3,6 +3,8 @@ Unified storage handler for MunLink Region 3.
 
 This module provides a single interface for file storage operations that:
 - Uses Supabase Storage in production (persistent, cloud-based)
+- Keeps sensitive categories (see supabase_storage.PRIVATE_CATEGORIES) in the
+  private bucket and returns their storage path instead of a URL
 - Falls back to local filesystem in development (when Supabase not configured)
 - Handles legacy path detection and URL resolution
 - Maintains backward compatibility with existing code
@@ -108,8 +110,9 @@ def save_file(
         validate_mime: Whether to validate MIME type
     
     Returns:
-        File URL (Supabase public URL or local path)
-    
+        Public URL for public-safe media, storage path for private categories
+        (Supabase), or a path relative to UPLOAD_FOLDER (local development)
+
     Raises:
         StorageError: If upload fails
     """
@@ -188,7 +191,7 @@ def _save_to_supabase(
     user_type: str,
     max_size_mb: int
 ) -> str:
-    """Save file to Supabase Storage, return public URL."""
+    """Save file to Supabase Storage; return its public URL or private storage path."""
     try:
         from apps.api.utils.supabase_storage import upload_file as supabase_upload
         
@@ -209,7 +212,8 @@ def _save_to_supabase(
         )
         
         logger.info(f"File saved to Supabase: {storage_path}")
-        return public_url
+        # Private-bucket objects have no public URL and are referenced by path.
+        return public_url or storage_path
         
     except Exception as e:
         logger.error(f"Supabase upload failed: {e}")
@@ -251,7 +255,7 @@ def _save_to_filesystem(
     
     # Return relative path from upload directory
     upload_base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-    relative_path = os.path.relpath(file_path, upload_base_dir)
+    relative_path = os.path.relpath(file_path, upload_base_dir).replace(os.sep, "/")
     
     logger.info(f"File saved to filesystem: {relative_path}")
     return relative_path
@@ -296,7 +300,7 @@ def save_bytes(
             )
             
             logger.info(f"Bytes saved to Supabase: {storage_path}")
-            return public_url
+            return public_url or storage_path
             
         except Exception as e:
             logger.error(f"Supabase bytes upload failed: {e}")
@@ -319,7 +323,7 @@ def save_bytes(
             f.write(data)
         
         upload_base_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-        relative_path = os.path.relpath(file_path, upload_base_dir)
+        relative_path = os.path.relpath(file_path, upload_base_dir).replace(os.sep, "/")
         
         logger.info(f"Bytes saved to filesystem: {relative_path}")
         return relative_path
@@ -368,18 +372,64 @@ def is_supabase_url(url: str) -> bool:
     return 'supabase' in url.lower() and '/storage/' in url.lower()
 
 
+def _is_private_storage_path(path: str) -> bool:
+    """True for private-bucket storage paths written by the current upload code."""
+    if not path or path.startswith(('http://', 'https://')):
+        return False
+    from apps.api.utils.supabase_storage import is_private_path
+    return is_private_path(path) and _use_supabase_storage()
+
+
+def delete_stored_file(file_ref: str) -> bool:
+    """
+    Delete a stored file by Storage URL, storage path, or local upload path.
+
+    Returns True when the file no longer exists (deleted now or already gone),
+    so callers can safely clear the database reference.
+    """
+    if not file_ref:
+        return True
+    from apps.api.utils import supabase_storage as storage
+
+    ref = str(file_ref).strip().replace('\\', '/')
+    if ref.startswith(('http://', 'https://')):
+        if storage.parse_storage_url(ref) is None:
+            logger.warning("Refusing to delete a file outside the configured storage project")
+            return False
+        return storage.delete_file(ref)
+
+    relative = ref.lstrip('/')
+    upload_root = Path(current_app.config.get('UPLOAD_FOLDER') or 'uploads').resolve()
+    local_path = (upload_root / relative).resolve()
+    try:
+        local_path.relative_to(upload_root)
+    except ValueError:
+        logger.warning("Refusing to delete a path outside UPLOAD_FOLDER")
+        return False
+    if local_path.is_file():
+        local_path.unlink()
+        return True
+    if storage.is_supabase_configured():
+        return storage.delete_file(relative)
+    return True
+
+
 def is_legacy_path(path: str) -> bool:
     """
     Check if a path is a legacy filesystem path.
-    
+
     Returns True if the path appears to be a local filesystem path
-    rather than a Supabase URL.
+    rather than a Supabase URL or private-bucket storage path.
     """
     if not path:
         return False
-    
+
     # Supabase URLs are not legacy
     if is_supabase_url(path):
+        return False
+
+    # Private-bucket storage paths are current, not legacy
+    if _is_private_storage_path(path):
         return False
     
     # External URLs that aren't Supabase are not legacy (could be CDN, etc.)
@@ -413,7 +463,11 @@ def is_file_missing(path: str) -> bool:
     # Full external URLs - assume valid
     if path.startswith(('http://', 'https://')):
         return False
-    
+
+    # Private-bucket storage paths - assume valid (checked when streamed)
+    if _is_private_storage_path(path):
+        return False
+
     # Legacy filesystem path - check if file exists
     upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
     

@@ -15,8 +15,9 @@ interface User {
   first_name: string
   last_name: string
   profile_picture?: string
-  valid_id_front?: string
-  valid_id_back?: string
+  // Presence flags only; images are streamed by the audited admin documents endpoint.
+  valid_id_front?: boolean
+  valid_id_back?: boolean
   created_at: string
   municipality_name?: string
 }

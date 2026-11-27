@@ -298,14 +298,16 @@ export const authApi = {
   validatePasswordReset: (token: string) => api.post('/api/auth/password-reset/validate', { token }),
   confirmPasswordReset: (token: string, new_password: string, confirm_password?: string) =>
     api.post('/api/auth/password-reset/confirm', { token, new_password, confirm_password }),
-  uploadVerificationDocs: (files: { valid_id_front?: File, valid_id_back?: File, selfie_with_id?: File, municipality_slug?: string }) => {
+  // The API files uploads under the account's own municipality.
+  uploadVerificationDocs: (files: { valid_id_front?: File, valid_id_back?: File, selfie_with_id?: File }) => {
     const form = new FormData()
-    if (files.municipality_slug) form.append('municipality_slug', files.municipality_slug)
     if (files.valid_id_front) form.append('valid_id_front', files.valid_id_front)
     if (files.valid_id_back) form.append('valid_id_back', files.valid_id_back)
     if (files.selfie_with_id) form.append('selfie_with_id', files.selfie_with_id)
     return api.post('/api/auth/verification-docs', form, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
+  getVerificationDocument: (docType: 'id_front' | 'id_back' | 'selfie') =>
+    api.get(`/api/auth/verification-docs/${docType}`, { responseType: 'blob' }),
 }
 
 export const provinceApi = {

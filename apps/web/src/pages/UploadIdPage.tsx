@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { authApi, getAccessToken, mediaUrl } from '@/lib/api'
+import { authApi, getAccessToken } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
-import SafeImage from '@/components/SafeImage'
+import { idDocumentFlags } from '@/lib/verification'
+import PrivateIdPreview from '@/components/PrivateIdPreview'
 
 export default function UploadIdPage() {
-  const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const emailVerified = useAppStore((s) => s.emailVerified)
   const user = useAppStore((s) => s.user)
   const setAuth = useAppStore((s) => s.setAuth)
@@ -14,9 +14,12 @@ export default function UploadIdPage() {
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState<string>('')
   const [err, setErr] = useState<string>('')
+  // Bumped after an upload so the previews reload the replaced files.
+  const [previewVersion, setPreviewVersion] = useState(0)
 
   // Check if user already has ID documents uploaded
-  const hasIdDocuments = user?.valid_id_front || user?.valid_id_back
+  const idFlags = idDocumentFlags(user)
+  const hasIdDocuments = idFlags.valid_id_front || idFlags.valid_id_back
 
   const canSubmit = !!front || !!back || !!selfie
 
@@ -31,7 +34,6 @@ export default function UploadIdPage() {
     setSubmitting(true)
     try {
       const response = await authApi.uploadVerificationDocs({
-        municipality_slug: selectedMunicipality?.slug,
         valid_id_front: front || undefined,
         valid_id_back: back || undefined,
         selfie_with_id: selfie || undefined,
@@ -48,6 +50,7 @@ export default function UploadIdPage() {
       
       setMsg(response.data?.message || 'Verification documents uploaded. Your account is pending admin review.')
       setFront(null); setBack(null); setSelfie(null)
+      setPreviewVersion((v) => v + 1)
     } catch (e: any) {
       setErr(e?.response?.data?.error || 'Failed to upload verification documents')
     } finally {
@@ -78,18 +81,16 @@ export default function UploadIdPage() {
           {/* ID Front */}
           <div>
             <label htmlFor="id-front" className="block text-sm font-medium mb-2">Valid ID - Front</label>
-            {user?.valid_id_front && (
+            {idFlags.valid_id_front && (
               <div className="mb-3">
                 <p className="text-xs text-gray-500 mb-2">Current ID Front:</p>
                 <div className="relative w-full max-w-xs">
-                  <SafeImage
-                    src={mediaUrl(user.valid_id_front)}
+                  <PrivateIdPreview
+                    key={`id_front-${previewVersion}`}
+                    docType="id_front"
                     alt="ID Front"
-                    className="w-full h-48 rounded-lg border"
                     fallbackIcon="document"
-                    showReuploadButton={true}
-                    onReupload={() => document.getElementById('id-front')?.click()}
-                    reuploadLabel="Replace"
+                    onReplace={() => document.getElementById('id-front')?.click()}
                   />
                 </div>
               </div>
@@ -106,18 +107,16 @@ export default function UploadIdPage() {
           {/* ID Back */}
           <div>
             <label htmlFor="id-back" className="block text-sm font-medium mb-2">Valid ID - Back</label>
-            {user?.valid_id_back && (
+            {idFlags.valid_id_back && (
               <div className="mb-3">
                 <p className="text-xs text-gray-500 mb-2">Current ID Back:</p>
                 <div className="relative w-full max-w-xs">
-                  <SafeImage
-                    src={mediaUrl(user.valid_id_back)}
+                  <PrivateIdPreview
+                    key={`id_back-${previewVersion}`}
+                    docType="id_back"
                     alt="ID Back"
-                    className="w-full h-48 rounded-lg border"
                     fallbackIcon="document"
-                    showReuploadButton={true}
-                    onReupload={() => document.getElementById('id-back')?.click()}
-                    reuploadLabel="Replace"
+                    onReplace={() => document.getElementById('id-back')?.click()}
                   />
                 </div>
               </div>
@@ -134,18 +133,16 @@ export default function UploadIdPage() {
           {/* Selfie */}
           <div>
             <label htmlFor="id-selfie" className="block text-sm font-medium mb-2">Selfie holding the ID (optional)</label>
-            {user?.selfie_with_id && (
+            {idFlags.selfie_with_id && (
               <div className="mb-3">
                 <p className="text-xs text-gray-500 mb-2">Current Selfie:</p>
                 <div className="relative w-full max-w-xs">
-                  <SafeImage
-                    src={mediaUrl(user.selfie_with_id)}
+                  <PrivateIdPreview
+                    key={`selfie-${previewVersion}`}
+                    docType="selfie"
                     alt="Selfie with ID"
-                    className="w-full h-48 rounded-lg border"
                     fallbackIcon="user"
-                    showReuploadButton={true}
-                    onReupload={() => document.getElementById('id-selfie')?.click()}
-                    reuploadLabel="Replace"
+                    onReplace={() => document.getElementById('id-selfie')?.click()}
                   />
                 </div>
               </div>

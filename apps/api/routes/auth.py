@@ -72,6 +72,10 @@ from apps.api.utils import (
         save_verification_document,
     )
 from apps.api.utils.auth import read_verification_token, verification_email_matches
+from apps.api.utils.audit import log_action
+from apps.api.utils.file_streaming import stream_storage_file
+import os
+import requests
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -1213,33 +1217,39 @@ def upload_verification_docs():
         if not (request.content_type and 'multipart/form-data' in request.content_type):
             return jsonify({'error': 'Files must be uploaded as multipart/form-data'}), 400
 
-        municipality_slug = request.form.get('municipality_slug') or 'general'
+        # Storage folder comes from the account, never from the request.
+        municipality = db.session.get(Municipality, user.municipality_id) if user.municipality_id else None
+        municipality_slug = municipality.slug if municipality else 'general'
 
         # Check if user already has ID documents uploaded
         existing_ids = bool(user.valid_id_front or user.valid_id_back)
-        
+
         # Save provided files (optional)
-        saved_any = False
+        saved_fields = []
+        for field in ('valid_id_front', 'valid_id_back', 'selfie_with_id'):
+            upload = request.files.get(field)
+            if upload and getattr(upload, 'filename', ''):
+                setattr(
+                    user,
+                    field,
+                    save_verification_document(upload, user.id, municipality_slug, field, user_type='residents'),
+                )
+                saved_fields.append(field)
 
-        id_front = request.files.get('valid_id_front')
-        if id_front and getattr(id_front, 'filename', ''):
-            user.valid_id_front = save_verification_document(id_front, user.id, municipality_slug, 'valid_id_front', user_type='residents')
-            saved_any = True
-
-        id_back = request.files.get('valid_id_back')
-        if id_back and getattr(id_back, 'filename', ''):
-            user.valid_id_back = save_verification_document(id_back, user.id, municipality_slug, 'valid_id_back', user_type='residents')
-            saved_any = True
-
-        selfie = request.files.get('selfie_with_id')
-        if selfie and getattr(selfie, 'filename', ''):
-            user.selfie_with_id = save_verification_document(selfie, user.id, municipality_slug, 'selfie_with_id', user_type='residents')
-            saved_any = True
-
-        if not saved_any:
+        if not saved_fields:
             return jsonify({'error': 'Please upload at least one verification file'}), 400
 
         user.updated_at = utc_now()
+        if user.municipality_id:
+            log_action(
+                user_id=user.id,
+                municipality_id=user.municipality_id,
+                entity_type='user',
+                entity_id=user.id,
+                action='verification_docs_replaced' if existing_ids else 'verification_docs_uploaded',
+                actor_role='resident',
+                new_values={'documents': saved_fields},
+            )
         db.session.commit()
 
         if existing_ids:
@@ -1252,9 +1262,55 @@ def upload_verification_docs():
             'user': user.to_dict(include_sensitive=True)
         }), 200
 
+    except ValidationError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to upload verification documents', 'details': str(e)}), 500
+        current_app.logger.error("Verification document upload failed for user %s: %s", get_jwt_identity(), e)
+        return jsonify({'error': 'Failed to upload verification documents'}), 500
+
+
+VERIFICATION_DOC_FIELDS = {
+    'id_front': 'valid_id_front',
+    'id_back': 'valid_id_back',
+    'selfie': 'selfie_with_id',
+}
+
+
+@auth_bp.route('/verification-docs/<string:doc_type>', methods=['GET'])
+@jwt_required()
+def get_my_verification_doc(doc_type: str):
+    """Stream one of the signed-in user's own verification images.
+
+    Only the owner can use this route; admins use the audited
+    /api/admin/residents/<id>/documents/<doc_type> endpoint.
+    """
+    field = VERIFICATION_DOC_FIELDS.get(doc_type)
+    if not field:
+        return jsonify({'error': 'Invalid document type'}), 400
+    try:
+        user = db.session.get(User, int(get_jwt_identity()))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Authentication required'}), 401
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    source = getattr(user, field, None)
+    if not source:
+        return jsonify({'error': 'Document not uploaded'}), 404
+
+    source_path = str(source).split('?', 1)[0]
+    ext = os.path.splitext(source_path)[1].lower()
+    safe_ext = ext if ext and len(ext) <= 6 else ''
+    try:
+        return stream_storage_file(source, download_name=f"{doc_type}{safe_ext}")
+    except PermissionError:
+        return jsonify({'error': 'File access denied'}), 403
+    except FileNotFoundError:
+        return jsonify({'error': 'File not found'}), 404
+    except requests.RequestException:
+        return jsonify({'error': 'Failed to fetch file from storage'}), 502
 
 
 @auth_bp.route('/change-password', methods=['POST'])

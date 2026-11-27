@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { authApi } from './api'
 import { setSessionAccessToken as setApiSessionAccessToken, getAccessToken as getApiAccessToken } from './api'
+import type { IdDocumentFlags } from './verification'
 
 export type Province = {
   id: number
@@ -25,7 +26,7 @@ export type Barangay = {
   municipality_id: number
 }
 
-type User = {
+export type User = {
   id: number
   username: string
   role: 'public' | 'resident' | 'municipal_admin'
@@ -39,9 +40,13 @@ type User = {
   notify_email_enabled?: boolean
   notify_sms_enabled?: boolean
   profile_picture?: string
-  valid_id_front?: string
-  valid_id_back?: string
-  selfie_with_id?: string
+  // Which verification files exist. The files themselves are private and are
+  // fetched through authApi.getVerificationDocument.
+  id_documents?: Partial<IdDocumentFlags>
+  // Presence flags kept by the API for older clients.
+  valid_id_front?: boolean
+  valid_id_back?: boolean
+  selfie_with_id?: boolean
 }
 
 type AppState = {
@@ -123,8 +128,8 @@ export const useAppStore = create<AppState>((set) => {
 
   // Refresh profile on app load if user is authenticated
   if (typeof window !== 'undefined' && getApiAccessToken() && initialUser) {
-    // Check if user data is missing ID document fields (old data)
-    if (!initialUser.valid_id_front && !initialUser.valid_id_back && !initialUser.selfie_with_id) {
+    // Profiles saved before id_documents existed (or holding old file URLs) are refreshed.
+    if (!initialUser.id_documents) {
       refreshUserProfile()
     }
   }

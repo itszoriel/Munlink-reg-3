@@ -1,6 +1,7 @@
 """Document request and management models."""
 from datetime import datetime
 from apps.api.utils.time import utc_now
+from apps.api.utils.supabase_storage import redact_file_entries
 try:
     from apps.api import db
 except ImportError:
@@ -242,7 +243,10 @@ class DocumentRequest(db.Model):
             'office_payment_status': self.office_payment_status,
             'office_payment_verified_at': self.office_payment_verified_at.isoformat() if self.office_payment_verified_at else None,
             'office_payment_verified_by': self.office_payment_verified_by,
-            'supporting_documents': self.supporting_documents,
+            'supporting_documents': (
+                self.supporting_documents if include_storage_paths
+                else redact_file_entries(self.supporting_documents)
+            ),
             'status': self.status,
             'admin_notes': self.admin_notes,
             'rejection_reason': self.rejection_reason,

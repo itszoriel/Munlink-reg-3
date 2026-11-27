@@ -27,12 +27,12 @@ from apps.api.utils import (
     fully_verified_required,
     save_benefit_document,
 )
-from apps.api.utils.supabase_storage import get_signed_url
 from apps.api.utils.zambales_scope import (
     ZAMBALES_MUNICIPALITY_IDS,
     is_valid_zambales_municipality,
 )
 from apps.api.utils.file_streaming import stream_storage_file as _stream_storage_file
+from apps.api.utils.supabase_storage import redact_file_entries
 
 
 benefits_bp = Blueprint('benefits', __name__, url_prefix='/api/benefits')
@@ -385,7 +385,11 @@ def upload_application_doc(application_id: int):
         app.supporting_documents = updated_documents
         db.session.commit()
 
-        return jsonify({'message': f'{len(uploaded_paths)} file(s) uploaded', 'paths': uploaded_paths, 'application': app.to_dict()}), 200
+        return jsonify({
+            'message': f'{len(uploaded_paths)} file(s) uploaded',
+            'paths': redact_file_entries(uploaded_paths),
+            'application': app.to_dict(),
+        }), 200
     except ValidationError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:

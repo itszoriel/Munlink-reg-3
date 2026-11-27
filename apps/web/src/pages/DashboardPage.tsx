@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { benefitsApi, documentsApi, marketplaceApi } from '@/lib/api'
+import { benefitsApi, documentsApi, marketplaceApi, showToast } from '@/lib/api'
 import Modal from '@/components/ui/Modal'
 import { StatusBadge, getBestRegion3Seal } from '@munlink/ui'
 import { useAppStore } from '@/lib/store'
@@ -104,7 +104,7 @@ export default function DashboardPage() {
 
   const loading = itemsLoading || txLoading || reqLoading || appsLoading
 
-  const openBenefitDocument = async (applicationId: number, docIndex: number, fallbackPath?: string) => {
+  const openBenefitDocument = async (applicationId: number, docIndex: number) => {
     try {
       const res: any = await benefitsApi.downloadApplicationDocument(applicationId, docIndex)
       const blob = res?.data
@@ -117,10 +117,7 @@ export default function DashboardPage() {
       window.open(objectUrl, '_blank', 'noopener,noreferrer')
       setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
     } catch {
-      if (fallbackPath) {
-        const legacyUrl = `${(import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000'}/uploads/${String(fallbackPath).replace(/^uploads\//, '')}`
-        window.open(legacyUrl, '_blank', 'noopener,noreferrer')
-      }
+      showToast('Could not open this document. Please try again.', 'error')
     }
   }
 
@@ -502,11 +499,11 @@ export default function DashboardPage() {
                 <div className="mt-3">
                   <div className="mb-1 font-medium">Uploaded Documents</div>
                   <div className="flex flex-wrap gap-2">
-                    {selectedApp.supporting_documents.map((path, index) => (
+                    {selectedApp.supporting_documents.map((_doc, index) => (
                       <button
                         key={index}
                         type="button"
-                        onClick={() => void openBenefitDocument(selectedApp.id, index, path)}
+                        onClick={() => void openBenefitDocument(selectedApp.id, index)}
                         className="text-xs text-blue-700 underline"
                       >
                         Document {index + 1}
