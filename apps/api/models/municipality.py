@@ -38,7 +38,7 @@ class Municipality(db.Model):
     land_area = db.Column(db.Float, nullable=True)  # in square kilometers
     
     # Status
-    is_active = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, default=True, server_default=db.true(), nullable=False)
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=utc_now)
@@ -106,7 +106,7 @@ class Barangay(db.Model):
     population = db.Column(db.Integer, nullable=True)
     
     # Status
-    is_active = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, default=True, server_default=db.true(), nullable=False)
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=utc_now)
