@@ -221,7 +221,7 @@ def list_announcements():
         }), 200
 
     except (sqlite3.OperationalError, SAOperationalError, SAProgrammingError) as e:
-        # Likely missing table/column; log so it's visible in Railway logs
+        # Likely missing table/column; log so it's visible in the platform logs
         import logging
         logging.getLogger(__name__).warning('Announcements query DB error (returning empty): %s', e)
         page = max(1, request.args.get('page', 1, type=int) or 1)

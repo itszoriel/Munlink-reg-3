@@ -185,10 +185,6 @@ def create_app(config_class=Config):
 
     if not is_production:
         cors_origins.extend([
-            os.getenv('RAILWAY_WEB_URL', 'https://munlink.up.railway.app'),
-            os.getenv('RAILWAY_ADMIN_URL', 'https://admin-munlink.up.railway.app'),
-            "https://munlink.up.railway.app",
-            "https://admin-munlink.up.railway.app",
             "http://localhost:3000",
             "http://localhost:3001",
             "http://localhost:5173",

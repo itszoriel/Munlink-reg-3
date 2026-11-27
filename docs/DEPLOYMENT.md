@@ -14,7 +14,7 @@ Service origins: `https://munlink-api-5s9w.onrender.com`, `https://munlink-zamba
 
 All services use `autoDeployTrigger: checksPass`: Render deploys a commit on `main` only after the GitHub `CI` workflow passes.
 
-The API image is multi-stage, runs as a non-root user, and exits if `flask db upgrade` fails, so Render keeps the previous deploy instead of serving a half-migrated schema. It runs one gunicorn worker (8 threads) so in-memory rate limits stay accurate on the single free instance. `Dockerfile.web` and `Dockerfile.admin` remain for Docker Compose and Railway only.
+The API image is multi-stage, runs as a non-root user, and exits if `flask db upgrade` fails, so Render keeps the previous deploy instead of serving a half-migrated schema. It runs one gunicorn worker (8 threads) so in-memory rate limits stay accurate on the single free instance.
 
 ### Provisioning
 
@@ -50,27 +50,7 @@ Common production integrations include `SENDGRID_API_KEY`, `FROM_EMAIL`, `SUPABA
 
 Both are embedded at build time. Redeploy the static site after changing them. The browser calls the API directly; `CORS_ALLOWED_ORIGINS` on the API must list both site origins.
 
-## Railway
-
-Railway remains supported by the root and app-level `railway.toml` files.
-
-Create three services from the same repository:
-
-- API: use the API Dockerfile and `/health` check.
-- Web: use the web build/start settings from `apps/web/railway.toml`.
-- Admin: use `Dockerfile.admin` from the repository root.
-
-Set the same API secrets and integration variables as Render. Set each public URL explicitly and make `CORS_ALLOWED_ORIGINS` match the deployed web and admin origins.
-
-## Docker Compose
-
-For local container testing:
-
-```powershell
-docker compose up -d
-```
-
-Do not copy `.env` into images. Secrets must be injected by Compose or the hosting platform.
+To test the API image locally: `docker build -t munlink-api apps/api` and run it with `--env-file .env -e PORT=5000 -p 5000:5000`. Never copy `.env` into the image.
 
 ## Release verification
 

@@ -1,5 +1,5 @@
 // Last-resort fallback. Prefer setting VITE_PUBLIC_SITE_URL (build-time) or the runtime
-// window.__MUNLINK_CONFIG__.VITE_PUBLIC_SITE_URL (injected by Dockerfile.admin start script).
+// window.__MUNLINK_CONFIG__.VITE_PUBLIC_SITE_URL (optional runtime override in public/env-config.js).
 const DEFAULT_PUBLIC_SITE_URL =
   (typeof window !== 'undefined' && window.location?.origin) || ''
 

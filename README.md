@@ -123,9 +123,9 @@ SMS delivery is currently under maintenance because PhilSMS credits are unavaila
 
 ## Deployment
 
-[Render](docs/DEPLOYMENT.md#render) is the primary configuration. The root [render.yaml](render.yaml) provisions `munlink-api` and the static sites `munlink-zambales` and `munlink-zambales-admin`. Railway remains supported as an alternative.
+[Render](docs/DEPLOYMENT.md#render) is the primary configuration. The root [render.yaml](render.yaml) provisions `munlink-api` and the static sites `munlink-zambales` and `munlink-zambales-admin`.
 
-The current Render blueprint uses free plans. Free instances may sleep, so the notification worker running with the API cannot retry queued messages while the API is suspended. Choose an always-on plan when continuous retries are required.
+The blueprint uses free plans. Supabase `pg_cron` jobs keep the API and database awake and deliver queued notifications every 5 minutes; see [Staying awake on free plans](docs/DEPLOYMENT.md#staying-awake-on-free-plans).
 
 ## Documentation
 

@@ -4,12 +4,6 @@ import { getProvinces } from '@/lib/locations'
 
 // Province seal mapping (use absolute paths from public folder)
 const provinceSealMap: Record<string, string> = {
-  'aurora': '/logos/provinces/aurora.png',
-  'bataan': '/logos/provinces/bataan.png',
-  'bulacan': '/logos/provinces/bulacan.png',
-  'nueva-ecija': '/logos/provinces/nueva-ecija.png',
-  'pampanga': '/logos/provinces/pampanga.png',
-  'tarlac': '/logos/provinces/tarlac.png',
   'zambales': '/logos/provinces/zambales.png',
 }
 

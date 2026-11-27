@@ -13,4 +13,3 @@ uploads/
 .env
 .env.*
 requirements-dev.txt
-railway.toml

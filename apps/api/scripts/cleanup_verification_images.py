@@ -9,7 +9,7 @@ Usage:
     python apps/api/scripts/cleanup_verification_images.py [--dry-run]
 
 Schedule:
-    Run daily via cron or platform scheduler (Render/Railway)
+    Run daily via cron or platform scheduler (e.g. Render cron job)
 """
 
 from apps.api.utils.time import utc_now

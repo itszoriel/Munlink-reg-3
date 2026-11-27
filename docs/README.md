@@ -6,7 +6,7 @@ This directory contains the maintained documentation for the current codebase.
 | --- | --- |
 | [Architecture](ARCHITECTURE.md) | Application boundaries, core flows, and important implementation rules |
 | [Permissions](PERMISSIONS.md) | Role capabilities and geographic scope |
-| [Deployment](DEPLOYMENT.md) | Render, Railway, and Docker configuration |
+| [Deployment](DEPLOYMENT.md) | Render blueprint, CI-gated deploys, keeping free services awake |
 | [Operations](OPERATIONS.md) | Migrations, seeding, workers, maintenance, and health checks |
 | [Testing](TESTING.md) | Automated and manual verification |
 | [Security](SECURITY.md) | Authentication, privacy, secrets, uploads, and auditing |

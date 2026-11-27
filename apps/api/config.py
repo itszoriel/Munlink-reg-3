@@ -46,7 +46,7 @@ def _require_env(name: str, default: str = None, allow_default_in_dev: bool = Tr
         if default is None or name in ('SECRET_KEY', 'JWT_SECRET_KEY', 'ADMIN_SECRET_KEY'):
             raise RuntimeError(
                 f"SECURITY ERROR: {name} environment variable is required in production. "
-                f"Set it in your deployment environment (Railway Dashboard, etc.)"
+                f"Set it in your deployment environment (Render dashboard or .env)"
             )
         logging.warning(f"Using default value for {name} in production - consider setting explicitly")
         return default
