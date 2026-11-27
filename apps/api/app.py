@@ -1,5 +1,5 @@
 """
-MunLink Region III - Flask API Application
+MunLink Zambales - Flask API Application
 Main application entry point
 """
 import sys
@@ -276,7 +276,7 @@ def create_app(config_class=Config):
         """Health check endpoint for monitoring"""
         return jsonify({
             'status': 'ok',
-            'service': 'MunLink Region III API',
+            'service': 'MunLink Zambales API',
             'version': '1.0.0'
         }), 200
     
@@ -301,12 +301,10 @@ def create_app(config_class=Config):
     def root():
         """API root endpoint"""
         return jsonify({
-            'message': 'MunLink Region III API',
+            'message': 'MunLink Zambales API',
             'version': '1.0.0',
-            'region': 'Central Luzon (Region III)',
-            'provinces': 7,
-            'municipalities': 129,
-            'docs': '/api/docs'
+            'province': 'Zambales',
+            'health': '/health',
         }), 200
     
     # Public verify route (for QR codes)

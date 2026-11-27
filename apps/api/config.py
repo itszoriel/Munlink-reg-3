@@ -69,10 +69,12 @@ def get_database_url():
     url = os.getenv('DATABASE_URL')
 
     if not url:
-        # In platform environments where DB isn't provided (e.g., healthcheck-only boot),
-        # fall back to a lightweight SQLite DB so the app can start and serve /health.
+        # Production must never silently run on a throwaway SQLite file: residents
+        # would register into a database that disappears on the next restart.
+        if os.getenv('FLASK_ENV', 'development') == 'production':
+            raise RuntimeError("DATABASE_URL environment variable is required in production")
         fallback = 'sqlite:///tmp/healthcheck.db'
-        logging.warning("DATABASE_URL not set; using fallback %s for startup/healthchecks", fallback)
+        logging.warning("DATABASE_URL not set; using local fallback %s", fallback)
         return fallback
     
     # Handle Heroku/Render style postgres:// URLs (SQLAlchemy requires postgresql://)
@@ -326,7 +328,7 @@ class Config:
         'Scan the QR, pay the exact amount shown, upload proof, then enter the Payment ID sent to your email.'
     )
     MANUAL_PAY_TO_NAME = os.getenv('MANUAL_PAY_TO_NAME', '')
-    MANUAL_PAY_TO_NUMBER = os.getenv('MANUAL_PAY_TO_NUMBER', '09764859463')
+    MANUAL_PAY_TO_NUMBER = os.getenv('MANUAL_PAY_TO_NUMBER', '')  # set per deployment
     SUPABASE_PRIVATE_BUCKET = os.getenv('SUPABASE_PRIVATE_BUCKET', 'munlinkprivate-files')
 
     # Shared secret for /internal/* endpoints called by Supabase pg_cron (32+ chars).
@@ -417,6 +419,13 @@ class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     SQLALCHEMY_ECHO = False
+
+    @staticmethod
+    def init_app(app):
+        Config.init_app(app)
+        for name in ('SECRET_KEY', 'JWT_SECRET_KEY'):
+            if len(str(app.config.get(name) or '')) < 32:
+                app.logger.warning("%s is shorter than 32 characters; rotate it to a long random value", name)
 
 
 class TestingConfig(Config):

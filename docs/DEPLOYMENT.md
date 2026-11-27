@@ -4,13 +4,17 @@
 
 Render is the primary checked-in deployment configuration. The root `render.yaml` creates:
 
-Current service origins are `https://munlink-api-5s9w.onrender.com`, `https://munlink-web-9s3r.onrender.com`, and `https://munlink-admin-pk8j.onrender.com`. The frontend containers expose port `10000`, bind nginx to `0.0.0.0:$PORT`, and use `/` as their Render health check.
+Service origins: `https://munlink-api-5s9w.onrender.com`, `https://munlink-zambales.onrender.com` (public site) and `https://munlink-zambales-admin.onrender.com` (admin).
 
 | Service | Runtime | Build source | Health |
 | --- | --- | --- | --- |
 | `munlink-api` | Docker | `apps/api/Dockerfile` with `apps/api` context | `/health` |
-| `munlink-web` | Docker | `Dockerfile.web` with repository context | Static nginx app |
-| `munlink-admin` | Docker | `Dockerfile.admin` with repository context | Static nginx app |
+| `munlink-zambales` | Static site | `npm run build -w apps/web` -> `apps/web/dist` | CDN, never sleeps |
+| `munlink-zambales-admin` | Static site | `npm run build -w apps/admin` -> `apps/admin/dist` | CDN, never sleeps |
+
+All services use `autoDeployTrigger: checksPass`: Render deploys a commit on `main` only after the GitHub `CI` workflow passes.
+
+The API image is multi-stage, runs as a non-root user, and exits if `flask db upgrade` fails, so Render keeps the previous deploy instead of serving a half-migrated schema. It runs one gunicorn worker (8 threads) so in-memory rate limits stay accurate on the single free instance. `Dockerfile.web` and `Dockerfile.admin` remain for Docker Compose and Railway only.
 
 ### Provisioning
 
@@ -20,7 +24,15 @@ Current service origins are `https://munlink-api-5s9w.onrender.com`, `https://mu
 4. Deploy the API and confirm `/health` before validating the frontends.
 5. Run a login, refresh-token, upload, document generation, and notification smoke test.
 
-The blueprint currently selects free plans. Free services can sleep. Since the API container also starts the notification worker, queued retries pause while that service is suspended. Use an always-on plan or a separate worker when continuous delivery is required.
+### Staying awake on free plans
+
+The API is a free web service and sleeps after 15 idle minutes; the free Supabase project pauses after about a week without database activity. Keep both awake:
+
+1. In the Supabase SQL editor run `supabase/keep_alive.sql`. A `pg_cron` job calls `/health/db` every 10 minutes, which wakes Render and runs a real query.
+2. Create the Vault secret described in `supabase/notification_cron.sql`, set the same value as `INTERNAL_CRON_SECRET` on `munlink-api`, then run that file. Every 5 minutes the database calls `POST /internal/notifications/run`, so queued notifications are delivered even if the in-container worker stops.
+3. Add an external monitor (UptimeRobot or cron-job.org) on `/health/db` every 5-10 minutes. It keeps the API awake if the database job stops and emails you on outages. GitHub Actions schedules are too delayed for this.
+
+Only the API uses free instance hours (about 744 of 750 per month); static sites use none.
 
 ### Required API secrets
 
@@ -34,9 +46,9 @@ Common production integrations include `SENDGRID_API_KEY`, `FROM_EMAIL`, `SUPABA
 ### Frontend URL configuration
 
 - Web: `VITE_API_URL`
-- Admin: `VITE_API_URL`, `VITE_PUBLIC_SITE_URL`, and `API_PROXY_TARGET`
+- Admin: `VITE_API_URL` and `VITE_PUBLIC_SITE_URL`
 
-`VITE_API_URL` is embedded during the image build. Redeploy after changing it. The admin image writes `VITE_PUBLIC_SITE_URL` into `/env-config.js` at container startup.
+Both are embedded at build time. Redeploy the static site after changing them. The browser calls the API directly; `CORS_ALLOWED_ORIGINS` on the API must list both site origins.
 
 ## Railway
 

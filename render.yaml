@@ -28,7 +28,7 @@ services:
     dockerfilePath: apps/api/Dockerfile
     dockerContext: apps/api
     healthCheckPath: /health
-    autoDeploy: true
+    autoDeployTrigger: checksPass   # deploy only after GitHub CI passes
     envVars:
       - key: FLASK_ENV
         value: production
@@ -95,6 +95,9 @@ services:
         value: "1"
       - key: ID_RETENTION_DAYS
         value: "30"
+      # Manual QR payment details shown to residents (was hard-coded in config.py).
+      - key: MANUAL_PAY_TO_NUMBER
+        value: "09764859463"
       # Shared secret for /internal/* (pg_cron). Same value as Supabase Vault
       # secret munlink_internal_cron_secret; see supabase/notification_cron.sql.
       - key: INTERNAL_CRON_SECRET
@@ -110,7 +113,7 @@ services:
     repo: https://github.com/itszoriel/Munlink-reg-3
     buildCommand: npm ci --no-audit --no-fund && npm run build -w packages/ui && npm run build -w apps/web
     staticPublishPath: apps/web/dist
-    autoDeploy: true
+    autoDeployTrigger: checksPass   # deploy only after GitHub CI passes
     routes:
       - type: rewrite
         source: /*
@@ -140,7 +143,7 @@ services:
     repo: https://github.com/itszoriel/Munlink-reg-3
     buildCommand: npm ci --no-audit --no-fund && npm run build -w packages/ui && npm run build -w apps/admin
     staticPublishPath: apps/admin/dist
-    autoDeploy: true
+    autoDeployTrigger: checksPass   # deploy only after GitHub CI passes
     routes:
       - type: rewrite
         source: /*
