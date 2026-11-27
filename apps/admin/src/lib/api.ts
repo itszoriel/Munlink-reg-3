@@ -681,6 +681,15 @@ export default apiClient
 
 // Admin Reports supplemental APIs
 export const documentsAdminApi = {
+  /** Open request counts for today's queue (no date range), scoped to the admin's office. */
+  getQueue: (): Promise<{ waiting: number; in_progress: number; ready_for_pickup: number; payments_to_review: number; oldest_waiting_at: string | null; status_groups: Record<string, string[]> }> =>
+    apiClient.get('/api/admin/documents/queue').then(res => res.data),
+  /** Document types issued by this office, with their fee confirmation state. */
+  listDocumentTypes: (): Promise<{ types: any[]; count: number }> =>
+    apiClient.get('/api/admin/document-types').then(res => res.data),
+  /** Set and confirm a document's fee and processing days (audited). */
+  updateDocumentFee: (id: number, data: { fee: number; processing_days: number; fee_confirmed?: boolean }) =>
+    apiClient.put(`/api/admin/document-types/${id}/fee`, data).then(res => res.data),
   getStats: (range: string = 'last_30_days'): Promise<ApiResponse<{ total_requests: number; top_requested: Array<{ name: string; count: number }> }>> =>
     apiClient.get('/api/admin/documents/stats', { params: { range } }).then(res => res.data),
   listRequests: (params: Record<string, any> = {}): Promise<ApiResponse<{ requests: any[]; pagination?: any }>> =>

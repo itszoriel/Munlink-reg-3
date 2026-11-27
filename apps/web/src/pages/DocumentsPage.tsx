@@ -10,6 +10,8 @@ import { CACHE_KEYS, invalidateMultiple } from '@/lib/dataStore'
 import Stepper from '@/components/ui/Stepper'
 import { EmptyState } from '@munlink/ui'
 import MunicipalitySelect from '@/components/MunicipalitySelect'
+import { statusLabel, statusInfo, TONE_PILL } from '@/lib/requestStatus'
+import { useLang } from '@/lib/i18n'
 // pickup location is tied to resident profile; no remote fetch needed
 
 const PURPOSE_OPTIONS: Array<{ value: string; label: string }> = [
@@ -70,7 +72,7 @@ export default function DocumentsPage() {
   const [feeLoading, setFeeLoading] = useState(false)
   const [pickupLocation, setPickupLocation] = useState<'municipal'|'barangay'>('municipal')
   const [typeFilter, setTypeFilter] = useState<'all' | 'municipal' | 'barangay'>('all')
-  const [currentPage, setCurrentPage] = useState(1)
+  const { lang } = useLang()
   const userMunicipalityId = (user as any)?.municipality_id as number | undefined
   const userBarangayId = (user as any)?.barangay_id as number | undefined
 
@@ -145,13 +147,16 @@ export default function DocumentsPage() {
     if (typeFilter === 'all') return types
     return types.filter((t) => (t as any).authority_level === typeFilter)
   }, [types, typeFilter])
-  const pageSize = 10
-  const totalPages = Math.max(1, Math.ceil(filteredTypes.length / pageSize))
-  const safePage = Math.min(currentPage, totalPages)
-  const pagedTypes = useMemo(() => {
-    const start = (safePage - 1) * pageSize
-    return filteredTypes.slice(start, start + pageSize)
-  }, [filteredTypes, safePage])
+  // Preselect a document chosen from the public Citizen's Charter (/documents?type=ID).
+  const preselectTypeId = Number(searchParams.get('type') || 0)
+  useEffect(() => {
+    if (!preselectTypeId || selectedTypeId) return
+    const match = types.find((t) => t.id === preselectTypeId)
+    if (match) {
+      setSelectedTypeId(match.id)
+      setDeliveryMethod(match.supports_digital ? 'digital' : 'pickup')
+    }
+  }, [preselectTypeId, types, selectedTypeId])
   const digitalAllowed = useMemo(() => {
     if (!selectedType) return false
     return !!selectedType.supports_digital
@@ -208,10 +213,6 @@ export default function DocumentsPage() {
     return () => { cancelled = true }
   }, [isAuthenticated, isAuthBootstrapped, selectedTypeId, purposeType, businessType, requirementsReady])
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [typeFilter, types.length])
-
   const canSubmit = useMemo(() => {
     if (!selectedTypeId || !(user as any)?.municipality_id || !purposeText) return false
     if (!civilStatus) return false
@@ -262,7 +263,7 @@ export default function DocumentsPage() {
                     <div className="text-xs text-gray-600 truncate">{r.request_number}</div>
                   </div>
                   <div className="flex items-center gap-2 sm:justify-end shrink-0">
-                    <span className="px-2.5 py-1 text-xs rounded-full ring-1 bg-gray-100 text-gray-700 capitalize">{r.status}</span>
+                    <span className={`px-2.5 py-1 text-xs rounded-full border ${TONE_PILL[statusInfo(r.status).tone]}`}>{statusLabel(r.status, lang)}</span>
                     <Link to={`/dashboard/requests/${r.id}`} className="btn-ghost text-blue-700">Open</Link>
                   </div>
                 </div>
@@ -339,7 +340,7 @@ export default function DocumentsPage() {
                 ) : (
                   <>
                     <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
-                      {pagedTypes.map((t) => (
+                      {filteredTypes.map((t) => (
                         <button
                           key={t.id}
                           className={`text-left p-4 rounded-lg border ${selectedTypeId===t.id?'border-ocean-500 bg-ocean-50':'border-gray-200 hover:border-ocean-300'}`}
@@ -352,13 +353,16 @@ export default function DocumentsPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <h3 className="font-semibold">{t.name}</h3>
-                              <p className="text-sm text-gray-600">Processing: {t.processing_days} days</p>
+                              <p className="text-sm text-gray-600">Processing: {t.processing_days} {Number(t.processing_days) === 1 ? 'working day' : 'working days'}</p>
                             </div>
                             <div className="text-right">
                               {Number(t.fee || 0) > 0 ? (
                                 <>
                                   <div className="text-sm text-gray-700">Fee</div>
-                                  <div className="text-lg font-bold">PHP {Number(t.fee).toFixed(2)}</div>
+                                  <div className="text-lg font-bold tabular-nums">PHP {Number(t.fee).toFixed(2)}</div>
+                                  {!(t as any).fee_confirmed && (
+                                    <div className="text-xs text-amber-800">Provisional fee</div>
+                                  )}
                                 </>
                               ) : (
                                 <div className="mt-1 text-xs">
@@ -374,25 +378,7 @@ export default function DocumentsPage() {
                         </button>
                       ))}
                     </div>
-                    <div className="mt-4 flex items-center justify-between text-xs text-gray-600">
-                      <span>Page {safePage} of {totalPages} | {filteredTypes.length} documents</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          className="btn-secondary px-3 py-1"
-                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                          disabled={safePage <= 1}
-                        >
-                          Prev
-                        </button>
-                        <button
-                          className="btn-secondary px-3 py-1"
-                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                          disabled={safePage >= totalPages}
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
+                    <p className="mt-4 text-xs text-gray-600">{filteredTypes.length} documents. Fees marked provisional are still being confirmed by the issuing office.</p>
                   </>
                 )}
                 <div className="mt-6 flex justify-end">

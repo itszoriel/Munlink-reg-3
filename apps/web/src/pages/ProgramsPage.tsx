@@ -1,4 +1,5 @@
 import { StatusBadge, Card, EmptyState } from '@munlink/ui'
+import TownPicker from '@/components/TownPicker'
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { ArrowRight, ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
@@ -377,20 +378,16 @@ export default function ProgramsPage() {
       {/* Guest location selection prompts */}
       {!isAuthenticated && !guestHasProvince && tab === 'programs' && (
         <div className="py-12">
-          <EmptyState 
-            icon="location"
-            title="Select a Location" 
-            description="Please select a province and municipality from the header to browse available programs in your area."
-          />
+          <div className="rounded-lg border border-slate-200 bg-white p-5">
+            <TownPicker description="Each municipality runs its own assistance programs. Pick one to see what is open." />
+          </div>
         </div>
       )}
       {!isAuthenticated && guestHasProvince && !guestHasMunicipality && tab === 'programs' && (
         <div className="py-12">
-          <EmptyState 
-            icon="location"
-            title="Select a Municipality" 
-            description={`You've selected ${selectedProvince?.name}. Please select a municipality from the header to view available programs.`}
-          />
+          <div className="rounded-lg border border-slate-200 bg-white p-5">
+            <TownPicker description="Each municipality runs its own assistance programs. Pick one to see what is open." />
+          </div>
         </div>
       )}
 
@@ -406,7 +403,7 @@ export default function ProgramsPage() {
             </div>
           ) : tab==='programs' ? (
             programs.length === 0 ? (
-              <EmptyState title="No Programs Available" description="There are no programs available in this municipality at the moment. Check back later." />
+              <EmptyState title="No open programs" description="This municipality has no programs accepting applications right now. New programs are also posted under Announcements." />
             ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {programs.map((p: Program) => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import TownPicker from '@/components/TownPicker'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus } from 'lucide-react'
@@ -95,11 +96,11 @@ export default function MarketplacePage() {
   const [fabExpanded, setFabExpanded] = useState(false)
 
   return (
-    <div className="container-responsive py-12">
+    <div className="container-responsive py-12 pb-32 sm:pb-12">
       <div className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-3 mb-6">
         <div>
           <h1 className="text-fluid-3xl font-semibold">Marketplace</h1>
-          <p className="text-gray-600 text-sm mt-1">Buy, sell, donate, or lend items within your community. Connect with fellow residents for local transactions.</p>
+          <p className="text-gray-600 text-sm mt-1">Sell, lend or give away items to verified residents of your own town.</p>
         </div>
         <div className="w-full xs:w-auto min-w-[140px]">
           {/* Desktop: Regular button */}
@@ -132,8 +133,11 @@ export default function MarketplacePage() {
 
       {/* Guest Location Required Message */}
       {!isAuthenticated && !guestLocationComplete && (
-        <div className="mb-4 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
-          <p><strong>Select your location</strong> to view marketplace items. Use the location selector above to choose your province and municipality.</p>
+        <div className="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+          <TownPicker
+            heading="Choose your town"
+            description="Items are listed per municipality. Pick one to see what neighbours are offering."
+          />
         </div>
       )}
 
@@ -343,7 +347,7 @@ export default function MarketplacePage() {
                 title={category !== 'All' || type !== 'All' ? "No items match your filters" : "No items available"}
                 description={category !== 'All' || type !== 'All' 
                   ? "Try adjusting your category or type filters." 
-                  : "Be the first to post an item in the marketplace!"
+                  : "Nothing is posted in this town yet. Verified residents can sell, lend or give away items here."
                 }
                 action={category !== 'All' || type !== 'All' ? (
                   <button 

@@ -97,7 +97,7 @@ export default function BarangaySelect() {
   )
 
   if (!selectedMunicipality) {
-    return <span className="text-sm text-gray-400 cursor-not-allowed" title="Select a municipality first">Barangay ▾</span>
+    return <span className="text-sm text-slate-600 cursor-not-allowed" title="Select a municipality first">Barangay ▾</span>
   }
 
   return (

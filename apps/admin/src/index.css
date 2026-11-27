@@ -270,3 +270,19 @@ body.mobile-menu-open .fab-mobile-backdrop {
   }
   .scroll-reveal { opacity: 1 !important; transform: none !important; }
 }
+
+/* Printable claim slips (Requests > select rows > Print claim slips). */
+@media print {
+  body.printing-claim-slips * { visibility: hidden; }
+  body.printing-claim-slips .claim-slips,
+  body.printing-claim-slips .claim-slips * { visibility: visible; }
+  body.printing-claim-slips .claim-slips { display: block !important; position: absolute; inset: 0 auto auto 0; width: 100%; }
+  .claim-slip { break-inside: avoid; border: 1px dashed #64748b; padding: 14px 18px; margin: 0 0 12px; font: 11pt/1.4 Inter, system-ui, sans-serif; color: #0f172a; }
+  .claim-slip-office { font-size: 9pt; color: #334155; margin: 0; }
+  .claim-slip-title { font-size: 13pt; font-weight: 600; margin: 2px 0 0; }
+  .claim-slip-number { font-size: 15pt; font-weight: 600; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; margin: 4px 0 8px; }
+  .claim-slip table { border-collapse: collapse; width: 100%; }
+  .claim-slip th { text-align: left; font-weight: 500; color: #334155; width: 7rem; padding: 2px 0; vertical-align: top; }
+  .claim-slip td { padding: 2px 0; }
+  .claim-slip-note { font-size: 9pt; color: #334155; margin: 8px 0 0; }
+}

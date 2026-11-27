@@ -9,6 +9,8 @@ import { useNavigate } from 'react-router-dom'
 import Footer from './Footer'
 import AuthStatusBanner from './AuthStatusBanner'
 import { Toast } from '@munlink/ui'
+import LanguageToggle from './LanguageToggle'
+import { useLang } from '@/lib/i18n'
 import { mediaUrl } from '@/lib/api'
 import { Menu, X, Home as HomeIcon, Bell, ShoppingBag, FileText, AlertCircle, GraduationCap, Info, MapPin, User, LogOut, LayoutDashboard, Activity, BookOpen } from 'lucide-react'
 
@@ -32,6 +34,7 @@ export default function Layout() {
   const logout = useAppStore((s) => s.logout)
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useLang()
   const hideLocationSelector = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/documents')
 
   // Scroll to top on route change
@@ -125,34 +128,34 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] btn-primary">
-        Skip to content
+        {t('Skip to content', 'Lumaktaw sa nilalaman')}
       </a>
       <header className={`sticky top-0 z-50 bg-white border-b border-slate-200 ${scrolled ? 'shadow-sm' : ''}`}>
         <div className="container-responsive flex h-16 items-center justify-between gap-3">
           <Link to="/" className="flex flex-shrink-0 items-center gap-2.5" aria-label="MunLink Zambales home">
             <img
-              src="/logos/munlink-logo.png"
+              src="/logos/provinces/zambales.png"
               alt=""
               className="h-9 w-9 rounded-full object-cover"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
             <span className="leading-tight">
               <span className="block text-base font-semibold text-slate-900">MunLink Zambales</span>
-              <span className="hidden sm:block text-xs text-slate-600">Province of Zambales</span>
+              <span className="hidden sm:block text-xs text-slate-600">{t('Province of Zambales', 'Lalawigan ng Zambales')}</span>
             </span>
           </Link>
 
           <nav className="hidden lg:flex items-center gap-1" aria-label="Main">
-            <Link to="/" className={navLinkClass('/')}>Home</Link>
-            <Link to="/announcements" className={navLinkClass('/announcements')}>Announcements</Link>
-            <Link to="/marketplace" className={navLinkClass('/marketplace')}>Marketplace</Link>
+            <Link to="/services" className={navLinkClass('/services')}>{t('Documents', 'Dokumento')}</Link>
+            <Link to="/announcements" className={navLinkClass('/announcements')}>{t('Announcements', 'Anunsyo')}</Link>
             <ServicesMenu />
-            <Link to="/about" className={navLinkClass('/about')}>About</Link>
+            <Link to="/about" className={navLinkClass('/about')}>{t('About', 'Tungkol')}</Link>
           </nav>
 
           <div className="hidden lg:flex items-center gap-2">
+            <LanguageToggle />
             {!hideLocationSelector && (
-              <div className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-sm" aria-label="Browse location">
+              <div className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-sm" aria-label={t('Browse location', 'Lokasyong tinitingnan')}>
                 <MapPin className="h-4 w-4 text-slate-500" aria-hidden="true" />
                 <MunicipalitySelect />
                 <span className="text-slate-300" aria-hidden="true">/</span>
@@ -161,8 +164,8 @@ export default function Layout() {
             )}
             {role === 'public' || !isAuthenticated ? (
               <>
-                <Link to="/login" className="btn-ghost min-h-[40px] py-2">Log in</Link>
-                <Link to="/register" className="btn-primary min-h-[40px] py-2">Register</Link>
+                <Link to="/login" className="btn-ghost min-h-[40px] py-2">{t('Log in', 'Mag-log in')}</Link>
+                <Link to="/register" className="btn-primary min-h-[40px] py-2">{t('Register', 'Magparehistro')}</Link>
               </>
             ) : (
               <details ref={accountRef} className="relative">
@@ -174,22 +177,22 @@ export default function Layout() {
                       {(user?.username || 'A').slice(0, 2).toUpperCase()}
                     </span>
                   )}
-                  <span className="text-sm font-medium text-slate-800">Account</span>
+                  <span className="text-sm font-medium text-slate-800">{t('Account', 'Account')}</span>
                 </summary>
                 <div className="absolute right-0 mt-2 w-56 rounded-md border border-slate-200 bg-white p-1.5 z-50">
-                  <button onClick={() => { closeAccount(); navigate('/dashboard') }} className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-slate-800 hover:bg-slate-100">Dashboard</button>
-                  <button onClick={() => { closeAccount(); navigate('/profile') }} className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-slate-800 hover:bg-slate-100">Profile</button>
-                  <button onClick={() => { closeAccount(); navigate('/dashboard/requests') }} className="block w-full rounded px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">Document requests</button>
-                  <button onClick={() => { closeAccount(); navigate('/my-marketplace?tab=transactions') }} className="block w-full rounded px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">Marketplace transactions</button>
-                  <button onClick={() => { closeAccount(); navigate('/how-to-use') }} className="block w-full rounded px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">How to use</button>
+                  <button onClick={() => { closeAccount(); navigate('/dashboard') }} className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-slate-800 hover:bg-slate-100">{t('Dashboard', 'Dashboard')}</button>
+                  <button onClick={() => { closeAccount(); navigate('/profile') }} className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-slate-800 hover:bg-slate-100">{t('Profile', 'Profile')}</button>
+                  <button onClick={() => { closeAccount(); navigate('/dashboard/requests') }} className="block w-full rounded px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">{t('My document requests', 'Aking mga kahilingan')}</button>
+                  <button onClick={() => { closeAccount(); navigate('/my-marketplace?tab=transactions') }} className="block w-full rounded px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">{t('Marketplace transactions', 'Mga transaksyon sa palengke')}</button>
+                  <button onClick={() => { closeAccount(); navigate('/how-to-use') }} className="block w-full rounded px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">{t('How to use', 'Paano gamitin')}</button>
                   <hr className="my-1.5 border-slate-200" />
-                  <button onClick={() => { closeAccount(); logout(); navigate('/login', { replace: true }) }} className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50">Log out</button>
+                  <button onClick={() => { closeAccount(); logout(); navigate('/login', { replace: true }) }} className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50">{t('Log out', 'Mag-log out')}</button>
                 </div>
               </details>
             )}
           </div>
 
-          <button className="lg:hidden btn-ghost min-h-[44px] px-3" onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen}>
+          <button className="lg:hidden btn-ghost min-h-[44px] px-3" onClick={() => setMobileOpen(true)} aria-label={t('Open menu', 'Buksan ang menu')} aria-expanded={mobileOpen}>
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
@@ -204,7 +207,7 @@ export default function Layout() {
           <div className="flex items-center justify-between p-4 border-b border-gray-200/80 bg-white ">
             <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
               <img
-                src="/logos/munlink-logo.png"
+                src="/logos/provinces/zambales.png"
                 alt=""
                 className="h-8 w-8 rounded-full object-cover bg-white border border-gray-200 shadow-sm"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
@@ -214,7 +217,7 @@ export default function Layout() {
             <button
               onClick={() => setMobileOpen(false)}
               className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
-              aria-label="Close menu"
+              aria-label={t('Close menu', 'Isara ang menu')}
             >
               <X className="w-5 h-5 text-gray-600" />
             </button>
@@ -222,91 +225,48 @@ export default function Layout() {
 
           {/* Navigation Links */}
           <div className="flex-1 overflow-y-auto py-4 px-3">
-            <nav className="space-y-1">
-              <Link
-                to="/"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
-              >
-                <HomeIcon className="w-5 h-5 transition-transform" />
-                <span>Home</span>
+            <div className="px-4 pb-3">
+              <LanguageToggle />
+            </div>
+            <nav className="space-y-1" aria-label={t('Main', 'Pangunahin')}>
+              <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-slate-100 transition-colors text-slate-800 font-medium">
+                <HomeIcon className="w-5 h-5 text-slate-500" aria-hidden="true" />
+                <span>{t('Home', 'Home')}</span>
               </Link>
-
-              <Link
-                to="/announcements"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
-              >
-                <Bell className="w-5 h-5 transition-transform" />
-                <span>Announcements</span>
+              <Link to="/services" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-slate-100 transition-colors text-slate-800 font-medium">
+                <FileText className="w-5 h-5 text-slate-500" aria-hidden="true" />
+                <span>{t('Documents and fees', 'Dokumento at singil')}</span>
               </Link>
-
-              <Link
-                to="/marketplace"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
-              >
-                <ShoppingBag className="w-5 h-5 transition-transform" />
-                <span>Marketplace</span>
+              <Link to="/announcements" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-slate-100 transition-colors text-slate-800 font-medium">
+                <Bell className="w-5 h-5 text-slate-500" aria-hidden="true" />
+                <span>{t('Announcements', 'Anunsyo')}</span>
               </Link>
-
-              <div className="pt-3 pb-2">
-                <div className="px-4 py-2 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-2">
-                  <div className="h-px flex-1 bg-slate-200"></div>
-                  <span>Services</span>
-                  <div className="h-px flex-1 bg-slate-200"></div>
-                </div>
-              </div>
-
-              <Link
-                to="/documents"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
-              >
-                <FileText className="w-5 h-5 transition-transform" />
-                <span>Documents</span>
+              <Link to="/programs" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-slate-100 transition-colors text-slate-800 font-medium">
+                <GraduationCap className="w-5 h-5 text-slate-500" aria-hidden="true" />
+                <span>{t('Benefit programs', 'Mga programang tulong')}</span>
               </Link>
-
-              <Link
-                to="/problems"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
-              >
-                <AlertCircle className="w-5 h-5 transition-transform" />
-                <span>Community Concerns</span>
+              <Link to="/problems" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-slate-100 transition-colors text-slate-800 font-medium">
+                <AlertCircle className="w-5 h-5 text-slate-500" aria-hidden="true" />
+                <span>{t('Report a problem', 'Mag-ulat ng problema')}</span>
               </Link>
-
-              <Link
-                to="/programs"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
-              >
-                <GraduationCap className="w-5 h-5 transition-transform" />
-                <span>Programs</span>
+              <Link to="/marketplace" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-slate-100 transition-colors text-slate-800 font-medium">
+                <ShoppingBag className="w-5 h-5 text-slate-500" aria-hidden="true" />
+                <span>{t('Community marketplace', 'Palengke ng komunidad')}</span>
               </Link>
-
-              <Link
-                to="/about"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
-              >
-                <Info className="w-5 h-5 transition-transform" />
-                <span>About</span>
+              <Link to="/about" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-slate-100 transition-colors text-slate-800 font-medium">
+                <Info className="w-5 h-5 text-slate-500" aria-hidden="true" />
+                <span>{t('About', 'Tungkol')}</span>
               </Link>
 
               {!hideLocationSelector && (
-                <div className="pt-4 pb-2">
-                  <div className="px-4 py-2 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    <span>Filter by Location</span>
-                  </div>
-                  <div className="px-4 py-2 space-y-3">
-                    <div className="bg-white rounded-lg p-3 border border-gray-200/80 shadow-sm">
-                      <MunicipalitySelect />
-                    </div>
-                    <div className="bg-white rounded-lg p-3 border border-gray-200/80 shadow-sm">
-                      <BarangaySelect />
-                    </div>
+                <div className="mt-4 border-t border-slate-200 pt-4">
+                  <p className="flex items-center gap-2 px-4 pb-2 text-sm font-semibold text-slate-700">
+                    <MapPin className="w-4 h-4" aria-hidden="true" />
+                    {t('Your town', 'Ang iyong bayan')}
+                  </p>
+                  <div className="space-y-2 px-4">
+                    <div className="rounded-md border border-slate-200 p-3"><MunicipalitySelect /></div>
+                    <div className="rounded-md border border-slate-200 p-3"><BarangaySelect /></div>
                   </div>
                 </div>
               )}
@@ -320,63 +280,63 @@ export default function Layout() {
                 <Link
                   to="/login"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-ocean-700 hover:bg-ocean-800 text-white font-semibold rounded-lg transition-colors"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-navy-700 hover:bg-navy-800 text-white font-semibold rounded-lg transition-colors"
                 >
-                  <User className="w-4 h-4" />
-                  <span>Log in</span>
+                  <User className="w-4 h-4" aria-hidden="true" />
+                  <span>{t('Log in', 'Mag-log in')}</span>
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white border-2 border-ocean-600 text-ocean-700 font-semibold rounded-lg hover:bg-ocean-50 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white border border-navy-700 text-navy-800 font-semibold rounded-md hover:bg-navy-50 transition-colors"
                 >
-                  <span>Register</span>
+                  <span>{t('Register', 'Magparehistro')}</span>
                 </Link>
               </div>
             ) : (
               <div className="space-y-2">
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/dashboard'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-semibold"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-slate-100 transition-colors text-slate-800 font-semibold"
                 >
                   <LayoutDashboard className="w-5 h-5" />
-                  <span>Dashboard</span>
+                  <span>{t('Dashboard', 'Dashboard')}</span>
                 </button>
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/profile'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-semibold"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-slate-100 transition-colors text-slate-800 font-semibold"
                 >
                   <User className="w-5 h-5" />
-                  <span>Profile</span>
+                  <span>{t('Profile', 'Profile')}</span>
                 </button>
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/how-to-use'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-semibold"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-slate-100 transition-colors text-slate-800 font-semibold"
                 >
                   <BookOpen className="w-5 h-5" />
-                  <span>How to use</span>
+                  <span>{t('How to use', 'Paano gamitin')}</span>
                 </button>
 
                 <div className="pt-3 pb-2 border-t border-gray-200">
-                  <div className="px-4 py-2 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-2">
+                  <div className="px-4 py-2 text-sm font-semibold text-slate-700 flex items-center gap-2">
                     <Activity className="w-4 h-4" />
-                    <span>Activity</span>
+                    <span>{t('Activity', 'Aktibidad')}</span>
                   </div>
                 </div>
 
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/my-marketplace?tab=transactions'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-slate-100 transition-colors text-slate-800 font-medium"
                 >
                   <ShoppingBag className="w-5 h-5" />
-                  <span>Transactions</span>
+                  <span>{t('Marketplace transactions', 'Mga transaksyon')}</span>
                 </button>
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/dashboard/requests'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-slate-100 transition-colors text-slate-800 font-medium"
                 >
                   <FileText className="w-5 h-5" />
-                  <span>Document Requests</span>
+                  <span>{t('My document requests', 'Aking mga kahilingan')}</span>
                 </button>
 
                 <div className="pt-2 border-t border-gray-200">
@@ -385,7 +345,7 @@ export default function Layout() {
                     className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>Log out</span>
+                    <span>{t('Log out', 'Mag-log out')}</span>
                   </button>
                 </div>
               </div>

@@ -182,7 +182,7 @@ MUNICIPAL_FEE_DOC_TEMPLATES: List[Dict] = [
         'name': 'Application for Marriage License',
         'description': 'Application fee PHP 420 + PHP 2 license; final fee assessed at office',
         'requirements': [
-            'Applicants must be male and female; at least one applicant is a resident of Porac',
+            'Applicants must be male and female; at least one applicant is a resident of this municipality',
             'PSA CENOMAR (orig + photocopy)',
             'Pre-marriage counseling/responsible parenthood certificate (orig + photocopy)',
             'Parental consent (18-20) / parental advice (21-24) (2 originals)',

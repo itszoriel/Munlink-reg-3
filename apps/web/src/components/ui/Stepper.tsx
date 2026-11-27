@@ -13,7 +13,7 @@ export default function Stepper({ steps, current }: Props) {
         {/* Progress line (filled portion) */}
         {current > 1 && (
           <div
-            className="absolute top-5 left-1/4 h-0.5 bg-ocean-500 transition-all duration-500"
+            className="absolute top-5 left-1/4 h-0.5 bg-navy-700 transition-colors"
             style={{ width: `${((current - 1) / (steps.length - 1)) * 50}%` }}
           />
         )}
@@ -31,9 +31,9 @@ export default function Stepper({ steps, current }: Props) {
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-300 ${
                     isCompleted
-                      ? 'bg-emerald-500 text-white shadow-lg scale-110'
+                      ? 'bg-emerald-600 text-white'
                       : isCurrent
-                      ? 'bg-ocean-gradient text-white shadow-lg scale-110 ring-4 ring-ocean-500/20'
+                      ? 'bg-navy-700 text-white ring-2 ring-navy-200'
                       : 'bg-white border-2 border-gray-300 text-gray-500'
                   }`}
                 >

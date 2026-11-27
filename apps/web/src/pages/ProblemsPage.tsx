@@ -1,4 +1,5 @@
 import { StatusBadge, Card, EmptyState } from '@munlink/ui'
+import TownPicker from '@/components/TownPicker'
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
@@ -118,8 +119,11 @@ export default function ProblemsPage() {
 
       {/* Guest Location Required Message */}
       {!isAuthenticated && !guestLocationComplete && (
-        <div className="mb-4 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900">
-          <p><strong>Select your location</strong> to view reported concerns. Use the location selector above to choose your province and municipality.</p>
+        <div className="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+          <TownPicker
+            heading="Choose your town"
+            description="Reported problems are handled by each municipality. Pick one to see its reports."
+          />
         </div>
       )}
 

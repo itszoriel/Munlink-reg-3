@@ -14,8 +14,8 @@ const colorFor = (s: string) => {
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '', children }) => {
   const color = status ? colorFor(status) : 'bg-gray-100 text-gray-700 ring-gray-200'
   return (
-    <span className={`px-2.5 py-1 text-xs rounded-full ring-1 whitespace-nowrap capitalize ${color} ${className}`.trim()}>
-      {children || status}
+    <span className={`px-2.5 py-1 text-xs rounded-full ring-1 whitespace-nowrap ${children ? '' : 'capitalize'} ${color} ${className}`.trim()}>
+      {children || String(status || '').replace(/_/g, ' ')}
     </span>
   )
 }

@@ -52,7 +52,7 @@ export default function BarangayAdminLoginPage() {
   return (
     <div className="fixed inset-0 flex">
       <AdminAuthPanel
-        image="/assets/barangay.jpg"
+        image="/landmarks/zambales/santa-cruz/Santa_Cruz_Municipal.webp"
         office="Barangay staff"
         title="Barangay admin sign-in"
         description={'Post announcements, run programs and follow up reports for your barangay.'}

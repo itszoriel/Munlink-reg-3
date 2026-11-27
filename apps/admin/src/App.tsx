@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard'
 import Residents from './pages/Residents'
 import Programs from './pages/Programs'
 import Requests from './pages/Requests'
+import Fees from './pages/Fees'
 import Reports from './pages/Reports'
 import Profile from './pages/Profile'
 import Announcements from './pages/Announcements'
@@ -130,6 +131,16 @@ export default function App() {
             <ProtectedRoute>
               <AdminLayout>
                 <Requests />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/fees"
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <Fees />
               </AdminLayout>
             </ProtectedRoute>
           }

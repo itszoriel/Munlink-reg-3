@@ -39,7 +39,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Botolan',
     slug: 'botolan',
-    landmark: '/landmarks/zambales/botolan/botolan_mt_pinatubo.png',
+    landmark: '/landmarks/zambales/botolan/botolan_mt_pinatubo.webp',
     spotlight: 'Botolan is a coastal municipality with 31 barangays and the largest land area in Zambales.',
     fact: 'Botolan covers about 735.28 square kilometers, around 20.25% of Zambales total land area.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -49,7 +49,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Cabangan',
     slug: 'cabangan',
-    landmark: '/landmarks/zambales/cabangan/cabangan_municipal.png',
+    landmark: '/landmarks/zambales/cabangan/cabangan_municipal.webp',
     spotlight: 'Cabangan is a coastal municipality with 22 barangays along the South China Sea.',
     fact: 'Cabangan has about 175.29 square kilometers of land area.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -59,7 +59,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Candelaria',
     slug: 'candelaria',
-    landmark: '/landmarks/zambales/candelaria/candelaria_municipal.png',
+    landmark: '/landmarks/zambales/candelaria/candelaria_municipal.webp',
     spotlight: 'Candelaria is a coastal municipality with 16 barangays.',
     fact: 'Candelaria covers about 333.59 square kilometers, around 9.19% of Zambales total land area.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -69,7 +69,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Castillejos',
     slug: 'castillejos',
-    landmark: '/landmarks/zambales/castillejos/Castillejos_Ramon_Magsaysay_Ancestral_House,_Castillejos.jpg',
+    landmark: '/landmarks/zambales/castillejos/Castillejos_Ramon_Magsaysay_Ancestral_House,_Castillejos.webp',
     spotlight: 'Castillejos is a landlocked municipality with 14 barangays.',
     fact: 'Castillejos had 67,889 residents in the 2020 Census.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -79,7 +79,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Iba',
     slug: 'iba',
-    landmark: '/landmarks/zambales/iba/iba_municipal.png',
+    landmark: '/landmarks/zambales/iba/iba_municipal.webp',
     isCapital: true,
     spotlight: 'Iba is a coastal municipality and serves as the provincial capital of Zambales.',
     fact: 'Iba has 14 barangays and about 153.38 square kilometers of land area.',
@@ -90,7 +90,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Masinloc',
     slug: 'masinloc',
-    landmark: '/landmarks/zambales/masinloc/masinloc_church.png',
+    landmark: '/landmarks/zambales/masinloc/masinloc_church.webp',
     spotlight: 'Masinloc is a coastal municipality with 13 barangays.',
     fact: 'Masinloc covers about 316.02 square kilometers, around 8.70% of Zambales total land area.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -100,7 +100,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Palauig',
     slug: 'palauig',
-    landmark: '/landmarks/zambales/palauig/palauig_municipal.png',
+    landmark: '/landmarks/zambales/palauig/palauig_municipal.webp',
     spotlight: 'Palauig is a coastal municipality with 19 barangays.',
     fact: 'Palauig had 39,784 residents in the 2020 Census.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -110,7 +110,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'San Antonio',
     slug: 'san-antonio',
-    landmark: '/landmarks/zambales/san-antonio/san_antonio_municipal.png',
+    landmark: '/landmarks/zambales/san-antonio/san_antonio_municipal.webp',
     spotlight: 'San Antonio is a coastal municipality with 14 barangays.',
     fact: 'San Antonio has about 188.12 square kilometers of land area.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -120,7 +120,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'San Felipe',
     slug: 'san-felipe',
-    landmark: '/landmarks/zambales/san-felipe/san_felipe_arko.png',
+    landmark: '/landmarks/zambales/san-felipe/san_felipe_arko.webp',
     spotlight: 'San Felipe is a coastal municipality with 11 barangays.',
     fact: 'San Felipe has about 111.60 square kilometers of land area.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -130,7 +130,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'San Marcelino',
     slug: 'san-marcelino',
-    landmark: '/landmarks/zambales/san-marcelino/san_marcelino_municipal.png',
+    landmark: '/landmarks/zambales/san-marcelino/san_marcelino_municipal.webp',
     spotlight: 'San Marcelino is a landlocked municipality with 18 barangays.',
     fact: 'San Marcelino covers about 416.86 square kilometers, around 11.48% of Zambales total land area.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -140,7 +140,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'San Narciso',
     slug: 'san-narciso',
-    landmark: '/landmarks/zambales/san-narciso/san_narciso_municipal.png',
+    landmark: '/landmarks/zambales/san-narciso/san_narciso_municipal.webp',
     spotlight: 'San Narciso is a coastal municipality with 17 barangays.',
     fact: 'San Narciso had 30,759 residents in the 2020 Census.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -150,7 +150,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Santa Cruz',
     slug: 'santa-cruz',
-    landmark: '/landmarks/zambales/santa-cruz/Santa_Cruz_Municipal.png',
+    landmark: '/landmarks/zambales/santa-cruz/Santa_Cruz_Municipal.webp',
     spotlight: 'Santa Cruz is a coastal municipality with 25 barangays.',
     fact: 'Santa Cruz covers about 438.46 square kilometers, around 12.08% of Zambales total land area.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -160,7 +160,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Subic',
     slug: 'subic',
-    landmark: '/landmarks/zambales/subic/subic_municipality.png',
+    landmark: '/landmarks/zambales/subic/subic_municipality.webp',
     spotlight: 'Subic is a coastal municipality on Subic Bay with 16 barangays.',
     fact: 'Subic had 111,912 residents in the 2020 Census.',
     sourceLabel: 'Source: PhilAtlas municipal profile',
@@ -172,7 +172,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
 const fallbackVisual: MunicipalityVisual = {
   name: 'Zambales',
   slug: 'zambales',
-  landmark: '/assets/about.jpg',
+  landmark: '/assets/about.webp',
   spotlight: 'Zambales has 13 municipalities within MunLink current scope.',
   fact: 'Verified municipality facts appear here when a local profile is available.',
   sourceLabel: 'Source: PhilAtlas',
@@ -215,4 +215,11 @@ export function getMunicipalityVisual(params: {
   }
 
   return fallbackVisual
+}
+
+/** Path of a municipality's official seal (small WebP), by slug or name. */
+export function getMunicipalitySeal(slugOrName?: string): string {
+  const key = slugify(slugOrName).replace(/-zambales$/, '')
+  const match = ZAMBALES_MUNICIPALITY_VISUALS.find((item) => item.slug === key || slugify(item.name) === key)
+  return match ? `/logos/municipalities/zambales/${match.slug}/seal.webp` : '/logos/provinces/zambales.png'
 }

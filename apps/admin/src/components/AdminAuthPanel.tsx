@@ -19,7 +19,7 @@ export default function AdminAuthPanel({ image, office, title, description, feat
       <div className="absolute inset-0 -z-10 bg-navy-950/80" aria-hidden="true" />
       <div className="flex w-full flex-col justify-center px-12 xl:px-16">
         <div className="flex items-center gap-3">
-          <img src="/logos/munlink-logo.png" alt="" className="h-11 w-11 rounded-full object-cover" />
+          <img src="/logos/provinces/zambales.png" alt="" className="h-11 w-11 rounded-full object-cover" />
           <div>
             <p className="text-base font-semibold text-white">MunLink Zambales</p>
             <p className="text-sm text-slate-300">{office}</p>

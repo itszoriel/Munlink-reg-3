@@ -10,7 +10,9 @@ MunLink should feel trustworthy, locally grounded, and easy to use on low-power 
 - Reuse application or shared UI components before adding another variant.
 - Meet WCAG AA contrast and keyboard requirements.
 - Respect `prefers-reduced-motion` (both apps disable all animation and transitions under it).
-- Never show placeholder or invented data in the interface; show an empty state instead.
+- Never show placeholder or invented data in the interface; show an empty state instead. The one exception is a document fee the office has not confirmed yet (`fee_confirmed = false`): show it with a "provisional" label and the note that the issuing office confirms the final amount. Illustrations (such as the sample claim stub on the home page) carry a visible "Sample" label.
+- Build from the real objects of local government, not generic SaaS sections: the Citizen's Charter (document, fee, working days, what to bring, which hall), the claim stub, the municipal seal. No icon-in-a-tile card grids, no eyebrow labels above headings, no "1-2-3" step banners.
+- Resident-facing text is bilingual. Write strings as `t('English', 'Filipino')` pairs (`apps/web/src/lib/i18n.ts`) and keep both versions plain and short.
 
 ## Color roles
 
@@ -48,8 +50,11 @@ Do not use color alone to communicate status. Pair it with a label or icon.
 
 - Buttons: `.btn-primary` (solid navy), `.btn-secondary` (white, slate border), `.btn-ghost`, `.btn-danger`. Destructive row actions carry a text label, not just an icon.
 - Cards: `rounded-lg`, `border-slate-200`, white, at most `shadow-sm`. Interactive cards change border colour on hover; they never move.
-- Page headers: title, one line of context and at most two actions. Dashboards start with stat cards, not a hero banner.
-- Photo backgrounds (public hero, sign-in panels) use a dark navy scrim (`bg-navy-950/75` or darker) so white text keeps contrast.
+- Page headers: title, one line of context and at most two actions. Admin home pages start with the work queue (counts that link to filtered lists, oldest waiting first), not greetings or vanity totals. Never show a control that is not wired to real data.
+- Request status for residents uses the four stages in `apps/web/src/lib/requestStatus.ts` (Received, Being processed, Ready, Released) in both languages; never print raw status values.
+- Claim stub: navy header band, QR on the left, request number in tabular figures, "Claim at", "When" and "Bring". Admins print the same information as claim slips.
+- Photos are real Zambales places (`public/landmarks/zambales/`) as WebP under about 200 KB. Prefer text on a solid navy panel beside the photo over a scrim on top of it. Load decorative panel photos only at the breakpoint where they are visible.
+- Each municipality's seal lives at `public/logos/municipalities/zambales/<slug>/seal.webp`; the provincial seal at `public/logos/provinces/zambales.png` is the brand mark.
 - Status: use the existing pill and badge patterns.
 - Loading: prefer skeletons for content and spinners for short actions.
 - Empty states: explain what is absent and offer one clear next action when available.

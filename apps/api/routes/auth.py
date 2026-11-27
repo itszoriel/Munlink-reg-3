@@ -75,6 +75,7 @@ from apps.api.utils.auth import read_verification_token, verification_email_matc
 from apps.api.utils.audit import log_action
 from apps.api.utils.file_streaming import stream_storage_file
 from apps.api.utils.session_guard import end_user_sessions
+from apps.api.utils.constants import VALID_ID_TYPES
 import os
 import requests
 
@@ -249,6 +250,24 @@ def _admin_register_limit_value() -> str:
     return "3 per hour"
 
 
+def _parse_valid_id_type(raw):
+    """Return a known ID type key, None when blank, or raise ValidationError."""
+    value = (raw or '').strip().lower()
+    if not value:
+        return None
+    if value not in VALID_ID_TYPES:
+        raise ValidationError('valid_id_type', 'Please choose a valid ID type from the list')
+    return value
+
+
+@auth_bp.route('/valid-id-types', methods=['GET'])
+def list_valid_id_types():
+    """Public list of government IDs accepted for resident verification."""
+    return jsonify({
+        'types': [{'value': key, 'label': label} for key, label in VALID_ID_TYPES.items()]
+    }), 200
+
+
 @auth_bp.route('/register', methods=['POST'])
 @_limit("5 per hour")  # Prevent spam account creation
 def register():
@@ -279,6 +298,7 @@ def register():
         suffix = data.get('suffix')
         phone_number = validate_phone(data.get('phone_number'))
         mobile_number = validate_phone(data.get('mobile_number'), 'mobile_number')
+        valid_id_type = _parse_valid_id_type(data.get('valid_id_type'))
 
         # If mobile_number is provided but phone_number is not, copy mobile to phone
         # This ensures the user's number appears in both profile fields
@@ -350,6 +370,7 @@ def register():
             notify_sms_enabled=False,
             municipality_id=municipality_id,
             barangay_id=barangay_id,
+            valid_id_type=valid_id_type,
             role='resident'
         )
         
@@ -1235,6 +1256,8 @@ def upload_verification_docs():
         # Check if user already has ID documents uploaded
         existing_ids = bool(user.valid_id_front or user.valid_id_back)
 
+        id_type = _parse_valid_id_type(request.form.get('valid_id_type'))
+
         # Save provided files (optional)
         saved_fields = []
         for field in ('valid_id_front', 'valid_id_back', 'selfie_with_id'):
@@ -1249,6 +1272,8 @@ def upload_verification_docs():
 
         if not saved_fields:
             return jsonify({'error': 'Please upload at least one verification file'}), 400
+        if id_type:
+            user.valid_id_type = id_type
 
         user.updated_at = utc_now()
         if user.municipality_id:

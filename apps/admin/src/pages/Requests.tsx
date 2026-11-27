@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { adminApi, handleApiError, documentsAdminApi, showToast, auditAdminApi } from '../lib/api'
 import { useCachedFetch } from '../lib/useCachedFetch'
 import { CACHE_KEYS, invalidateMultiple } from '../lib/dataStore'
-import { ClipboardList, Hourglass, Cog, CheckCircle, PartyPopper, Smartphone, Package as PackageIcon, Search, ShieldCheck, Ban } from 'lucide-react'
+import { ClipboardList, Hourglass, Cog, CheckCircle, PartyPopper, Smartphone, Package as PackageIcon, Search, ShieldCheck, Ban, Printer, QrCode } from 'lucide-react'
 import { EmptyState } from '@munlink/ui'
 import { useAdminStore } from '../lib/store'
 
@@ -108,15 +108,36 @@ export default function Requests() {
   const user = useAdminStore((s) => s.user)
   const role = user?.role
   const barangayName = user?.barangay_name
-  const [statusFilter, setStatusFilter] = useState<Status>('all')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [statusFilter, setStatusFilterState] = useState<Status>('all')
   const [error, setError] = useState<string | null>(null)
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'digital' | 'pickup'>('all')
+  const [searchInput, setSearchInput] = useState('')
+  const [query, setQuery] = useState('')
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  // Status groups and payment filter can arrive from the dashboard queue links.
+  const urlStatus = searchParams.get('status') || ''
+  const paymentFilter = searchParams.get('payment') || ''
+  const statusQuery = statusFilter !== 'all' ? statusFilter : (urlStatus || undefined)
+  const setStatusFilter = (s: Status) => {
+    setStatusFilterState(s)
+    if (urlStatus || paymentFilter) setSearchParams({}, { replace: true })
+  }
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setQuery(searchInput.trim()), 350)
+    return () => window.clearTimeout(id)
+  }, [searchInput])
+  useEffect(() => { setSelected(new Set()) }, [statusQuery, query, deliveryFilter, paymentFilter])
+
+  const fetchRequests = () => adminApi.getRequests({ page: 1, per_page: 100, status: statusQuery, q: query || undefined })
 
   // Use cached fetch for requests with status filter
   const { data: requestsData, loading } = useCachedFetch(
     CACHE_KEYS.DOCUMENT_REQUESTS,
-    () => adminApi.getRequests({ page: 1, per_page: 50, status: statusFilter === 'all' ? undefined : statusFilter }),
-    { dependencies: [statusFilter], staleTime: 2 * 60 * 1000 }
+    fetchRequests,
+    { dependencies: [statusQuery, query], staleTime: 2 * 60 * 1000 }
   )
 
   // Process requests data
@@ -233,13 +254,29 @@ export default function Requests() {
     // If Ready filter is active, and delivery filter is 'all', force pickup-only per requirements
     const effectiveDelivery = deliveryFilter === 'all' && statusFilter === 'ready' ? 'pickup' : deliveryFilter
     if (effectiveDelivery !== 'all' && r.delivery_method !== (effectiveDelivery === 'pickup' ? 'pickup' : 'digital')) return false
+    if (paymentFilter === 'submitted' && String(r.manual_payment_status || '').toLowerCase() !== 'submitted') return false
     return true
+  })
+
+  // A pickup request can be marked ready in bulk only when the single-row action would allow it.
+  const canMarkReady = (r: any) => {
+    if (r.status !== 'processing' || r.delivery_method !== 'pickup' || !r.has_claim_token) return false
+    const fee = Number(r.final_fee ?? r.original_fee ?? 0)
+    return !(fee > 0 && !getPaymentMeta(r).settled)
+  }
+  const selectable = (r: any) => canMarkReady(r) || r.status === 'ready'
+  const selectedRows = visibleRows.filter((r) => selected.has(r.request_id))
+  const readyToMark = selectedRows.filter(canMarkReady)
+  const toggle = (id: number) => setSelected((prev) => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
   })
   // Use refetch from the primary hook (now force-fetches, bypassing freshness/enabled guards)
   const { refetch: refetchRequests } = useCachedFetch(
     CACHE_KEYS.DOCUMENT_REQUESTS,
-    () => adminApi.getRequests({ page: 1, per_page: 50, status: statusFilter === 'all' ? undefined : statusFilter }),
-    { dependencies: [statusFilter], staleTime: 2 * 60 * 1000 }
+    fetchRequests,
+    { dependencies: [statusQuery, query], staleTime: 2 * 60 * 1000 }
   )
   const refresh = async () => {
     try {
@@ -512,17 +549,74 @@ export default function Requests() {
     }
   }
 
+  const handleBulkReady = async () => {
+    if (readyToMark.length === 0) return
+    setBulkBusy(true)
+    let ok = 0
+    const failed: string[] = []
+    // One request at a time through the same endpoint as the row action, so every
+    // precondition, notification and audit entry still applies.
+    for (const row of readyToMark) {
+      try {
+        await documentsAdminApi.readyForPickup(row.request_id)
+        ok += 1
+      } catch (e: any) {
+        failed.push(`${row.id}: ${handleApiError(e)}`)
+      }
+    }
+    setBulkBusy(false)
+    setSelected(new Set())
+    await refresh()
+    if (failed.length === 0) showToast(`${ok} request${ok === 1 ? '' : 's'} marked ready for pickup`, 'success')
+    else showToast(`${ok} marked ready. ${failed.length} could not be updated: ${failed.join('; ')}`, 'error')
+  }
+
+  const printSlips = () => {
+    const rowsToPrint = selectedRows.filter((r) => r.status === 'ready' || canMarkReady(r))
+    if (rowsToPrint.length === 0) return
+    document.body.classList.add('printing-claim-slips')
+    const cleanup = () => { document.body.classList.remove('printing-claim-slips'); window.removeEventListener('afterprint', cleanup) }
+    window.addEventListener('afterprint', cleanup)
+    window.setTimeout(() => window.print(), 50)
+  }
+
   return (
     <div className="min-h-screen">
-      <div className="mb-8">
+      <div className="claim-slips hidden" aria-hidden="true">
+        {selectedRows.map((r) => (
+          <div key={r.request_id} className="claim-slip">
+            <p className="claim-slip-office">{user?.admin_municipality_name || 'Municipal office'}{r.authority_level === 'barangay' ? ' · Barangay hall' : ''}</p>
+            <p className="claim-slip-title">Claim slip</p>
+            <p className="claim-slip-number">{r.id}</p>
+            <table>
+              <tbody>
+                <tr><th>Resident</th><td>{r.resident}</td></tr>
+                <tr><th>Document</th><td>{r.document}</td></tr>
+                <tr><th>Purpose</th><td>{r.purpose || '-'}</td></tr>
+                <tr><th>Fee</th><td>{Number(r.final_fee ?? r.original_fee ?? 0) > 0 ? `PHP ${Number(r.final_fee ?? r.original_fee).toFixed(2)}` : 'None'}</td></tr>
+                <tr><th>Claim at</th><td>{r.delivery_address || 'Issuing office'}</td></tr>
+              </tbody>
+            </table>
+            <p className="claim-slip-note">Resident presents a valid ID and the claim code or QR from their MunLink account. Released by: ____________________ Date: ____________</p>
+          </div>
+        ))}
+      </div>
+      <div className="mb-6">
         {scopeBanner}
-        <h1 className="text-3xl font-bold text-neutral-900 mb-2">Document Requests</h1>
-        <p className="text-neutral-600">Process and track resident document requests</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Document requests</h1>
+        <p className="mt-1 text-sm text-slate-600">Search, process and release resident requests.</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      {(urlStatus || paymentFilter) && statusFilter === 'all' && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-navy-200 bg-navy-50 px-4 py-2.5 text-sm text-navy-900">
+          <span>{paymentFilter === 'submitted' ? 'Showing requests with payment proof to confirm.' : `Showing: ${urlStatus.split(',').map((x) => x.replace(/_/g, ' ')).join(', ')}`}</span>
+          <button type="button" className="font-medium underline" onClick={() => setSearchParams({}, { replace: true })}>Show all</button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {statusCards.map((item) => (
-          <button key={item.status} onClick={() => setStatusFilter(item.status as Status)} className={`text-left p-4 rounded-lg transition-all ${statusFilter === item.status ? 'bg-white shadow-md scale-105 border-2 border-ocean-500' : 'bg-white border border-white/50 '}`}>
+          <button key={item.status} aria-pressed={statusFilter === item.status} onClick={() => setStatusFilter(item.status as Status)} className={`text-left p-4 rounded-lg border bg-white transition-colors ${statusFilter === item.status ? 'border-navy-700 ring-1 ring-navy-700' : 'border-slate-200 hover:border-slate-300'}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-2xl">
                 {(() => {
@@ -537,16 +631,27 @@ export default function Requests() {
                   return <ClipboardList className="w-6 h-6" aria-hidden="true" />
                 })()}
               </span>
-              <span className={`text-2xl font-bold ${statusFilter === item.status ? 'text-ocean-600' : 'text-neutral-900'}`}>{item.count}</span>
+              <span className="text-2xl font-semibold tabular-nums text-slate-900">{item.count}</span>
             </div>
             <p className="text-sm font-medium text-neutral-700">{item.label}</p>
           </button>
         ))}
       </div>
 
-      <div className="bg-white rounded-lg shadow-md border border-white/50 overflow-visible">
-        <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-neutral-900">Recent Requests</h2>
+      <div className="bg-white rounded-lg border border-slate-200 overflow-visible">
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="relative w-full lg:max-w-sm">
+            <label htmlFor="requests-search" className="sr-only">Search requests</label>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+            <input
+              id="requests-search"
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Resident name, request no. or document"
+              className="input-field w-full pl-9"
+            />
+          </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <select
               name="deliveryFilter"
@@ -560,15 +665,26 @@ export default function Requests() {
               <option value="digital">Digital</option>
               <option value="pickup">Pickup</option>
             </select>
-            <button className="px-4 py-2 bg-white border border-neutral-200 hover:border-ocean-500 rounded-lg text-sm font-medium transition-all flex items-center gap-2" onClick={()=> navigate('/verify-ticket')}>
-              <Search className="w-4 h-4" aria-hidden="true" /> Verify Ticket
-            </button>
-            <button className="px-4 py-2 bg-white border border-neutral-200 hover:border-ocean-500 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-              Filter
+            <button className="btn-secondary" onClick={()=> navigate('/verify-ticket')}>
+              <QrCode className="w-4 h-4" aria-hidden="true" /> Scan claim stub
             </button>
           </div>
         </div>
+
+        {selected.size > 0 && (
+          <div className="flex flex-col gap-2 border-b border-slate-200 bg-navy-50 px-6 py-3 sm:flex-row sm:items-center sm:justify-between" role="region" aria-label="Bulk actions">
+            <span className="text-sm font-medium text-navy-900">{selected.size} selected</span>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn-primary" disabled={bulkBusy || readyToMark.length === 0} onClick={handleBulkReady}>
+                {bulkBusy ? 'Updating…' : `Mark ${readyToMark.length} ready for pickup`}
+              </button>
+              <button type="button" className="btn-secondary" onClick={printSlips}>
+                <Printer className="h-4 w-4" aria-hidden="true" /> Print claim slips
+              </button>
+              <button type="button" className="btn-ghost" onClick={() => setSelected(new Set())}>Clear</button>
+            </div>
+          </div>
+        )}
 
         {error && <div className="px-6 py-3 text-sm text-red-700 bg-red-50 border-b border-red-200">{error}</div>}
         <div className="divide-y divide-neutral-200">
@@ -582,10 +698,10 @@ export default function Requests() {
             <div className="px-6 py-6">
               <EmptyState
                 icon="document"
-                title={statusFilter !== 'all' || deliveryFilter !== 'all' ? "No requests match your filters" : "No document requests"}
-                description={statusFilter !== 'all' || deliveryFilter !== 'all' ? "Try adjusting your status or delivery filters." : "Residents haven't submitted any document requests yet."}
-                action={statusFilter !== 'all' || deliveryFilter !== 'all' ? (
-                  <button className="btn btn-secondary" onClick={() => { setStatusFilter('all'); setDeliveryFilter('all') }}>Clear Filters</button>
+                title={statusFilter !== 'all' || deliveryFilter !== 'all' || query || urlStatus || paymentFilter ? "No requests match" : "No document requests"}
+                description={query ? `Nothing matches “${query}”. Check the spelling or search by request number.` : statusFilter !== 'all' || deliveryFilter !== 'all' || urlStatus || paymentFilter ? "Try another status or delivery filter." : "Residents haven't submitted any document requests yet."}
+                action={statusFilter !== 'all' || deliveryFilter !== 'all' || query || urlStatus || paymentFilter ? (
+                  <button className="btn btn-secondary" onClick={() => { setStatusFilter('all'); setDeliveryFilter('all'); setSearchInput(''); setSearchParams({}, { replace: true }) }}>Clear filters</button>
                 ) : undefined}
               />
             </div>
@@ -603,15 +719,28 @@ export default function Requests() {
               && !paymentSettled
               && request.office_payment_status !== 'verified'
             return (
-              <div key={request.id} id={`req-${request.request_id}`} className="px-6 py-5 hover:bg-ocean-50/30 transition-colors group">
+              <div key={request.id} id={`req-${request.request_id}`} className={`px-6 py-5 transition-colors group ${selected.has(request.request_id) ? 'bg-navy-50/60' : 'hover:bg-slate-50'}`}>
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                  <div className={`sm:col-span-1 w-1 h-6 sm:h-16 rounded-full ${request.priority === 'urgent' ? 'bg-red-500' : request.priority === 'high' ? 'bg-yellow-500' : 'bg-neutral-300'}`} />
+                  <div className="sm:col-span-1 flex items-center">
+                    {selectable(request) ? (
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 rounded border-slate-400 text-navy-700"
+                        checked={selected.has(request.request_id)}
+                        onChange={() => toggle(request.request_id)}
+                        aria-label={`Select request ${request.id} from ${request.resident}`}
+                      />
+                    ) : <span className="sr-only">Not selectable</span>}
+                  </div>
                   <div className="sm:col-span-11 grid grid-cols-1 sm:grid-cols-12 gap-4 items-center min-w-0">
                     <div className="sm:col-span-3 min-w-0">
-                      <p className="font-bold text-neutral-900 mb-1">{request.id}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm text-neutral-600">{request.document}</p>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${request.delivery_method === 'digital' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                      <p className="font-semibold text-slate-900 truncate">{request.resident}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm text-slate-700">{request.document}</p>
+                        {(request.priority === 'urgent' || request.priority === 'high') && (
+                          <span className="inline-flex items-center rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-800">{request.priority === 'urgent' ? 'Urgent' : 'High priority'}</span>
+                        )}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700">
                           {request.delivery_method === 'digital' ? (
                             <>
                               <Smartphone className="w-3.5 h-3.5" aria-hidden="true" />
@@ -630,8 +759,8 @@ export default function Requests() {
                       </div>
                     </div>
                     <div className="sm:col-span-2 min-w-0">
-                      <p className="text-sm text-neutral-700">{request.resident}</p>
-                      <p className="text-xs text-neutral-600">Requester</p>
+                      <p className="text-sm tabular-nums text-slate-700 truncate">{request.id}</p>
+                      <p className="text-xs text-slate-600">Request no.</p>
                     </div>
                     <div className="sm:col-span-2 min-w-0">
                       <p className="text-sm text-neutral-700 truncate">{request.purpose}</p>
@@ -669,7 +798,7 @@ export default function Requests() {
                                     ? 'bg-forest-100 text-forest-700'
                                     : request.status === 'picked_up'
                                       ? 'bg-emerald-100 text-emerald-700'
-                                      : 'bg-purple-100 text-purple-700'
+                                      : 'bg-slate-100 text-slate-700'
                       }`}>
                         {request.status === 'pending' && <Hourglass className="w-3.5 h-3.5" aria-hidden="true" />}
                         {request.status === 'barangay_processing' && <Hourglass className="w-3.5 h-3.5" aria-hidden="true" />}

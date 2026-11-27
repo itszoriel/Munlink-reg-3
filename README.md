@@ -20,6 +20,11 @@ Do not expose other Region 3 provinces or Olongapo through API responses, select
 - Provincial admins can publish province-wide communications.
 - Superadmins manage admin accounts through email 2FA and review platform audit logs.
 - Document requests support free, office-payment, manual QR, and Stripe-backed flows where configured.
+- A public Citizen's Charter (home page and `/services`) lists every document each municipality and barangay issues online, with its fee, processing time, requirements and release method. No login is needed to browse it.
+- Fees start as **provisional** (`document_types.fee_confirmed = false`) and are shown to residents with that label and a note that the issuing office confirms the final amount. Municipal and barangay admins confirm their own office's fees on the admin **Fees** page; every change is audited.
+- The resident site has an English / Filipino switch (saved per device). Translations are written in place as `t('English', 'Filipino')` pairs and still need a native-speaker review.
+- Registration is a four-step flow (account, address, valid ID, review) that records the ID type, accepts camera capture, shrinks photos on the device before upload, and saves a draft on the device.
+- Pickup requests end in a claim stub with a QR code and a four-stage timeline (Received, Being processed, Ready, Released). Admins can search requests, mark several ready at once and print claim slips.
 
 ## Repository layout
 

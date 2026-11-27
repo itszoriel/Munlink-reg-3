@@ -239,3 +239,22 @@ ACTIVITY_ACTIONS = [
     'profile_updated',
     'admin_account_created'
 ]
+
+
+# Government IDs accepted for resident verification. Keys are stored in
+# users.valid_id_type; labels are shown to residents and staff.
+VALID_ID_TYPES = {
+    'philsys': 'PhilSys National ID (PhilID / ePhilID)',
+    'drivers_license': "Driver's License",
+    'umid': 'UMID / SSS ID',
+    'passport': 'Philippine Passport',
+    'voters_id': "Voter's ID or Voter's Certification",
+    'postal_id': 'Postal ID',
+    'prc_id': 'PRC ID',
+    'senior_citizen_id': 'Senior Citizen ID',
+    'pwd_id': 'PWD ID',
+    'philhealth_id': 'PhilHealth ID',
+    'school_id': 'School ID (students)',
+    'barangay_id': 'Barangay ID or Barangay Certification',
+    'other': 'Other government-issued ID',
+}

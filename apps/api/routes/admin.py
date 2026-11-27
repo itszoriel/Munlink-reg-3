@@ -2890,6 +2890,168 @@ def admin_documents_stats():
         return jsonify({'error': 'Failed to get document stats', 'details': str(e)}), 500
 
 
+WAITING_STATUSES = ('pending', 'barangay_processing', 'barangay_approved', 'approved')
+IN_PROGRESS_STATUSES = ('processing', 'in_progress')
+READY_STATUSES = ('ready', 'ready_for_pickup')
+
+
+def _document_request_scope(ctx, municipality_id):
+    """Scope condition for document requests, or None when a barangay admin has no barangay."""
+    scope = _scope_filter(DocumentRequest.municipality_id, municipality_id)
+    if ctx.get('role_lower') == 'barangay_admin':
+        if not ctx.get('barangay_id'):
+            return None
+        scope = and_(scope, DocumentRequest.barangay_id == ctx['barangay_id'])
+    return scope
+
+
+@admin_bp.route('/documents/queue', methods=['GET'])
+@jwt_required()
+def admin_documents_queue_summary():
+    """Today's work queue: open request counts (no date range) for the admin's scope."""
+    try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+        municipality_id = require_admin_municipality()
+        if isinstance(municipality_id, tuple):
+            return municipality_id
+        scope = _document_request_scope(ctx, municipality_id)
+        if scope is None:
+            return jsonify({'error': 'Barangay assignment required'}), 403
+
+        rows = db.session.query(DocumentRequest.status, func.count(DocumentRequest.id))\
+            .filter(scope).group_by(DocumentRequest.status).all()
+        counts = {str(r[0] or '').lower(): int(r[1]) for r in rows}
+
+        def total(keys):
+            return sum(counts.get(k, 0) for k in keys)
+
+        payments_to_review = db.session.query(func.count(DocumentRequest.id)).filter(
+            scope,
+            func.lower(DocumentRequest.manual_payment_status) == 'submitted',
+        ).scalar() or 0
+
+        oldest = db.session.query(func.min(DocumentRequest.created_at)).filter(
+            scope, DocumentRequest.status.in_(WAITING_STATUSES)
+        ).scalar()
+
+        return jsonify({
+            'waiting': total(WAITING_STATUSES),
+            'in_progress': total(IN_PROGRESS_STATUSES),
+            'ready_for_pickup': total(READY_STATUSES),
+            'payments_to_review': int(payments_to_review),
+            'oldest_waiting_at': oldest.isoformat() if oldest else None,
+            'status_groups': {
+                'waiting': list(WAITING_STATUSES),
+                'in_progress': list(IN_PROGRESS_STATUSES),
+                'ready_for_pickup': list(READY_STATUSES),
+            },
+        }), 200
+    except Exception:
+        current_app.logger.exception("Document queue summary failed")
+        return jsonify({'error': 'Failed to get the request queue'}), 500
+
+
+def _document_type_scope_filter(ctx, municipality_id):
+    """Document types an admin may view and edit: their own office's types only."""
+    if municipality_id == 'ALL':
+        return DocumentType.municipality_id.in_(ZAMBALES_MUNICIPALITY_IDS)
+    if ctx.get('role_lower') == 'barangay_admin':
+        return DocumentType.barangay_id == ctx.get('barangay_id')
+    return and_(DocumentType.municipality_id == municipality_id, DocumentType.barangay_id.is_(None))
+
+
+@admin_bp.route('/document-types', methods=['GET'])
+@jwt_required()
+def admin_list_document_types():
+    """Document types issued by the admin's office, with fee confirmation state."""
+    try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+        municipality_id = require_admin_municipality()
+        if isinstance(municipality_id, tuple):
+            return municipality_id
+        if ctx.get('role_lower') == 'barangay_admin' and not ctx.get('barangay_id'):
+            return jsonify({'error': 'Barangay assignment required'}), 403
+        types = DocumentType.query.filter(_document_type_scope_filter(ctx, municipality_id))\
+            .order_by(DocumentType.authority_level, DocumentType.name).all()
+        return jsonify({'types': [t.to_dict() for t in types], 'count': len(types)}), 200
+    except Exception:
+        current_app.logger.exception("Admin document type list failed")
+        return jsonify({'error': 'Failed to get document types'}), 500
+
+
+@admin_bp.route('/document-types/<int:type_id>/fee', methods=['PUT'])
+@jwt_required()
+def admin_update_document_fee(type_id: int):
+    """Set a document's fee and processing days and confirm them as official."""
+    try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+        municipality_id = require_admin_municipality()
+        if isinstance(municipality_id, tuple):
+            return municipality_id
+        if ctx.get('role_lower') == 'barangay_admin' and not ctx.get('barangay_id'):
+            return jsonify({'error': 'Barangay assignment required'}), 403
+
+        doc_type = DocumentType.query.filter(
+            DocumentType.id == type_id,
+            _document_type_scope_filter(ctx, municipality_id),
+        ).first()
+        if not doc_type:
+            return jsonify({'error': 'Document type not found in your office'}), 404
+
+        data = request.get_json(silent=True) or {}
+        try:
+            fee = round(float(data.get('fee')), 2)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Enter the fee as a number of pesos'}), 400
+        if fee < 0 or fee > 100000:
+            return jsonify({'error': 'The fee must be between 0 and 100,000 pesos'}), 400
+        try:
+            days = int(data.get('processing_days', doc_type.processing_days or 1))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Enter processing time as a whole number of working days'}), 400
+        if days < 0 or days > 60:
+            return jsonify({'error': 'Processing time must be between 0 and 60 working days'}), 400
+        confirmed = bool(data.get('fee_confirmed', True))
+
+        old_values = {
+            'fee': float(doc_type.fee or 0),
+            'processing_days': doc_type.processing_days,
+            'fee_confirmed': bool(doc_type.fee_confirmed),
+        }
+        doc_type.fee = fee
+        doc_type.processing_days = days
+        doc_type.fee_confirmed = confirmed
+        db.session.commit()
+
+        try:
+            log_generic_action(
+                user_id=get_jwt_identity(),
+                municipality_id=doc_type.municipality_id,
+                entity_type='document_type',
+                entity_id=doc_type.id,
+                action='document_fee_updated',
+                actor_role='admin',
+                old_values=old_values,
+                new_values={'fee': fee, 'processing_days': days, 'fee_confirmed': confirmed},
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Audit log write failed (document_fee_updated)")
+
+        return jsonify({'message': 'Fee saved', 'type': doc_type.to_dict()}), 200
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Document fee update failed")
+        return jsonify({'error': 'Failed to save the fee'}), 500
+
+
 @admin_bp.route('/documents/requests', methods=['GET'])
 @jwt_required()
 def get_document_requests():
@@ -2919,9 +3081,26 @@ def get_document_requests():
                 return jsonify({'error': 'Barangay assignment required'}), 403
             query = query.filter(DocumentRequest.barangay_id == ctx['barangay_id'])
 
-        # Apply status filter if provided
+        # Apply status filter if provided (one status or a comma-separated list)
         if status:
-            query = query.filter(DocumentRequest.status == status)
+            statuses = [x.strip().lower() for x in status.split(',') if x.strip()]
+            if len(statuses) == 1:
+                query = query.filter(DocumentRequest.status == statuses[0])
+            elif statuses:
+                query = query.filter(DocumentRequest.status.in_(statuses))
+
+        # Free-text search: resident name, request number or document name
+        search = (request.args.get('q') or '').strip()[:80]
+        if search:
+            like = f"%{search}%"
+            full_name = User.first_name + ' ' + User.last_name
+            query = query.filter(or_(
+                DocumentRequest.request_number.ilike(like),
+                User.first_name.ilike(like),
+                User.last_name.ilike(like),
+                full_name.ilike(like),
+                DocumentType.name.ilike(like),
+            ))
         
         # Apply delivery method filter if provided
         if delivery:

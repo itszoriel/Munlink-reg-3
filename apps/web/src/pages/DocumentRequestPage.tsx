@@ -5,6 +5,9 @@ import { ArrowLeft, MapPin, QrCode, Clock, Copy, Check } from 'lucide-react'
 import { documentsApi } from '@/lib/api'
 import PaymentForm from '@/components/PaymentForm'
 import { useAppStore } from '@/lib/store'
+import RequestTimeline from '@/components/RequestTimeline'
+import { useLang, formatPeso } from '@/lib/i18n'
+import { statusLabel } from '@/lib/requestStatus'
 
 export default function DocumentRequestPage() {
   const { id } = useParams()
@@ -16,6 +19,7 @@ export default function DocumentRequestPage() {
   const [claimQrLoading, setClaimQrLoading] = useState(false)
   const [claimQrBlobUrl, setClaimQrBlobUrl] = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
+  const { t, lang } = useLang()
   const selectedProvince = useAppStore((s) => s.selectedProvince)
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const user = useAppStore((s) => s.user)
@@ -241,9 +245,21 @@ export default function DocumentRequestPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-semibold">{req.document_type?.name || 'Document Request'}</h1>
-              <div className="text-sm text-gray-600">Request No.: {req.request_number}</div>
+              <div className="text-sm text-gray-600">{t('Request no.', 'Numero ng kahilingan')}: <span className="tabular-nums">{req.request_number}</span></div>
             </div>
-            <StatusBadge status={req.status} />
+            <StatusBadge status={req.status}>{statusLabel(req.status, lang)}</StatusBadge>
+          </div>
+          <div className="mt-5">
+            <RequestTimeline
+              status={req.status}
+              pickup={!isDigital}
+              dates={{
+                received: req.created_at,
+                processing: req.approved_at,
+                ready: req.ready_at,
+                released: req.completed_at,
+              }}
+            />
           </div>
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div><span className="font-medium">Delivery:</span> {(req.delivery_method === 'physical' ? 'pickup' : req.delivery_method)}{req.delivery_address?` - ${req.delivery_address}`:''}</div>
@@ -345,82 +361,87 @@ export default function DocumentRequestPage() {
             </div>
           )}
           {hasClaimTicket && (
-            <div className="mt-6 rounded-lg border-2 border-green-200 bg-green-50 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <QrCode className="w-5 h-5 text-green-700" />
-                <h3 className="text-lg font-semibold text-green-800">Claim Ticket</h3>
+            <section className="mt-6 overflow-hidden rounded-lg border border-slate-300 bg-white" aria-labelledby="claim-stub-title">
+              <div className="flex items-center justify-between gap-3 bg-navy-800 px-5 py-3 text-white">
+                <h2 id="claim-stub-title" className="flex items-center gap-2 text-base font-semibold">
+                  <QrCode className="h-5 w-5" aria-hidden="true" />
+                  {t('Claim stub', 'Claim stub')}
+                </h2>
+                <span className="text-sm font-medium">{t('Ready for pickup', 'Handa nang kunin')}</span>
               </div>
-              <p className="text-sm text-green-700 mb-4">
-                Present this ticket at {req.delivery_address || 'the office'} to claim your document.
-              </p>
-              {claimLoading ? (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <div className="h-4 w-4 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
-                  Loading claim ticket...
+              <div className="grid gap-5 p-5 sm:grid-cols-[auto_minmax(0,1fr)]">
+                <div className="flex flex-col items-center">
+                  {claimLoading || (claimTicket?.qr_url && claimQrLoading) ? (
+                    <div className="skeleton h-44 w-44 rounded-md" aria-label={t('Loading QR code', 'Nilo-load ang QR code')} />
+                  ) : claimQrBlobUrl ? (
+                    <img src={claimQrBlobUrl} alt={t('Claim QR code', 'QR code ng claim stub')} className="h-44 w-44 rounded-md border border-slate-200 bg-white p-2" />
+                  ) : (
+                    <div className="flex h-44 w-44 items-center justify-center rounded-md border border-dashed border-slate-300 p-3 text-center text-xs text-slate-600">
+                      {t('QR not available. Use the claim code.', 'Walang QR. Gamitin ang claim code.')}
+                    </div>
+                  )}
+                  <p className="mt-2 text-xs text-slate-600">{t('Show this to the staff', 'Ipakita ito sa kawani')}</p>
                 </div>
-              ) : claimTicket ? (
-                <div className="space-y-4">
-                  {claimTicket.qr_url && claimQrLoading && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                      <div className="h-4 w-4 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin" />
-                      Loading QR code...
+                <dl className="grid content-start gap-4 text-sm">
+                  <div>
+                    <dt className="text-xs text-slate-600">{t('Request no.', 'Numero ng kahilingan')}</dt>
+                    <dd className="text-lg font-semibold tabular-nums tracking-wide text-slate-900">{req.request_number}</dd>
+                  </div>
+                  {claimTicket && (claimTicket.code_plain || claimTicket.code_masked) && (
+                    <div>
+                      <dt className="text-xs text-slate-600">{t('Claim code', 'Claim code')}</dt>
+                      <dd className="flex items-center gap-2">
+                        <span className="rounded-md border border-slate-300 px-3 py-1 text-lg font-semibold tabular-nums tracking-[0.2em] text-slate-900">
+                          {claimTicket.code_plain || claimTicket.code_masked}
+                        </span>
+                        {claimTicket.code_plain && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyCode(claimTicket.code_plain)}
+                            className="btn-ghost min-h-[40px] px-2"
+                            aria-label={t('Copy claim code', 'Kopyahin ang claim code')}
+                          >
+                            {codeCopied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+                          </button>
+                        )}
+                      </dd>
                     </div>
                   )}
-                  {claimTicket.qr_url && !claimQrLoading && claimQrBlobUrl && (
-                    <div className="flex flex-col items-center">
-                      <img
-                        src={claimQrBlobUrl}
-                        alt="Claim QR Code"
-                        className="w-48 h-48 rounded-lg border bg-white p-2"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Show this QR code to the staff</p>
-                    </div>
-                  )}
-                  {claimTicket.qr_url && !claimQrLoading && !claimQrBlobUrl && (
-                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                      QR image could not be loaded. Use the claim code below when claiming your document.
-                    </p>
-                  )}
-                  {(claimTicket.code_plain || claimTicket.code_masked) && (
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-sm text-gray-600">Claim Code:</span>
-                      <span className="font-mono text-lg font-bold tracking-wider text-gray-900 bg-white border rounded-lg px-3 py-1">
-                        {claimTicket.code_plain || claimTicket.code_masked}
-                      </span>
-                      {claimTicket.code_plain && (
-                        <button
-                          onClick={() => handleCopyCode(claimTicket.code_plain)}
-                          className="p-1.5 rounded-md hover:bg-green-100 text-green-700 transition-colors"
-                          title="Copy code"
-                        >
-                          {codeCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {(claimTicket.window_start || claimTicket.window_end) && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                      <Clock className="w-4 h-4" />
-                      <span>
+                  <div>
+                    <dt className="text-xs text-slate-600">{t('Claim at', 'Kunin sa')}</dt>
+                    <dd className="flex items-start gap-1.5 font-medium text-slate-900">
+                      <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" aria-hidden="true" />
+                      {req.delivery_address || claimTicket?.muni_name || t('The issuing office', 'Ang opisinang naglabas')}
+                    </dd>
+                  </div>
+                  {claimTicket && (claimTicket.window_start || claimTicket.window_end) && (
+                    <div>
+                      <dt className="text-xs text-slate-600">{t('When', 'Kailan')}</dt>
+                      <dd className="flex items-center gap-1.5 font-medium text-slate-900">
+                        <Clock className="h-4 w-4 text-slate-500" aria-hidden="true" />
                         {claimTicket.window_start && claimTicket.window_end
-                          ? `${claimTicket.window_start} - ${claimTicket.window_end}`
+                          ? `${claimTicket.window_start} – ${claimTicket.window_end}`
                           : claimTicket.window_start || claimTicket.window_end}
-                      </span>
+                      </dd>
                     </div>
                   )}
-                  {req.delivery_address && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                      <MapPin className="w-4 h-4" />
-                      <span>{req.delivery_address}</span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  Your claim ticket will appear here once the admin generates it.
+                  <div>
+                    <dt className="text-xs text-slate-600">{t('Bring', 'Dalhin')}</dt>
+                    <dd className="font-medium text-slate-900">
+                      {t('A valid ID', 'Valid ID')}
+                      {finalFee > 0 && req.office_payment_status !== 'verified' && paymentStatus !== 'paid'
+                        ? ` · ${formatPeso(finalFee)}`
+                        : ''}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+              {!claimLoading && !claimTicket && (
+                <p className="border-t border-slate-200 px-5 py-3 text-sm text-slate-600">
+                  {t('Your claim stub will appear here once the office generates it.', 'Lalabas dito ang iyong claim stub kapag nagawa na ng opisina.')}
                 </p>
               )}
-            </div>
+            </section>
           )}
           {!isDigital && ['ready', 'picked_up'].includes((req.status || '').toLowerCase()) && !req.has_qr_code && (
             <div className="mt-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">

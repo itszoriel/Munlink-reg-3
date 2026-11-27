@@ -51,6 +51,8 @@ class User(db.Model):
     valid_id_back = db.Column(db.String(255), nullable=True)
     proof_of_residency = db.Column(db.String(255), nullable=True)
     selfie_with_id = db.Column(db.String(255), nullable=True)
+    # Kind of government ID uploaded (key of utils.constants.VALID_ID_TYPES).
+    valid_id_type = db.Column(db.String(40), nullable=True)
     
     # Admin-specific fields
     admin_municipality_id = db.Column(db.Integer, db.ForeignKey('municipalities.id'), nullable=True)
@@ -123,6 +125,7 @@ class User(db.Model):
                 'proof_of_residency': bool(self.proof_of_residency),
             }
             data['id_documents'] = id_documents
+            data['valid_id_type'] = self.valid_id_type
             # Legacy keys kept as presence flags for clients built before id_documents.
             for field, present in id_documents.items():
                 data[field] = True if present else None

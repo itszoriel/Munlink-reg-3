@@ -1,26 +1,23 @@
-import { Link } from 'react-router-dom'
-import { Building, Users, HandHeart, ShieldCheck, Mail, Phone, Bug, ArrowRight } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Mail, Phone, Bug, ArrowRight } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
-import { ZAMBALES_MUNICIPALITY_VISUALS } from '@/lib/municipalityVisuals'
+import { ZAMBALES_MUNICIPALITY_VISUALS, getMunicipalitySeal } from '@/lib/municipalityVisuals'
+import { MUNICIPALITIES } from '@/lib/locations'
 
 const FEATURES = [
   {
-    icon: Building,
     title: 'Municipal services',
     description: 'Request documents, permits and certificates online, with QR verification and status tracking.',
   },
   {
-    icon: Users,
     title: 'Community marketplace',
     description: 'Sell, lend or give away items to verified residents of your own municipality.',
   },
   {
-    icon: HandHeart,
     title: 'Benefit programs',
     description: 'Find municipal assistance programs, check eligibility and apply online.',
   },
   {
-    icon: ShieldCheck,
     title: 'Privacy and security',
     description: 'IDs are kept in private storage, staff access is limited to their own area, and sensitive actions are logged.',
   },
@@ -52,16 +49,22 @@ const REPORT_TIPS = [
 
 export default function About() {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
+  const setMunicipality = useAppStore((s) => s.setMunicipality)
+  const navigate = useNavigate()
+  const openTown = (slug: string, name: string) => {
+    const m = MUNICIPALITIES.find((x) => x.slug === slug || x.name === name)
+    if (m) setMunicipality(m)
+    navigate('/services')
+  }
 
   return (
     <div className="bg-[#f6f7f9]">
       <section className="border-b border-slate-200 bg-white">
         <div className="container-responsive py-12 sm:py-16">
-          <p className="text-sm font-medium uppercase tracking-wider text-navy-700">About</p>
-          <h1 className="mt-2 max-w-3xl text-3xl sm:text-4xl font-semibold text-slate-900">
+          <h1 className="max-w-3xl text-3xl sm:text-4xl font-semibold text-slate-900">
             MunLink Zambales
           </h1>
-          <p className="mt-4 max-w-3xl text-lg leading-relaxed text-slate-600">
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-slate-600">
             An online service platform for the 13 municipalities of Zambales and their barangays. Residents use it to
             reach their local government; municipal and barangay staff use it to serve them.
           </p>
@@ -87,17 +90,14 @@ export default function About() {
       <section className="border-y border-slate-200 bg-white">
         <div className="container-responsive py-12 sm:py-16">
           <h2 className="text-2xl font-semibold text-slate-900">What the platform does</h2>
-          <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map(({ icon: Icon, title, description }) => (
-              <li key={title}>
-                <span className="flex h-10 w-10 items-center justify-center rounded-md bg-navy-50 text-navy-700">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <h3 className="mt-3 text-base font-semibold text-slate-900">{title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-slate-600">{description}</p>
-              </li>
+          <dl className="mt-6 grid gap-x-10 gap-y-6 md:grid-cols-2">
+            {FEATURES.map(({ title, description }) => (
+              <div key={title} className="border-t border-slate-200 pt-4">
+                <dt className="text-base font-semibold text-slate-900">{title}</dt>
+                <dd className="mt-1 max-w-prose text-sm leading-relaxed text-slate-600">{description}</dd>
+              </div>
             ))}
-          </ul>
+          </dl>
         </div>
       </section>
 
@@ -111,19 +111,28 @@ export default function About() {
         </div>
         <ul className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {ZAMBALES_MUNICIPALITY_VISUALS.map((mun) => (
-            <li key={mun.slug} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <img
-                src={mun.landmark}
-                alt=""
-                className="aspect-[3/2] w-full object-cover"
-                loading="lazy"
-                decoding="async"
-                onError={(e) => { e.currentTarget.src = `/logos/municipalities/${mun.slug}.png` }}
-              />
-              <div className="flex items-center justify-between gap-2 p-3">
-                <span className="text-sm font-semibold text-slate-900">{mun.name}</span>
-                {mun.isCapital && <span className="pill pill-ocean">Capital</span>}
-              </div>
+            <li key={mun.slug}>
+              <button
+                type="button"
+                onClick={() => openTown(mun.slug, mun.name)}
+                className="block w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-left transition-colors hover:border-navy-300"
+              >
+                <img
+                  src={mun.landmark}
+                  alt={`${mun.name}, Zambales`}
+                  width={1200}
+                  height={800}
+                  className="aspect-[3/2] w-full bg-slate-100 object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span className="flex items-center gap-2 p-3">
+                  <img src={getMunicipalitySeal(mun.slug)} alt="" width={28} height={28} className="h-7 w-7 object-contain" />
+                  <span className="min-w-0 flex-1 text-sm font-semibold text-slate-900">{mun.name}</span>
+                  {mun.isCapital && <span className="pill pill-ocean">Capital</span>}
+                </span>
+                <span className="block px-3 pb-3 text-xs font-medium text-navy-700">See documents and fees</span>
+              </button>
             </li>
           ))}
         </ul>
@@ -151,8 +160,12 @@ export default function About() {
         <div className="rounded-lg border border-slate-200 bg-white p-6">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <Mail className="h-5 w-5 text-navy-700" aria-hidden="true" />
-            Contact
+            Platform support
           </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            For problems with the website itself. Questions about a specific request, fee or schedule go to your
+            municipal or barangay office.
+          </p>
           <dl className="mt-4 space-y-3 text-sm">
             <div className="flex items-center gap-3">
               <dt className="sr-only">Email</dt>
@@ -165,7 +178,7 @@ export default function About() {
               <dd><a href="tel:09764859463" className="text-navy-700 hover:underline">0976 485 9463</a></dd>
             </div>
           </dl>
-          <p className="mt-4 text-sm text-slate-600">For urgent problems, call or text for the fastest response.</p>
+          <p className="mt-4 text-sm text-slate-600">For urgent problems with the site, call or text.</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-6">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">

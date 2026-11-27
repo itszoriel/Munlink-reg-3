@@ -8,6 +8,23 @@ import { WatermarkedImageViewer } from './WatermarkedImageViewer'
 import { ViewIDReasonModal } from './ViewIDReasonModal'
 import { useAdminStore } from '../lib/store'
 
+// Mirrors VALID_ID_TYPES in apps/api/utils/constants.py.
+const ID_TYPE_LABELS: Record<string, string> = {
+  philsys: 'PhilSys National ID',
+  drivers_license: "Driver's License",
+  umid: 'UMID / SSS ID',
+  passport: 'Philippine Passport',
+  voters_id: "Voter's ID or Certification",
+  postal_id: 'Postal ID',
+  prc_id: 'PRC ID',
+  senior_citizen_id: 'Senior Citizen ID',
+  pwd_id: 'PWD ID',
+  philhealth_id: 'PhilHealth ID',
+  school_id: 'School ID',
+  barangay_id: 'Barangay ID or Certification',
+  other: 'Other government-issued ID',
+}
+
 interface User {
   id: number
   username: string
@@ -384,7 +401,10 @@ function UserDetailModal({ user, onClose, onVerify, onReject, loading }: UserDet
 
           {/* ID Documents */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">ID Documents</h4>
+            <h4 className="text-sm font-medium text-gray-900 mb-1">ID Documents</h4>
+            <p className="text-sm text-slate-700 mb-3">
+              ID type: <span className="font-medium">{ID_TYPE_LABELS[(fullUser as any)?.valid_id_type] || ((fullUser as any)?.valid_id_type ? String((fullUser as any).valid_id_type).replace(/_/g, ' ') : 'Not stated (registered before ID types were recorded)')}</span>
+            </p>
             <div className="space-y-4 mb-4">
               {/* ID Front */}
               <div>

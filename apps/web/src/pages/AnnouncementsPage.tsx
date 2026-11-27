@@ -90,8 +90,8 @@ export default function AnnouncementsPage() {
     <div className="container-responsive py-12">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-fluid-3xl font-semibold text-gray-900">Updates & Announcements</h1>
-          <p className="text-gray-600 text-sm mt-1">Stay updated with the latest news and important information</p>
+          <h1 className="text-fluid-3xl font-semibold text-gray-900">Announcements</h1>
+          <p className="text-gray-600 text-sm mt-1">Official notices from the province, your municipality and your barangay.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Priority pills */}
@@ -99,17 +99,18 @@ export default function AnnouncementsPage() {
             <button
               key={p}
               onClick={() => setPriority(p)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              aria-pressed={priority===p}
+              className={`min-h-[40px] px-3 rounded-md border text-sm font-medium transition-colors ${
                 priority===p
-                  ? 'bg-ocean-600 text-white shadow-md scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
+                  ? 'border-navy-700 bg-navy-700 text-white'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
               }`}
             >
-              {p.charAt(0).toUpperCase()+p.slice(1)}
+              {({ all: 'All', high: 'Urgent', medium: 'Important', low: 'General' } as const)[p]}
             </button>
           ))}
-          {/* Hide read toggle */}
-          <label className="ml-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer select-none">
+          {/* Hide read toggle (only meaningful for signed-in residents) */}
+          {isAuthenticated && <label className="ml-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer select-none">
             <input
               type="checkbox"
               checked={hideRead}
@@ -117,7 +118,7 @@ export default function AnnouncementsPage() {
               className="h-4 w-4 rounded border-gray-300 text-ocean-600 focus:ring-ocean-500 focus:ring-offset-0 cursor-pointer"
             />
             <span className="text-sm font-medium text-gray-700">Hide read</span>
-          </label>
+          </label>}
         </div>
       </div>
 
@@ -185,7 +186,7 @@ export default function AnnouncementsPage() {
             <EmptyState
               icon="announcement"
               title={priority !== 'all' || hideRead ? "No announcements match your filters" : "No announcements yet"}
-              description={priority !== 'all' || hideRead ? "Try adjusting your filters or check back later." : "Your municipality hasn't posted any announcements yet."}
+              description={priority !== 'all' || hideRead ? "Try adjusting your filters or check back later." : "No active announcements for this location right now. Official notices appear here as soon as they are posted."}
               action={priority !== 'all' || hideRead ? (
                 <button 
                   className="btn btn-secondary"

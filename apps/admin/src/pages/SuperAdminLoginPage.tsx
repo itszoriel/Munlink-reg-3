@@ -17,14 +17,9 @@ export default function SuperAdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [countdown, setCountdown] = useState(0)
-  const [mounted, setMounted] = useState(false)
 
   const navigate = useNavigate()
   const setAuth = useAdminStore((s) => s.setAuth)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   // Countdown timer for resend button
   useEffect(() => {
@@ -160,7 +155,7 @@ export default function SuperAdminLoginPage() {
   return (
     <div className="fixed inset-0 flex">
       <AdminAuthPanel
-        image="/assets/superadmin_login.jpg"
+        image="/landmarks/zambales/subic/subic_municipality.webp"
         office="Platform administration"
         title={step === 'credentials' ? 'Super admin sign-in' : 'Check your email'}
         description={step === 'credentials' ? 'Protected by a one-time code sent to your email. Manage admin accounts and review the audit log.' : `We sent a 6-digit code to ${email}. Enter it to finish signing in.`}
@@ -169,7 +164,7 @@ export default function SuperAdminLoginPage() {
       />
 
       {/* Right Panel - Login Form */}
-      <div className="w-full lg:w-1/2 xl:w-[45%] flex items-center justify-center bg-slate-50 relative">
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-slate-50 relative">
         {/* Back button - only show on 2FA step */}
         {step === '2fa' && (
           <button
@@ -181,10 +176,10 @@ export default function SuperAdminLoginPage() {
           </button>
         )}
 
-        <div className={`w-full max-w-md px-6 sm:px-8 py-12 relative z-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <div className={`w-full max-w-md px-6 sm:px-8 py-12 relative z-10 `}>
           {/* Mobile logo */}
           <div className="lg:hidden mb-8 flex flex-col items-center">
-            <div className="p-3 bg-blue-600 rounded-lg shadow-lg mb-3">
+            <div className="p-3 bg-navy-700 rounded-md mb-3">
               <Shield className="h-10 w-10 text-white" />
             </div>
             <span className="text-2xl font-bold text-slate-900">Super Admin</span>
@@ -205,7 +200,7 @@ export default function SuperAdminLoginPage() {
 
             {/* Error Alert */}
             {error && (
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-100 mb-6 animate-shake">
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-100 mb-6">
                 <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -274,7 +269,7 @@ export default function SuperAdminLoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="relative w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
+                  className="relative w-full py-4 px-6 bg-navy-700 hover:bg-navy-800 text-white font-semibold rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
                 >
                   <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}>
                     Continue with 2FA
@@ -339,7 +334,7 @@ export default function SuperAdminLoginPage() {
                 <button
                   onClick={() => handleVerify2FA()}
                   disabled={loading || code.join('').length !== 6}
-                  className="relative w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+                  className="relative w-full py-4 px-6 bg-navy-700 hover:bg-navy-800 text-white font-semibold rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
                 >
                   {loading ? (
                     <div className="flex items-center justify-center gap-2">
@@ -382,26 +377,6 @@ export default function SuperAdminLoginPage() {
           </div>
         </div>
       </div>
-
-      {/* Custom styles */}
-      <style>{`
-        .bg-grid-pattern {
-          background-image:
-            linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-          background-size: 50px 50px;
-        }
-
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-          20%, 40%, 60%, 80% { transform: translateX(4px); }
-        }
-
-        .animate-shake {
-          animation: shake 0.5s ease-in-out;
-        }
-      `}</style>
     </div>
   )
 }

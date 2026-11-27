@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img
-            src="/logos/munlink-logo.png"
+            src="/logos/provinces/zambales.png"
             alt="MunLink Logo"
             className="h-14 w-14 mx-auto mb-3 object-contain"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}

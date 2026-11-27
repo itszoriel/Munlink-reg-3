@@ -39,7 +39,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Botolan',
     slug: 'botolan',
-    landmark: '/landmarks/zambales/botolan/botolan_mt_pinatubo.png',
+    landmark: '/landmarks/zambales/botolan/botolan_mt_pinatubo.webp',
     landmarkLabel: 'Mt. Pinatubo, Botolan',
     spotlight: 'Botolan is a coastal municipality with 31 barangays and the largest land area in Zambales.',
     operationsNote: 'Botolan covers about 735.28 square kilometers, around 20.25% of Zambales total land area.',
@@ -51,7 +51,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Cabangan',
     slug: 'cabangan',
-    landmark: '/landmarks/zambales/cabangan/cabangan_municipal.png',
+    landmark: '/landmarks/zambales/cabangan/cabangan_municipal.webp',
     landmarkLabel: 'Cabangan Municipal Hall',
     spotlight: 'Cabangan is a coastal municipality with 22 barangays along the South China Sea.',
     operationsNote: 'Cabangan has about 175.29 square kilometers of land area.',
@@ -63,7 +63,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Candelaria',
     slug: 'candelaria',
-    landmark: '/landmarks/zambales/candelaria/candelaria_municipal.png',
+    landmark: '/landmarks/zambales/candelaria/candelaria_municipal.webp',
     landmarkLabel: 'Candelaria Municipal Hall',
     spotlight: 'Candelaria is a coastal municipality with 16 barangays.',
     operationsNote: 'Candelaria covers about 333.59 square kilometers, around 9.19% of Zambales total land area.',
@@ -75,7 +75,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Castillejos',
     slug: 'castillejos',
-    landmark: '/landmarks/zambales/castillejos/Castillejos_Ramon_Magsaysay_Ancestral_House,_Castillejos.jpg',
+    landmark: '/landmarks/zambales/castillejos/Castillejos_Ramon_Magsaysay_Ancestral_House,_Castillejos.webp',
     landmarkLabel: 'Ramon Magsaysay Ancestral House, Castillejos',
     spotlight: 'Castillejos is a landlocked municipality with 14 barangays.',
     operationsNote: 'Castillejos has about 92.99 square kilometers of land area.',
@@ -87,7 +87,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Iba',
     slug: 'iba',
-    landmark: '/landmarks/zambales/iba/iba_municipal.png',
+    landmark: '/landmarks/zambales/iba/iba_municipal.webp',
     landmarkLabel: 'Iba Municipal Hall',
     isCapital: true,
     spotlight: 'Iba is a coastal municipality and serves as the provincial capital of Zambales.',
@@ -100,7 +100,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Masinloc',
     slug: 'masinloc',
-    landmark: '/landmarks/zambales/masinloc/masinloc_church.png',
+    landmark: '/landmarks/zambales/masinloc/masinloc_church.webp',
     landmarkLabel: 'San Andres Church, Masinloc',
     spotlight: 'Masinloc is a coastal municipality with 13 barangays.',
     operationsNote: 'Masinloc covers about 316.02 square kilometers, around 8.70% of Zambales total land area.',
@@ -112,7 +112,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Palauig',
     slug: 'palauig',
-    landmark: '/landmarks/zambales/palauig/palauig_municipal.png',
+    landmark: '/landmarks/zambales/palauig/palauig_municipal.webp',
     landmarkLabel: 'Palauig Municipal Hall',
     spotlight: 'Palauig is a coastal municipality with 19 barangays.',
     operationsNote: 'Palauig has about 310.00 square kilometers of land area.',
@@ -124,7 +124,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'San Antonio',
     slug: 'san-antonio',
-    landmark: '/landmarks/zambales/san-antonio/san_antonio_municipal.png',
+    landmark: '/landmarks/zambales/san-antonio/san_antonio_municipal.webp',
     landmarkLabel: 'San Antonio Municipal Hall',
     spotlight: 'San Antonio is a coastal municipality with 14 barangays.',
     operationsNote: 'San Antonio has about 188.12 square kilometers of land area.',
@@ -136,7 +136,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'San Felipe',
     slug: 'san-felipe',
-    landmark: '/landmarks/zambales/san-felipe/san_felipe_arko.png',
+    landmark: '/landmarks/zambales/san-felipe/san_felipe_arko.webp',
     landmarkLabel: 'San Felipe Arch',
     spotlight: 'San Felipe is a coastal municipality with 11 barangays.',
     operationsNote: 'San Felipe has about 111.60 square kilometers of land area.',
@@ -148,7 +148,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'San Marcelino',
     slug: 'san-marcelino',
-    landmark: '/landmarks/zambales/san-marcelino/san_marcelino_municipal.png',
+    landmark: '/landmarks/zambales/san-marcelino/san_marcelino_municipal.webp',
     landmarkLabel: 'San Marcelino Municipal Hall',
     spotlight: 'San Marcelino is a landlocked municipality with 18 barangays.',
     operationsNote: 'San Marcelino covers about 416.86 square kilometers, around 11.48% of Zambales total land area.',
@@ -160,7 +160,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'San Narciso',
     slug: 'san-narciso',
-    landmark: '/landmarks/zambales/san-narciso/san_narciso_municipal.png',
+    landmark: '/landmarks/zambales/san-narciso/san_narciso_municipal.webp',
     landmarkLabel: 'San Narciso Municipal Hall',
     spotlight: 'San Narciso is a coastal municipality with 17 barangays.',
     operationsNote: 'San Narciso has about 71.60 square kilometers of land area.',
@@ -172,7 +172,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Santa Cruz',
     slug: 'santa-cruz',
-    landmark: '/landmarks/zambales/santa-cruz/Santa_Cruz_Municipal.png',
+    landmark: '/landmarks/zambales/santa-cruz/Santa_Cruz_Municipal.webp',
     landmarkLabel: 'Santa Cruz Municipal Hall',
     spotlight: 'Santa Cruz is a coastal municipality with 25 barangays.',
     operationsNote: 'Santa Cruz covers about 438.46 square kilometers, around 12.08% of Zambales total land area.',
@@ -184,7 +184,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
   {
     name: 'Subic',
     slug: 'subic',
-    landmark: '/landmarks/zambales/subic/subic_municipality.png',
+    landmark: '/landmarks/zambales/subic/subic_municipality.webp',
     landmarkLabel: 'Subic Municipal Hall',
     spotlight: 'Subic is a coastal municipality on Subic Bay with 16 barangays.',
     operationsNote: 'Subic has about 287.16 square kilometers of land area.',
@@ -198,7 +198,7 @@ export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [
 const fallbackVisual: MunicipalityVisual = {
   name: 'Zambales',
   slug: 'zambales',
-  landmark: '/assets/about.jpg',
+  landmark: '/assets/about.webp',
   landmarkLabel: 'Zambales landmark',
   spotlight: 'Zambales has 13 municipalities within MunLink current scope.',
   operationsNote: 'Verified municipality facts appear here when a local profile is available.',

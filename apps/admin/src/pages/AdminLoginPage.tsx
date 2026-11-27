@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import AdminAuthPanel from '@/components/AdminAuthPanel'
 import { useNavigate, Link } from 'react-router-dom'
 import { authApi, handleApiError } from '../lib/api'
@@ -10,13 +10,8 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const navigate = useNavigate()
   const setAuth = useAdminStore((s) => s.setAuth)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const features = [
     { icon: Users, label: 'Manage Residents', desc: 'View and manage resident accounts' },
@@ -56,7 +51,7 @@ export default function AdminLoginPage() {
   return (
     <div className="fixed inset-0 flex">
       <AdminAuthPanel
-        image="/assets/admin_login.jpg"
+        image="/landmarks/zambales/iba/iba_municipal.webp"
         office="Municipal staff"
         title="Municipal admin sign-in"
         description={'Verify residents, process document requests and manage programs for your municipality.'}
@@ -65,13 +60,13 @@ export default function AdminLoginPage() {
       />
 
       {/* Right Panel - Login Form */}
-      <div className="w-full lg:w-1/2 xl:w-[45%] flex items-center justify-center bg-slate-50 relative">
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-slate-50 relative">
         
-        <div className={`w-full max-w-md px-6 sm:px-8 py-12 relative z-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <div className={`w-full max-w-md px-6 sm:px-8 py-12 relative z-10 `}>
           {/* Mobile logo */}
           <div className="lg:hidden mb-8 flex flex-col items-center">
             <img
-              src="/logos/munlink-logo.png"
+              src="/logos/provinces/zambales.png"
               alt="MunLink Logo"
               className="h-16 w-16 object-contain mb-2"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
@@ -94,7 +89,7 @@ export default function AdminLoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
             {/* Error Alert */}
             {error && (
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-100 animate-shake">
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-100">
                 <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -177,7 +172,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="relative w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
+              className="relative w-full py-4 px-6 bg-navy-700 hover:bg-navy-800 text-white font-semibold rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
             >
               <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}>
                 Sign in
@@ -217,87 +212,6 @@ export default function AdminLoginPage() {
           </div>
         </div>
       </div>
-
-      {/* Custom styles */}
-      <style>{`
-        .mesh-gradient {
-          background: 
-            radial-gradient(at 40% 20%, hsla(160, 85%, 45%, 0.3) 0px, transparent 50%),
-            radial-gradient(at 80% 0%, hsla(189, 85%, 45%, 0.25) 0px, transparent 50%),
-            radial-gradient(at 0% 50%, hsla(220, 85%, 45%, 0.2) 0px, transparent 50%),
-            radial-gradient(at 80% 50%, hsla(340, 85%, 45%, 0.15) 0px, transparent 50%),
-            radial-gradient(at 0% 100%, hsla(180, 85%, 45%, 0.2) 0px, transparent 50%),
-            radial-gradient(at 80% 100%, hsla(240, 85%, 45%, 0.15) 0px, transparent 50%),
-            radial-gradient(at 0% 0%, hsla(270, 85%, 45%, 0.2) 0px, transparent 50%);
-        }
-        
-        .orb {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(60px);
-          animation: float 20s ease-in-out infinite;
-        }
-        
-        .orb-1 {
-          width: 400px;
-          height: 400px;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(6, 182, 212, 0.3));
-          top: 10%;
-          left: 20%;
-          animation-delay: 0s;
-        }
-        
-        .orb-2 {
-          width: 300px;
-          height: 300px;
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.25));
-          top: 50%;
-          right: 10%;
-          animation-delay: -7s;
-        }
-        
-        .orb-3 {
-          width: 350px;
-          height: 350px;
-          background: linear-gradient(135deg, rgba(6, 182, 212, 0.3), rgba(16, 185, 129, 0.25));
-          bottom: 10%;
-          left: 30%;
-          animation-delay: -14s;
-        }
-        
-        @keyframes float {
-          0%, 100% {
-            transform: translate(0, 0) scale(1);
-          }
-          25% {
-            transform: translate(30px, -30px) scale(1.05);
-          }
-          50% {
-            transform: translate(-20px, 20px) scale(0.95);
-          }
-          75% {
-            transform: translate(-30px, -20px) scale(1.02);
-          }
-        }
-        
-        .bg-grid-pattern {
-          background-image: 
-            linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-          background-size: 50px 50px;
-        }
-        
-        
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-          20%, 40%, 60%, 80% { transform: translateX(4px); }
-        }
-        
-        .animate-shake {
-          animation: shake 0.5s ease-in-out;
-        }
-      `}</style>
     </div>
   )
 }
