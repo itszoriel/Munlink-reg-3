@@ -44,6 +44,21 @@ from apps.api.scripts.seed_data import seed_provinces, seed_municipalities, get_
 from sqlalchemy import text
 import bcrypt
 
+
+def generate_admin_password(length: int = 16) -> str:
+    """Generate a random password that meets the API password policy."""
+    import secrets
+    import string
+
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        password = ''.join(secrets.choice(alphabet) for _ in range(length))
+        if (any(c.isupper() for c in password)
+                and any(c.islower() for c in password)
+                and any(c.isdigit() for c in password)):
+            return password
+
+
 app = create_app(ProductionConfig)
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 
@@ -179,7 +194,7 @@ with app.app_context():
             # Generate credentials based on municipality slug
             mun_slug = municipality.slug
             username = f"{mun_slug.replace('-', '')}_admin"
-            password = f"{mun_slug.replace('-', '')}***REMOVED***"
+            password = generate_admin_password()
             email = f"{mun_slug.replace('-', '')}.munlink@gmail.com"
             
             try:

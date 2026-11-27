@@ -20,7 +20,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # Database URL
-PROD_URL = "postgresql://postgres.xzkhavrjfaxsqxyptbgm:***REMOVED***@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from db_environments import get_database_url  # noqa: E402  (credentials come from env vars)
+
+PROD_URL = get_database_url('prod')
 
 # Critical tables that must exist
 CRITICAL_TABLES = [

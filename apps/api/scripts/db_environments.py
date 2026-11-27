@@ -1,45 +1,78 @@
 """
-Shared database environment configurations for MunLink Region 3.
+Shared database environment configuration for MunLink maintenance scripts.
 
-This module provides centralized configuration for both dev and prod
-Supabase environments, used by various scripts.
+Credentials are never stored in this file. Set them in your shell or in a
+git-ignored ``.env`` file (repo root or ``apps/api``) before running a script:
+
+    DEV_DATABASE_URL          PROD_DATABASE_URL
+    DEV_SUPABASE_URL          PROD_SUPABASE_URL
+    DEV_SUPABASE_ANON_KEY     PROD_SUPABASE_ANON_KEY
+    DEV_SUPABASE_SERVICE_KEY  PROD_SUPABASE_SERVICE_KEY
 
 Usage:
     from db_environments import ENVIRONMENTS, get_database_url, get_supabase_client
-    
-    # Get specific environment
+
     dev_url = get_database_url('dev')
     prod_client = get_supabase_client('prod')
 """
 from __future__ import annotations
 
-from typing import Dict, Any, Optional
+import os
+from pathlib import Path
+from typing import Dict
+from urllib.parse import urlparse
 
-# =============================================================================
-# SUPABASE CONFIGURATIONS
-# =============================================================================
+try:
+    from dotenv import load_dotenv
 
-ENVIRONMENTS: Dict[str, Dict[str, str]] = {
-    'dev': {
-        'name': 'munlink-dev',
-        'url': 'https://lapooogulvdbhbvvycbe.supabase.co',
-        'anon_key': '***REMOVED***',
-        'service_key': '***REMOVED***',
-        'database_url': 'postgresql://postgres.lapooogulvdbhbvvycbe:***REMOVED***@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres',
-        'project_ref': 'lapooogulvdbhbvvycbe',
-    },
-    'prod': {
-        'name': 'munlink-prod',
-        'url': 'https://xzkhavrjfaxsqxyptbgm.supabase.co',
-        'anon_key': '***REMOVED***',
-        'service_key': '***REMOVED***',
-        'database_url': 'postgresql://postgres.xzkhavrjfaxsqxyptbgm:***REMOVED***@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres',
-        'project_ref': 'xzkhavrjfaxsqxyptbgm',
-    }
-}
+    _API_DIR = Path(__file__).resolve().parent.parent
+    for _env_file in (_API_DIR.parent.parent / '.env', _API_DIR / '.env'):
+        if _env_file.exists():
+            load_dotenv(_env_file, override=False)
+except ImportError:  # python-dotenv is optional for these scripts
+    pass
+
 
 # Storage bucket name (same for both environments)
-STORAGE_BUCKET = 'munlink-files'
+STORAGE_BUCKET = os.getenv('SUPABASE_STORAGE_BUCKET', 'munlink-files')
+
+_ENV_PREFIXES = {
+    'dev': ('DEV', 'munlink-dev'),
+    'prod': ('PROD', 'munlink-prod'),
+}
+
+
+def _read(name: str) -> str:
+    return (os.getenv(name) or '').strip()
+
+
+def _project_ref(url: str) -> str:
+    host = urlparse(url).hostname or ''
+    return host.split('.')[0] if host else ''
+
+
+def _build_environment(prefix: str, name: str) -> Dict[str, str]:
+    url = _read(f'{prefix}_SUPABASE_URL')
+    return {
+        'name': name,
+        'url': url,
+        'anon_key': _read(f'{prefix}_SUPABASE_ANON_KEY'),
+        'service_key': _read(f'{prefix}_SUPABASE_SERVICE_KEY'),
+        'database_url': _read(f'{prefix}_DATABASE_URL'),
+        'project_ref': _project_ref(url),
+    }
+
+
+ENVIRONMENTS: Dict[str, Dict[str, str]] = {
+    key: _build_environment(prefix, name) for key, (prefix, name) in _ENV_PREFIXES.items()
+}
+
+_FIELD_TO_VAR = {
+    'url': 'SUPABASE_URL',
+    'anon_key': 'SUPABASE_ANON_KEY',
+    'service_key': 'SUPABASE_SERVICE_KEY',
+    'database_url': 'DATABASE_URL',
+}
 
 
 def get_environment(env_key: str) -> Dict[str, str]:
@@ -49,19 +82,31 @@ def get_environment(env_key: str) -> Dict[str, str]:
     return ENVIRONMENTS[env_key]
 
 
+def require(env_key: str, field: str) -> str:
+    """Return a configured value or fail with the variable name to set."""
+    value = get_environment(env_key).get(field) or ''
+    if not value:
+        prefix = _ENV_PREFIXES[env_key][0]
+        raise RuntimeError(
+            f"{prefix}_{_FIELD_TO_VAR[field]} is not set. "
+            "Export it or add it to your git-ignored .env file."
+        )
+    return value
+
+
 def get_database_url(env_key: str) -> str:
     """Get database URL for a specific environment."""
-    return get_environment(env_key)['database_url']
+    return require(env_key, 'database_url')
 
 
 def get_supabase_url(env_key: str) -> str:
     """Get Supabase project URL for a specific environment."""
-    return get_environment(env_key)['url']
+    return require(env_key, 'url')
 
 
 def get_service_key(env_key: str) -> str:
     """Get Supabase service key for a specific environment."""
-    return get_environment(env_key)['service_key']
+    return require(env_key, 'service_key')
 
 
 def get_supabase_client(env_key: str):
@@ -70,23 +115,22 @@ def get_supabase_client(env_key: str):
         from supabase import create_client
     except ImportError:
         raise ImportError("supabase package not installed. Run: pip install supabase")
-    
-    env = get_environment(env_key)
-    return create_client(env['url'], env['service_key'])
+
+    return create_client(get_supabase_url(env_key), get_service_key(env_key))
 
 
 def get_sqlalchemy_engine(env_key: str):
     """Get SQLAlchemy engine for a specific environment."""
     from sqlalchemy import create_engine
-    
+
     db_url = get_database_url(env_key)
-    
+
     # Add SSL mode for Supabase
     if '?' not in db_url:
         db_url += '?sslmode=require'
     elif 'sslmode' not in db_url:
         db_url += '&sslmode=require'
-    
+
     return create_engine(db_url)
 
 
@@ -95,11 +139,18 @@ def list_environments() -> list:
     return list(ENVIRONMENTS.keys())
 
 
+def mask_database_url(db_url: str) -> str:
+    """Hide the password in a database URL for display."""
+    parsed = urlparse(db_url or '')
+    if not parsed.password:
+        return db_url or ''
+    return (db_url or '').replace(f":{parsed.password}@", ":****@", 1)
+
+
 def print_environment_info(env_key: str):
-    """Print information about an environment."""
+    """Print information about an environment without revealing secrets."""
     env = get_environment(env_key)
     print(f"Environment: {env['name']}")
-    print(f"  URL: {env['url']}")
-    print(f"  Database: {env['database_url'][:50]}...")
-    print(f"  Project Ref: {env['project_ref']}")
-
+    print(f"  URL: {env['url'] or '(not set)'}")
+    print(f"  Database: {mask_database_url(env['database_url']) or '(not set)'}")
+    print(f"  Project Ref: {env['project_ref'] or '(not set)'}")

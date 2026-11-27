@@ -144,7 +144,9 @@ class EmailVerificationCode(db.Model):
             max_attempts: Maximum number of verification attempts
 
         Returns:
-            Tuple of (success, error_message, verification_code_instance)
+            Tuple of (success, error_message, verification_code_instance).
+            The instance is also returned on failure (when the session exists)
+            so callers can audit the failed attempt; check ``success`` first.
         """
         verification = cls.query.filter_by(
             session_id=session_id,
@@ -156,20 +158,20 @@ class EmailVerificationCode(db.Model):
             return False, 'Invalid or expired session', None
 
         if verification.is_expired():
-            return False, 'Code has expired', None
+            return False, 'Code has expired', verification
 
         if verification.attempts >= max_attempts:
             verification.mark_used()
-            return False, 'Too many failed attempts', None
+            return False, 'Too many failed attempts', verification
 
-        if verification.code != code:
+        if not secrets.compare_digest(str(verification.code), str(code or '')):
             verification.increment_attempts()
             remaining = max_attempts - verification.attempts
             if remaining > 0:
-                return False, f'Invalid code. {remaining} attempts remaining', None
+                return False, f'Invalid code. {remaining} attempts remaining', verification
             else:
                 verification.mark_used()
-                return False, 'Too many failed attempts', None
+                return False, 'Too many failed attempts', verification
 
         # Success - mark as used
         verification.mark_used()

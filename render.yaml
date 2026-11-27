@@ -88,6 +88,10 @@ services:
         value: "true"
       - key: RATELIMIT_STORAGE_URI
         value: memory://          # single instance only; use Redis if you scale replicas
+      # Render's proxy sits in front of the API: trust one hop so rate limits and
+      # audit logs see the real client IP instead of the proxy address.
+      - key: TRUST_PROXY_HOPS
+        value: "1"
       - key: ID_RETENTION_DAYS
         value: "30"
 

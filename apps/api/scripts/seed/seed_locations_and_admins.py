@@ -3,7 +3,7 @@
 Seed all locations and create admin users for all municipalities.
 Format:
 - username: municipalityname_admin
-- password: municipalityname***REMOVED***
+- password: randomly generated (printed once)
 - email: municipalityname.munlink@gmail.com
 """
 import sys
@@ -39,6 +39,21 @@ from apps.api.models.user import User
 from apps.api.models.municipality import Municipality
 from apps.api.scripts.seed_data import seed_provinces, seed_municipalities, get_slug
 import bcrypt
+
+
+def generate_admin_password(length: int = 16) -> str:
+    """Generate a random password that meets the API password policy."""
+    import secrets
+    import string
+
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        password = ''.join(secrets.choice(alphabet) for _ in range(length))
+        if (any(c.isupper() for c in password)
+                and any(c.islower() for c in password)
+                and any(c.isdigit() for c in password)):
+            return password
+
 
 app = create_app(ProductionConfig)
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
@@ -79,7 +94,7 @@ with app.app_context():
         # Generate credentials based on municipality name
         mun_name_lower = municipality.name.lower().replace(' ', '')
         username = f"{mun_name_lower}_admin"
-        password = f"{mun_name_lower}***REMOVED***"
+        password = generate_admin_password()
         email = f"{mun_name_lower}.munlink@gmail.com"
         
         # Check if user already exists
@@ -95,7 +110,7 @@ with app.app_context():
                 'province': municipality.province.name if municipality.province else 'N/A',
                 'municipality': municipality.name,
                 'username': username,
-                'password': password,
+                'password': '(unchanged)',
                 'email': email,
                 'status': 'EXISTING'
             })

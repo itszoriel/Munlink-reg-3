@@ -60,12 +60,9 @@ def log_admin_action(
 
     try:
         if r:
-            # Try to get real IP from proxy headers first
-            ip_address = r.headers.get('X-Forwarded-For', '').split(',')[0].strip()
-            if not ip_address:
-                ip_address = r.headers.get('X-Real-IP')
-            if not ip_address:
-                ip_address = r.remote_addr
+            # remote_addr is the real client IP once ProxyFix trusts the platform proxy;
+            # raw X-Forwarded-For values are client-controlled and must not be audited as truth.
+            ip_address = r.remote_addr
             user_agent = r.headers.get('User-Agent')
     except RuntimeError:
         # Outside request context

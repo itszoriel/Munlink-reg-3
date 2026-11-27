@@ -31,22 +31,9 @@ sys.path.insert(0, str(project_root))
 # SUPABASE CONFIGURATIONS
 # =============================================================================
 
-ENVIRONMENTS = {
-    'dev': {
-        'name': 'munlink-dev',
-        'url': 'https://lapooogulvdbhbvvycbe.supabase.co',
-        'anon_key': '***REMOVED***',
-        'service_key': '***REMOVED***',
-        'database_url': 'postgresql://postgres.lapooogulvdbhbvvycbe:***REMOVED***@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres',
-    },
-    'prod': {
-        'name': 'munlink-prod',
-        'url': 'https://xzkhavrjfaxsqxyptbgm.supabase.co',
-        'anon_key': '***REMOVED***',
-        'service_key': '***REMOVED***',
-        'database_url': 'postgresql://postgres.xzkhavrjfaxsqxyptbgm:***REMOVED***@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres',
-    }
-}
+# Credentials are read from DEV_*/PROD_* environment variables; see db_environments.py.
+sys.path.insert(0, str(script_dir))
+from db_environments import ENVIRONMENTS, require  # noqa: E402
 
 # Default bucket name
 BUCKET_NAME = 'munlink-files'
@@ -133,8 +120,8 @@ def setup_environment(env_key: str, env_config: Dict[str, str]) -> bool:
     print(f"{'='*60}")
     print(f"  URL: {env_config['url']}")
     
-    base_url = env_config['url']
-    service_key = env_config['service_key']
+    base_url = require(env_key, 'url')
+    service_key = require(env_key, 'service_key')
     
     # Check existing buckets
     print(f"\n  Checking existing buckets...")

@@ -14,6 +14,11 @@
 - Restrict credentialed CORS to explicit web and admin origins.
 - Preserve rate limits on authentication, password reset, 2FA, and other abuse-prone routes.
 - Protected frontend calls wait for `isAuthBootstrapped`.
+- Only `access` and `refresh` JWTs authenticate requests; a global verification loader in `apps/api/app.py` rejects every other token type.
+- Email-verification links use signed `itsdangerous` tokens bound to the account's email (`apps/api/utils/auth.py`). They are never JWTs and cannot log anyone in.
+- Every login path issues tokens through `_issue_session_tokens` in `apps/api/routes/auth.py`, so refresh tokens are always tracked, rotated, and checked for reuse. Superadmin access tokens last 15 minutes; others last 1 hour.
+- `/refresh` fails closed: if rotation or reuse checks cannot run, no token is issued.
+- Set `TRUST_PROXY_HOPS` to the number of proxies in front of the API (Render = 1) so rate limits and audit logs use the real client IP. Never read `X-Forwarded-For` directly.
 
 ## Authorization and tenant scope
 
@@ -37,6 +42,8 @@
 - Generate server-side names rather than trusting client filenames.
 - Keep payment proofs and identity media private.
 - Treat local and cloud storage paths consistently through the central storage handler.
+- Serve stored files only through `apps/api/utils/file_streaming.py`. It fetches remote files only from the `SUPABASE_URL` host and `ALLOWED_FILE_DOMAINS`, never follows redirects, caps size, and renders only PDFs and images inline.
+- Never store client-supplied file references. Document request supporting files come only from the upload endpoint, and downloads check that the path belongs to that request.
 - Audit sensitive reads and administrative mutations.
 
 ## Payments and webhooks

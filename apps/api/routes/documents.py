@@ -59,6 +59,7 @@ from apps.api.utils.supabase_storage import (
 from apps.api.utils.storage_handler import get_file_url as get_storage_file_url
 from werkzeug.utils import secure_filename
 from apps.api import limiter
+from apps.api.utils.file_streaming import stream_storage_file as _stream_storage_file
 
 
 documents_bp = Blueprint('documents', __name__, url_prefix='/api/documents')
@@ -178,66 +179,6 @@ def _generate_request_number(user_id: int) -> str:
     raise RuntimeError("Unable to generate unique request number")
 
 
-def _remote_content_allowed(url: str) -> bool:
-    allowed = current_app.config.get('ALLOWED_FILE_DOMAINS') or []
-    if not allowed:
-        return True
-    parsed = urlparse(url)
-    return parsed.netloc in allowed
-
-
-def _stream_storage_file(file_ref: str, download_name: str = 'document') -> object:
-    """Stream a stored file by URL or local path."""
-    if not file_ref:
-        raise FileNotFoundError("Missing file reference")
-
-    normalized = str(file_ref).replace('\\', '/')
-    if normalized.startswith(('http://', 'https://')):
-        if not _remote_content_allowed(normalized):
-            raise PermissionError("Untrusted file domain")
-        resp = requests.get(normalized, timeout=15)
-        resp.raise_for_status()
-        content_type = resp.headers.get('Content-Type') or mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
-        return send_file(
-            BytesIO(resp.content),
-            mimetype=content_type,
-            as_attachment=False,
-            download_name=download_name,
-        )
-
-    upload_root = Path(current_app.config.get('UPLOAD_FOLDER') or 'uploads').resolve()
-    local_path = (upload_root / normalized).resolve()
-    if not str(local_path).startswith(str(upload_root)):
-        raise PermissionError("Invalid file path")
-
-    if local_path.exists():
-        content_type = mimetypes.guess_type(str(local_path))[0] or 'application/octet-stream'
-        return send_file(
-            str(local_path),
-            mimetype=content_type,
-            as_attachment=False,
-            download_name=download_name,
-        )
-
-    # Support DB values that store storage paths instead of absolute URLs.
-    try:
-        signed = get_signed_url(normalized, expires_in=300)
-        if signed and _remote_content_allowed(signed):
-            resp = requests.get(signed, timeout=15)
-            resp.raise_for_status()
-            content_type = resp.headers.get('Content-Type') or mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
-            return send_file(
-                BytesIO(resp.content),
-                mimetype=content_type,
-                as_attachment=False,
-                download_name=download_name,
-            )
-    except Exception:
-        pass
-
-    raise FileNotFoundError("File not found")
-
-
 @documents_bp.route('/types', methods=['GET'])
 def list_document_types():
     """Public list of active document types."""
@@ -352,12 +293,10 @@ def create_document_request():
         purpose_other = data.get('purpose_other')
         business_type = data.get('business_type')
 
-        requirements_submitted = are_requirements_submitted(
-            dt,
-            data.get('supporting_documents') or []
-        )
-        if data.get('requirements_submitted') is True:
-            requirements_submitted = True
+        # Supporting documents only come from the upload endpoint, which stores
+        # server-generated paths and recalculates the fee. Client-supplied file
+        # references and "requirements_submitted" flags are ignored here.
+        requirements_submitted = are_requirements_submitted(dt, [])
 
         # Calculate fees with exemptions
         fee_calc = calculate_document_fee(
@@ -431,7 +370,7 @@ def create_document_request():
             delivery_address= pickup_address if requested_method == 'pickup' else data.get('delivery_address'),
             purpose=data['purpose'],
             additional_notes=(remarks or None),
-            supporting_documents=data.get('supporting_documents') or [],
+            supporting_documents=[],
             status='pending',
             # Enhanced fields
             purpose_type=purpose_type,

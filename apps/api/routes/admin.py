@@ -71,6 +71,12 @@ from apps.api.utils.zambales_scope import (
 )
 from apps.api.utils.fee_calculator import calculate_document_fee, are_requirements_submitted
 from apps.api.utils.supabase_storage import get_signed_url
+from apps.api.utils.file_streaming import (
+    fetch_remote_file,
+    references_request_upload,
+    send_file_bytes,
+    stream_storage_file as _stream_storage_file,
+)
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -172,14 +178,6 @@ def _manual_proof_url(storage_path: str) -> str | None:
             return None
 
 
-def _remote_content_allowed(url: str) -> bool:
-    allowed = current_app.config.get('ALLOWED_FILE_DOMAINS') or []
-    if not allowed:
-        return True
-    parsed = urlparse(url)
-    return parsed.netloc in allowed
-
-
 def _request_fee_due(request_obj: DocumentRequest) -> float:
     """Return fee due as float with a safe fallback."""
     try:
@@ -200,57 +198,6 @@ def _is_request_payment_settled(request_obj: DocumentRequest) -> bool:
     if (getattr(request_obj, 'office_payment_status', None) or '').lower() == 'verified':
         return True
     return False
-
-
-def _stream_storage_file(file_ref: str, download_name: str = 'document') -> object:
-    """Stream a stored file by URL or local path."""
-    if not file_ref:
-        raise FileNotFoundError("Missing file reference")
-
-    normalized = str(file_ref).replace('\\', '/')
-    if normalized.startswith(('http://', 'https://')):
-        if not _remote_content_allowed(normalized):
-            raise PermissionError("Untrusted file domain")
-        resp = requests.get(normalized, timeout=15)
-        resp.raise_for_status()
-        content_type = resp.headers.get('Content-Type') or mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
-        return send_file(
-            BytesIO(resp.content),
-            mimetype=content_type,
-            as_attachment=False,
-            download_name=download_name,
-        )
-
-    upload_root = os.path.abspath(current_app.config.get('UPLOAD_FOLDER') or 'uploads')
-    full_path = os.path.abspath(os.path.join(upload_root, normalized))
-    if not full_path.startswith(upload_root + os.sep):
-        raise PermissionError("Invalid file path")
-    if os.path.exists(full_path):
-        content_type = mimetypes.guess_type(full_path)[0] or 'application/octet-stream'
-        return send_file(
-            full_path,
-            mimetype=content_type,
-            as_attachment=False,
-            download_name=download_name,
-        )
-
-    # Support DB values that store storage paths instead of absolute URLs.
-    try:
-        signed = get_signed_url(normalized, expires_in=300)
-        if signed and _remote_content_allowed(signed):
-            resp = requests.get(signed, timeout=15)
-            resp.raise_for_status()
-            content_type = resp.headers.get('Content-Type') or mimetypes.guess_type(download_name)[0] or 'application/octet-stream'
-            return send_file(
-                BytesIO(resp.content),
-                mimetype=content_type,
-                as_attachment=False,
-                download_name=download_name,
-            )
-    except Exception:
-        pass
-
-    raise FileNotFoundError("File not found")
 
 
 @admin_bp.before_request
@@ -923,48 +870,18 @@ def get_resident_document(user_id, doc_type):
         # Serve file
         # If Supabase URL, fetch it server-side and return bytes (no redirect to avoid CORS)
         if file_path.startswith(('http://', 'https://')):
-            from urllib.parse import urlparse
-            import requests
-            from io import BytesIO
-
-            # Validate URL domain against allowed storage providers
-            parsed = urlparse(file_path)
-            allowed_domains = current_app.config.get('ALLOWED_FILE_DOMAINS', [])
-
-            if allowed_domains and parsed.netloc not in allowed_domains:
-                current_app.logger.warning(f"Blocked access to untrusted domain: {parsed.netloc}")
-                return jsonify({'error': 'Invalid file URL'}), 403
-
-            # Fetch image from Supabase server-side
+            ext = os.path.splitext(urlparse(file_path).path)[1].lower() or '.jpg'
             try:
-                response = requests.get(file_path, timeout=10)
-                response.raise_for_status()
-
-                # Determine MIME type from response or file extension
-                content_type = response.headers.get('Content-Type', 'application/octet-stream')
-                if content_type == 'application/octet-stream':
-                    # Fallback to extension-based MIME type
-                    ext = file_path.split('.')[-1].lower().split('?')[0]  # Remove query params
-                    mime_types = {
-                        'jpg': 'image/jpeg',
-                        'jpeg': 'image/jpeg',
-                        'png': 'image/png',
-                        'gif': 'image/gif',
-                        'webp': 'image/webp'
-                    }
-                    content_type = mime_types.get(ext, 'application/octet-stream')
-
-                # Return image bytes directly
-                return send_file(
-                    BytesIO(response.content),
-                    mimetype=content_type,
-                    as_attachment=False,
-                    download_name=f"{doc_type}.{ext}" if 'ext' in locals() else f"{doc_type}.jpg"
+                data, content_type = fetch_remote_file(file_path)
+            except PermissionError as e:
+                current_app.logger.warning(
+                    "Blocked resident document fetch for user %s: %s", user.id, e
                 )
-
+                return jsonify({'error': 'Invalid file URL'}), 403
             except requests.RequestException as e:
-                current_app.logger.error(f"Failed to fetch image from Supabase: {str(e)}")
+                current_app.logger.error("Failed to fetch resident document from storage: %s", e)
                 return jsonify({'error': 'Failed to fetch image from storage'}), 502
+            return send_file_bytes(data, content_type, f"{doc_type}{ext}")
 
         # If local file, serve it
         upload_dir = current_app.config.get('UPLOAD_FOLDER', 'uploads')
@@ -3372,6 +3289,14 @@ def download_document_request_supporting_document(request_id: int, doc_index: in
 
         source = str(source).strip()
         if not source:
+            return jsonify({'error': 'Supporting document reference is invalid'}), 400
+        # Only serve files that the upload endpoint stored for this request.
+        if not references_request_upload(source, req.id):
+            current_app.logger.warning(
+                "Blocked supporting document outside request uploads (request_id=%s index=%s)",
+                req.id,
+                doc_index,
+            )
             return jsonify({'error': 'Supporting document reference is invalid'}), 400
 
         raw_label = str(requirement or f"support_{doc_index + 1}").strip().lower()
