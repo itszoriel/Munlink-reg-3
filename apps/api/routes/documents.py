@@ -53,10 +53,10 @@ from apps.api.utils.validators import (
 from apps.api.utils.security import ALLOWED_DOCUMENT_MIMES, validate_file_mime_type
 from apps.api.utils.supabase_storage import (
     upload_file_to_path,
-    get_signed_url,
+    get_private_bucket,
     generate_unique_filename,
+    redact_file_entries,
 )
-from apps.api.utils.storage_handler import get_file_url as get_storage_file_url
 from werkzeug.utils import secure_filename
 from apps.api import limiter
 from apps.api.utils.file_streaming import stream_storage_file as _stream_storage_file
@@ -72,14 +72,6 @@ def _limit(limit_string: str):
             return limiter.limit(limit_string)(f)
         return f
     return decorator
-
-
-def _manual_bucket() -> str:
-    return (
-        current_app.config.get('SUPABASE_PRIVATE_BUCKET')
-        or os.getenv('SUPABASE_PRIVATE_BUCKET')
-        or 'munlinkprivate-files'
-    )
 
 
 def _resolve_manual_qr_path() -> str | None:
@@ -127,7 +119,7 @@ def _save_manual_payment_proof(file, user, req) -> str:
             storage_path=storage_path,
             content_type=getattr(file, 'content_type', None),
             max_size_mb=10,
-            bucket=_manual_bucket(),
+            bucket=get_private_bucket(),
         )
         return storage_path
     except Exception as exc:
@@ -153,18 +145,6 @@ def _save_manual_payment_proof(file, user, req) -> str:
             f.write(file.read())
 
     return str(local_rel_path).replace('\\', '/')
-
-
-def _manual_proof_signed_url(storage_path: str) -> str | None:
-    if not storage_path:
-        return None
-    try:
-        return get_signed_url(storage_path, expires_in=3600, bucket=_manual_bucket())
-    except Exception:
-        try:
-            return get_storage_file_url(storage_path)
-        except Exception:
-            return None
 
 
 def _generate_request_number(user_id: int) -> str:
@@ -691,7 +671,7 @@ def upload_request_files(request_id: int):
 
         db.session.commit()
 
-        return jsonify({'message': 'Files uploaded', 'files': saved, 'request': r.to_dict()}), 200
+        return jsonify({'message': 'Files uploaded', 'files': redact_file_entries(saved), 'request': r.to_dict()}), 200
     except ValidationError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
@@ -1181,11 +1161,10 @@ def get_manual_payment_proof(request_id: int):
         if not r.manual_payment_proof_path:
             return jsonify({'error': 'No proof uploaded'}), 404
 
-        source = r.manual_payment_proof_path
-        if not str(source).startswith(('http://', 'https://')):
-            signed = _manual_proof_signed_url(source)
-            source = signed or source
-        return _stream_storage_file(source, download_name=f"{r.request_number or 'proof'}-manual-proof")
+        return _stream_storage_file(
+            r.manual_payment_proof_path,
+            download_name=f"{r.request_number or 'proof'}-manual-proof",
+        )
     except PermissionError:
         return jsonify({'error': 'File access denied'}), 403
     except FileNotFoundError:

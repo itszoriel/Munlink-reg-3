@@ -2,6 +2,7 @@ import { useMemo, useState, isValidElement, cloneElement } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/lib/store'
+import { hasUploadedIdDocuments } from '@/lib/verification'
 import Modal from '@/components/ui/Modal'
 import { LogIn, Mail, IdCard, Clock, ShieldCheck } from 'lucide-react'
 
@@ -37,17 +38,15 @@ export default function GatedAction({
   const [open, setOpen] = useState(false)
 
   // Check if user has uploaded ID documents
-  const hasUploadedId = useMemo(() => {
-    if (!user) return false
-    return !!(user.valid_id_front || user.valid_id_back || user.selfie_with_id)
-  }, [user])
+  const hasUploadedId = useMemo(() => hasUploadedIdDocuments(user), [user])
 
   // Determine the current gate status
   const gateStatus: GateStatus = useMemo(() => {
     if (!isAuthenticated) return 'notLoggedIn'
     if (!emailVerified) return 'emailNotVerified'
     if (required === 'idUploaded' || required === 'fullyVerified') {
-      if (!hasUploadedId) return 'idNotUploaded'
+      // Verified residents stay unlocked even after ID files pass retention.
+      if (!hasUploadedId && !adminVerified) return 'idNotUploaded'
     }
     if (required === 'fullyVerified' && !adminVerified) return 'pendingApproval'
     return 'allowed'

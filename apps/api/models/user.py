@@ -112,16 +112,20 @@ class User(db.Model):
             'notify_email_enabled': bool(self.notify_email_enabled if self.notify_email_enabled is not None else True),
             'notify_sms_enabled': bool(self.notify_sms_enabled if self.notify_sms_enabled is not None else False),
         }
-        # Include verification files for privileged contexts
+        # Verification uploads: report presence only. The files live in private
+        # storage and are streamed through authorized endpoints, so storage paths
+        # and URLs never leave the API.
         if include_sensitive:
-            if self.valid_id_front is not None:
-                data['valid_id_front'] = self.valid_id_front
-            if self.valid_id_back is not None:
-                data['valid_id_back'] = self.valid_id_back
-            if self.selfie_with_id is not None:
-                data['selfie_with_id'] = self.selfie_with_id
-            if self.proof_of_residency is not None:
-                data['proof_of_residency'] = self.proof_of_residency
+            id_documents = {
+                'valid_id_front': bool(self.valid_id_front),
+                'valid_id_back': bool(self.valid_id_back),
+                'selfie_with_id': bool(self.selfie_with_id),
+                'proof_of_residency': bool(self.proof_of_residency),
+            }
+            data['id_documents'] = id_documents
+            # Legacy keys kept as presence flags for clients built before id_documents.
+            for field, present in id_documents.items():
+                data[field] = True if present else None
             # Include permissions for admin users
             data['permissions'] = self.permissions or []
         

@@ -6,7 +6,10 @@ using Supabase Storage REST API directly (no supabase package needed).
 
 Features:
 - Upload files directly to Supabase Storage via REST API
-- Generate public URLs for files
+- Route sensitive categories (IDs, document requests, generated documents,
+  benefit and special-status files, payment proofs, claim QRs) to the private
+  bucket; only public-safe media gets a public URL
+- Download objects server-side with the service key for authorized streaming
 - Municipality-scoped storage paths
 - MIME type validation
 - File size limits
@@ -24,13 +27,15 @@ Usage:
 from __future__ import annotations
 
 from apps.api.utils.time import utc_now
+import json
 import os
+import re
 import uuid
 import logging
 from datetime import datetime
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, unquote, quote
 from io import BytesIO
-from typing import Optional, Tuple, Union, BinaryIO
+from typing import Iterator, Optional, Tuple, Union, BinaryIO
 from pathlib import Path
 
 import requests
@@ -41,6 +46,24 @@ logger = logging.getLogger(__name__)
 
 # Storage bucket name - configurable via env
 STORAGE_BUCKET = os.getenv('SUPABASE_STORAGE_BUCKET', 'munlink-files')
+DEFAULT_PRIVATE_BUCKET = 'munlinkprivate-files'
+
+# Upload categories that hold personal or transactional records. They are
+# stored in the private bucket, referenced in the database by storage path (never
+# by URL), and served only through authorized API routes.
+PRIVATE_CATEGORIES = frozenset({
+    'verification',
+    'document_requests',
+    'generated_docs',
+    'benefits',
+    'claims',
+    'qr_codes',
+    'manual-payments',
+    'special_status',
+})
+
+MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024
+STORAGE_TIMEOUT_SECONDS = 15
 
 # MIME types
 ALLOWED_IMAGE_MIMES = {
@@ -88,6 +111,176 @@ def _get_storage_bucket(bucket_override: Optional[str] = None) -> str:
     if bucket_override:
         return bucket_override
     return current_app.config.get('SUPABASE_STORAGE_BUCKET') or os.getenv('SUPABASE_STORAGE_BUCKET') or STORAGE_BUCKET
+
+
+def get_public_bucket() -> str:
+    """Bucket for public-safe media (profile photos, listings, announcements)."""
+    return _get_storage_bucket(None)
+
+
+def get_private_bucket() -> str:
+    """Bucket for sensitive records; never exposed through public URLs."""
+    return (
+        current_app.config.get('SUPABASE_PRIVATE_BUCKET')
+        or os.getenv('SUPABASE_PRIVATE_BUCKET')
+        or DEFAULT_PRIVATE_BUCKET
+    )
+
+
+def _path_segments(storage_path: str) -> list:
+    return [segment for segment in str(storage_path or '').replace('\\', '/').split('/') if segment]
+
+
+def path_category(storage_path: str) -> str:
+    """First segment of a relative storage path ('' when there is none)."""
+    segments = _path_segments(storage_path)
+    return segments[0] if segments else ''
+
+
+def is_private_category(category: Optional[str]) -> bool:
+    return (category or '') in PRIVATE_CATEGORIES
+
+
+def is_private_path(storage_path: str) -> bool:
+    return is_private_category(path_category(storage_path))
+
+
+def bucket_for_category(category: Optional[str]) -> str:
+    return get_private_bucket() if is_private_category(category) else get_public_bucket()
+
+
+def bucket_for_path(storage_path: str) -> str:
+    return bucket_for_category(path_category(storage_path))
+
+
+def is_supabase_configured() -> bool:
+    try:
+        _get_supabase_config()
+        return True
+    except SupabaseStorageError:
+        return False
+
+
+_URL_OBJECT_PREFIXES = ('public/', 'sign/', 'authenticated/')
+
+
+def parse_storage_url(url: str, supabase_url: Optional[str] = None) -> Optional[Tuple[str, str]]:
+    """Split a Storage URL on the configured Supabase project into (bucket, path).
+
+    Returns None for URLs on any other host or outside the object API, so a
+    foreign URL is never treated as one of our objects.
+    """
+    raw = str(url or '').strip()
+    if not raw.startswith(('http://', 'https://')):
+        return None
+    if supabase_url is None:
+        supabase_url = current_app.config.get('SUPABASE_URL') or os.getenv('SUPABASE_URL') or ''
+    expected_host = (urlparse(supabase_url).hostname or '').lower()
+    parsed = urlparse(raw)
+    if not expected_host or (parsed.hostname or '').lower() != expected_host:
+        return None
+
+    path = unquote(parsed.path).lstrip('/')
+    marker = 'storage/v1/object/'
+    if not path.startswith(marker):
+        return None
+    path = path[len(marker):]
+    for prefix in _URL_OBJECT_PREFIXES:
+        if path.startswith(prefix):
+            path = path[len(prefix):]
+            break
+
+    bucket, _, object_path = path.partition('/')
+    segments = _path_segments(object_path)
+    if not bucket or not segments or '..' in segments:
+        return None
+    return bucket, '/'.join(segments)
+
+
+def _path_segment(value: str, fallback: str = 'general') -> str:
+    """One storage path segment: letters, digits, dot, dash, underscore only."""
+    cleaned = re.sub(r'[^A-Za-z0-9._-]+', '-', str(value or '')).strip('.-')
+    return cleaned or fallback
+
+
+def _is_missing_bucket(response) -> bool:
+    return response.status_code in (400, 404) and 'bucket not found' in (response.text or '').lower()
+
+
+def _create_private_bucket(supabase_url: str, service_key: str, bucket: str) -> bool:
+    """Create the private bucket (never public). True if it exists afterwards."""
+    response = requests.post(
+        f"{supabase_url}/storage/v1/bucket",
+        headers=_get_headers(service_key, 'application/json'),
+        json={'id': bucket, 'name': bucket, 'public': False, 'file_size_limit': MAX_DOWNLOAD_BYTES},
+        timeout=STORAGE_TIMEOUT_SECONDS,
+    )
+    if response.status_code in (200, 201) or 'already exists' in (response.text or '').lower():
+        logger.warning("Created missing private storage bucket '%s'", bucket)
+        return True
+    logger.error("Could not create private bucket '%s': %s", bucket, response.status_code)
+    return False
+
+
+def _post_object(supabase_url: str, service_key: str, bucket: str, storage_path: str,
+                 content: bytes, content_type: str, upsert: bool = False):
+    """Upload one object. Creates the private bucket once if it does not exist yet."""
+    url = f"{supabase_url}/storage/v1/object/{bucket}/{quote(storage_path, safe='/')}"
+    headers = {
+        'Authorization': f'Bearer {service_key}',
+        'apikey': service_key,
+        'Content-Type': content_type,
+    }
+    if upsert:
+        headers['x-upsert'] = 'true'
+
+    response = requests.post(url, headers=headers, data=content, timeout=STORAGE_TIMEOUT_SECONDS)
+    if (
+        _is_missing_bucket(response)
+        and bucket == get_private_bucket()
+        and _create_private_bucket(supabase_url, service_key, bucket)
+    ):
+        response = requests.post(url, headers=headers, data=content, timeout=STORAGE_TIMEOUT_SECONDS)
+    return response
+
+
+def public_file_label(ref) -> str:
+    """File name of a stored reference, safe to show to clients."""
+    raw = str(ref or '').split('?', 1)[0].replace('\\', '/').rstrip('/')
+    return raw.rsplit('/', 1)[-1] or 'document'
+
+
+def redact_file_entries(entries):
+    """Replace storage locations in a supporting-documents list with file names.
+
+    Clients address these files by index through authorized download routes,
+    so they only need a count, labels, and requirement names.
+    """
+    if isinstance(entries, str):
+        try:
+            entries = json.loads(entries)
+        except ValueError:
+            return []
+    if not isinstance(entries, list):
+        return entries
+    redacted = []
+    for entry in entries:
+        if isinstance(entry, dict):
+            item = dict(entry)
+            for key in ('path', 'url', 'file'):
+                if item.get(key):
+                    item[key] = public_file_label(item[key])
+            redacted.append(item)
+        elif entry:
+            redacted.append(public_file_label(entry))
+    return redacted
+
+
+def _safe_object_path(storage_path: str) -> str:
+    segments = _path_segments(storage_path)
+    if not segments or '..' in segments:
+        raise PermissionError('Invalid storage path')
+    return '/'.join(segments)
 
 
 def _normalize_storage_path(storage_path: str, bucket: str) -> str:
@@ -177,13 +370,13 @@ def build_storage_path(
     Returns:
         Storage path string
     """
-    parts = [category, user_type, municipality_slug]
+    parts = [_path_segment(category), _path_segment(user_type), _path_segment(municipality_slug)]
     
     if subcategory:
-        parts.append(subcategory)
+        parts.extend(_path_segment(part) for part in str(subcategory).split('/') if part)
     
     if filename:
-        parts.append(filename)
+        parts.append(_path_segment(filename))
     
     return '/'.join(parts)
 
@@ -214,8 +407,9 @@ def upload_file(
         max_size_mb: Maximum file size in MB
     
     Returns:
-        Tuple of (storage_path, public_url)
-    
+        Tuple of (storage_path, public_url). public_url is None for objects in
+        the private bucket (chosen automatically for PRIVATE_CATEGORIES).
+
     Raises:
         SupabaseStorageError: If upload fails
     """
@@ -251,8 +445,9 @@ def upload_file(
         
         # Get Supabase config
         supabase_url, service_key = _get_supabase_config()
-        bucket = _get_storage_bucket(bucket)
-        
+        bucket = bucket or bucket_for_category(category)
+        is_private_bucket = bucket == get_private_bucket()
+
         # Determine content type
         if not content_type:
             # Try to guess from extension
@@ -269,22 +464,14 @@ def upload_file(
             }
             content_type = content_type_map.get(ext, 'application/octet-stream')
         
-        # Upload via REST API
-        upload_url = f"{supabase_url}/storage/v1/object/{bucket}/{storage_path}"
-        headers = {
-            'Authorization': f'Bearer {service_key}',
-            'apikey': service_key,
-            'Content-Type': content_type,
-        }
-        
-        response = requests.post(upload_url, headers=headers, data=content)
-        
+        response = _post_object(supabase_url, service_key, bucket, storage_path, content, content_type)
+
         if response.status_code not in (200, 201):
             raise SupabaseStorageError(f"Upload failed: {response.status_code} - {response.text}")
-        
-        # Build public URL (optional; private buckets should use signed URLs)
+
+        # Public URL only for public-safe media; private objects are referenced by path.
         public_url = None
-        if public:
+        if public and not is_private_bucket:
             public_url = f"{supabase_url}/storage/v1/object/public/{bucket}/{storage_path}"
         
         logger.info(f"File uploaded to Supabase Storage: {storage_path}")
@@ -304,9 +491,12 @@ def upload_file_to_path(
     content_type: Optional[str] = None,
     max_size_mb: int = 10,
     bucket: Optional[str] = None,
+    upsert: bool = False,
 ) -> str:
     """
     Upload a file to a specific storage path (no auto path building).
+
+    The bucket defaults to the one the path's category belongs to.
 
     Returns:
         storage_path
@@ -349,17 +539,10 @@ def upload_file_to_path(
 
         # Get Supabase config
         supabase_url, service_key = _get_supabase_config()
-        bucket = _get_storage_bucket(bucket)
+        storage_path = _safe_object_path(storage_path)
+        bucket = bucket or bucket_for_path(storage_path)
 
-        # Upload via REST API
-        upload_url = f"{supabase_url}/storage/v1/object/{bucket}/{storage_path}"
-        headers = {
-            'Authorization': f'Bearer {service_key}',
-            'apikey': service_key,
-            'Content-Type': content_type,
-        }
-
-        response = requests.post(upload_url, headers=headers, data=content)
+        response = _post_object(supabase_url, service_key, bucket, storage_path, content, content_type, upsert)
 
         if response.status_code not in (200, 201):
             raise SupabaseStorageError(f"Upload failed: {response.status_code} - {response.text}")
@@ -484,53 +667,166 @@ def get_signed_url(storage_path: str, expires_in: int = 3600, bucket: Optional[s
 def delete_file(storage_path: str, bucket: Optional[str] = None) -> bool:
     """
     Delete a file from Supabase Storage.
-    
-    Args:
-        storage_path: Path to file in storage bucket
-    
+
+    Accepts a storage path or a Storage URL on the configured project. The
+    bucket defaults to the URL's bucket, else the path category's bucket.
+    Deleting an object that is already gone counts as success.
+
     Returns:
-        True if deleted successfully
+        True if the object no longer exists
     """
     try:
         supabase_url, service_key = _get_supabase_config()
-        bucket = _get_storage_bucket(bucket)
-        
-        url = f"{supabase_url}/storage/v1/object/{bucket}/{storage_path}"
-        headers = _get_headers(service_key)
-        
-        response = requests.delete(url, headers=headers)
-        
-        if response.status_code in (200, 204):
-            logger.info(f"File deleted from Supabase Storage: {storage_path}")
-            return True
+        located = parse_storage_url(storage_path, supabase_url)
+        if located is not None:
+            url_bucket, path = located
+            bucket = bucket or url_bucket
         else:
-            logger.warning(f"Delete returned {response.status_code}: {response.text}")
-            return False
+            path = _safe_object_path(storage_path)
+            bucket = bucket or bucket_for_path(path)
+
+        # Bulk-remove endpoint: idempotent, returns the objects it removed.
+        response = requests.delete(
+            f"{supabase_url}/storage/v1/object/{bucket}",
+            headers=_get_headers(service_key, 'application/json'),
+            json={'prefixes': [path]},
+            timeout=STORAGE_TIMEOUT_SECONDS,
+        )
+
+        if response.status_code in (200, 204):
+            logger.info("File deleted from Supabase Storage: %s/%s", bucket, path)
+            return True
+        logger.warning("Delete returned %s for %s/%s", response.status_code, bucket, path)
+        return False
     except Exception as e:
         logger.error(f"Failed to delete file: {e}")
         return False
 
 
+def download_file(storage_path: str, bucket: Optional[str] = None) -> Tuple[bytes, str]:
+    """
+    Download an object with the service key (works for private buckets).
+
+    Returns:
+        (content bytes, content type)
+
+    Raises:
+        FileNotFoundError: the object (or bucket) does not exist
+        PermissionError: invalid path, or object larger than MAX_DOWNLOAD_BYTES
+        requests.RequestException: storage unavailable or unexpected response
+    """
+    supabase_url, service_key = _get_supabase_config()
+    path = _safe_object_path(storage_path)
+    bucket = bucket or bucket_for_path(path)
+    url = f"{supabase_url}/storage/v1/object/{bucket}/{quote(path, safe='/')}"
+
+    with requests.get(
+        url,
+        headers=_get_headers(service_key),
+        timeout=STORAGE_TIMEOUT_SECONDS,
+        allow_redirects=False,
+        stream=True,
+    ) as response:
+        # Supabase reports a missing object as 400 or 404 depending on version.
+        if response.status_code in (400, 404):
+            raise FileNotFoundError(f"Object not found in {bucket}")
+        if response.status_code != 200:
+            raise requests.HTTPError(
+                f"Storage download failed with status {response.status_code}",
+                response=response,
+            )
+        declared = response.headers.get('Content-Length')
+        if declared and declared.isdigit() and int(declared) > MAX_DOWNLOAD_BYTES:
+            raise PermissionError('Stored file is too large')
+        chunks = []
+        total = 0
+        for chunk in response.iter_content(chunk_size=64 * 1024):
+            total += len(chunk)
+            if total > MAX_DOWNLOAD_BYTES:
+                raise PermissionError('Stored file is too large')
+            chunks.append(chunk)
+        return b''.join(chunks), response.headers.get('Content-Type') or ''
+
+
+def list_files(prefix: str, bucket: Optional[str] = None, page_size: int = 1000) -> Iterator[dict]:
+    """
+    Recursively list objects under a prefix.
+
+    Yields dicts with ``path``, ``size``, ``created_at`` and ``updated_at``.
+    """
+    supabase_url, service_key = _get_supabase_config()
+    bucket = _get_storage_bucket(bucket)
+    url = f"{supabase_url}/storage/v1/object/list/{bucket}"
+    headers = _get_headers(service_key, 'application/json')
+
+    pending = [str(prefix or '').strip('/')]
+    while pending:
+        folder = pending.pop()
+        offset = 0
+        while True:
+            response = requests.post(
+                url,
+                headers=headers,
+                json={
+                    'prefix': folder,
+                    'limit': page_size,
+                    'offset': offset,
+                    'sortBy': {'column': 'name', 'order': 'asc'},
+                },
+                timeout=STORAGE_TIMEOUT_SECONDS,
+            )
+            if response.status_code != 200:
+                raise SupabaseStorageError(
+                    f"List failed for {bucket}/{folder}: {response.status_code}"
+                )
+            entries = response.json() or []
+            for entry in entries:
+                name = entry.get('name')
+                if not name:
+                    continue
+                full_path = f"{folder}/{name}" if folder else name
+                if entry.get('id') is None:
+                    pending.append(full_path)  # folder placeholder
+                    continue
+                metadata = entry.get('metadata') or {}
+                yield {
+                    'path': full_path,
+                    'size': metadata.get('size'),
+                    'created_at': entry.get('created_at'),
+                    'updated_at': entry.get('updated_at'),
+                }
+            if len(entries) < page_size:
+                break
+            offset += page_size
+
+
 def file_exists(storage_path: str, bucket: Optional[str] = None) -> bool:
     """
-    Check if a file exists in Supabase Storage.
-    
+    Check if a file exists in Supabase Storage (private buckets included).
+
     Args:
         storage_path: Path to file in storage bucket
-    
+
     Returns:
         True if file exists
     """
     try:
         supabase_url, service_key = _get_supabase_config()
-        bucket = _get_storage_bucket(bucket)
-        
-        # Try to get file metadata
-        url = f"{supabase_url}/storage/v1/object/info/public/{bucket}/{storage_path}"
-        headers = _get_headers(service_key)
-        
-        response = requests.get(url, headers=headers)
-        return response.status_code == 200
+        path = _safe_object_path(storage_path)
+        bucket = bucket or bucket_for_path(path)
+        folder, _, name = path.rpartition('/')
+        response = requests.post(
+            f"{supabase_url}/storage/v1/object/list/{bucket}",
+            headers=_get_headers(service_key, 'application/json'),
+            json={'prefix': folder, 'search': name, 'limit': 100, 'offset': 0},
+            timeout=STORAGE_TIMEOUT_SECONDS,
+        )
+        if response.status_code != 200:
+            return False
+        return any(
+            entry.get('name') == name and entry.get('id')
+            for entry in (response.json() or [])
+        )
     except Exception:
         return False
 

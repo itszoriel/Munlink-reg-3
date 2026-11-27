@@ -359,6 +359,8 @@ def create_app(config_class=Config):
                 'claims/',
                 'manual-payments/',
                 'benefits/',
+                'special_status/',
+                'qr_codes/',
             )
             if any(normalized.startswith(prefix) for prefix in protected_prefixes):
                 return jsonify({'error': 'Forbidden'}), 403

@@ -33,14 +33,19 @@ from apps.api.utils.special_status import (
 from apps.api.utils.constants import SPECIAL_STATUS_TYPES
 from apps.api.utils.zambales_scope import is_valid_zambales_municipality
 from apps.api.utils.admin_audit import log_admin_action
-from apps.api.utils.supabase_storage import get_signed_url
+from apps.api.models.municipality import Municipality
 from apps.api.utils.file_streaming import stream_storage_file as _stream_storage_file
+from apps.api.utils.storage_handler import StorageError, save_file
+from apps.api.utils.validators import ALLOWED_IMAGE_EXTENSIONS, ValidationError
+
+# Proof documents: photos of IDs or a PDF certificate of registration.
+STATUS_DOCUMENT_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS | {'pdf'}
 
 special_status_bp = Blueprint('special_status', __name__, url_prefix='/api')
 
 
-def _save_status_document(file, user_id: int, status_type: str, doc_name: str) -> str:
-    """Save uploaded document for special status application.
+def _save_status_document(file, user_id: int, status_type: str, doc_name: str) -> str | None:
+    """Store a special-status proof document in private storage.
 
     Args:
         file: The uploaded file object
@@ -49,27 +54,39 @@ def _save_status_document(file, user_id: int, status_type: str, doc_name: str) -
         doc_name: Name of the document (student_id, cor, pwd_id, senior_id)
 
     Returns:
-        Relative path to the saved file
+        Private storage path (or a path under UPLOAD_FOLDER in local development)
+
+    Raises:
+        ValidationError / StorageError: unsupported, oversized, or unsaved file
     """
     if not file or not file.filename:
         return None
 
-    # Create directory structure
-    upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-    status_dir = os.path.join(upload_folder, 'special_status', status_type, str(user_id))
-    os.makedirs(status_dir, exist_ok=True)
+    user = db.session.get(User, user_id)
+    municipality = (
+        db.session.get(Municipality, user.municipality_id)
+        if user is not None and user.municipality_id
+        else None
+    )
+    return save_file(
+        file=file,
+        category='special_status',
+        municipality_slug=municipality.slug if municipality else 'unassigned',
+        subcategory=f"user_{int(user_id)}/{status_type}/{doc_name}",
+        allowed_extensions=STATUS_DOCUMENT_EXTENSIONS,
+        max_size_mb=10,
+        user_type='residents',
+    )
 
-    # Generate filename with timestamp
-    timestamp = utc_now().strftime('%Y%m%d_%H%M%S')
-    ext = os.path.splitext(file.filename)[1].lower() or '.jpg'
-    filename = f"{doc_name}_{timestamp}{ext}"
-    filepath = os.path.join(status_dir, filename)
 
-    # Save file
-    file.save(filepath)
-
-    # Return relative path
-    return os.path.relpath(filepath, upload_folder)
+def _upload_error_response(exc: Exception):
+    """400 response for a rejected status document upload."""
+    if isinstance(exc, ValidationError):
+        return jsonify({'error': str(exc)}), 400
+    current_app.logger.warning("Special status document upload failed: %s", exc)
+    return jsonify({
+        'error': 'Could not save the uploaded document. Use a clear photo (JPG, PNG) or a PDF under 10 MB.'
+    }), 400
 
 
 def _parse_semester_dates():
@@ -149,8 +166,11 @@ def apply_student_status():
         return jsonify({'error': 'Certificate of Registration (COR) is required'}), 400
 
     # Save documents
-    student_id_path = _save_status_document(student_id_file, user_id, 'student', 'student_id')
-    cor_path = _save_status_document(cor_file, user_id, 'student', 'cor')
+    try:
+        student_id_path = _save_status_document(student_id_file, user_id, 'student', 'student_id')
+        cor_path = _save_status_document(cor_file, user_id, 'student', 'cor')
+    except (ValidationError, StorageError) as exc:
+        return _upload_error_response(exc)
 
     # Create status application
     status = UserSpecialStatus(
@@ -204,7 +224,10 @@ def apply_pwd_status():
         return jsonify({'error': 'PWD ID image is required'}), 400
 
     # Save document
-    pwd_id_path = _save_status_document(pwd_id_file, user_id, 'pwd', 'pwd_id')
+    try:
+        pwd_id_path = _save_status_document(pwd_id_file, user_id, 'pwd', 'pwd_id')
+    except (ValidationError, StorageError) as exc:
+        return _upload_error_response(exc)
 
     # Create status application
     status = UserSpecialStatus(
@@ -253,7 +276,10 @@ def apply_senior_status():
         return jsonify({'error': 'Senior Citizen ID image is required'}), 400
 
     # Save document
-    senior_id_path = _save_status_document(senior_id_file, user_id, 'senior', 'senior_id')
+    try:
+        senior_id_path = _save_status_document(senior_id_file, user_id, 'senior', 'senior_id')
+    except (ValidationError, StorageError) as exc:
+        return _upload_error_response(exc)
 
     # Create status application
     status = UserSpecialStatus(
@@ -320,12 +346,21 @@ def renew_student_status(status_id):
     status.semester_start = semester_start
     status.semester_end = semester_end
 
-    # Save new documents
-    cor_path = _save_status_document(cor_file, user_id, 'student', 'cor')
-    status.cor_path = cor_path
+    # Save new documents before changing the record, so a rejected upload
+    # leaves the existing application untouched.
+    try:
+        cor_path = _save_status_document(cor_file, user_id, 'student', 'cor')
+        student_id_path = (
+            _save_status_document(student_id_file, user_id, 'student', 'student_id')
+            if student_id_file
+            else None
+        )
+    except (ValidationError, StorageError) as exc:
+        db.session.rollback()
+        return _upload_error_response(exc)
 
-    if student_id_file:
-        student_id_path = _save_status_document(student_id_file, user_id, 'student', 'student_id')
+    status.cor_path = cor_path
+    if student_id_path:
         status.student_id_path = student_id_path
 
     # Reset status to pending for admin review

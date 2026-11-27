@@ -3,7 +3,13 @@
 Setup Supabase Storage for MunLink Region 3.
 
 This script creates the required storage buckets on BOTH dev and prod
-Supabase projects using direct HTTP requests (no supabase package needed).
+Supabase projects using direct HTTP requests (no supabase package needed):
+
+- munlink-files (public): profile photos, marketplace, announcement,
+  program and issue images only
+- munlinkprivate-files (private): IDs, selfies, document requests, generated
+  documents, QR codes, benefit/special-status proofs, payment proofs. Never add
+  a public or anon read policy to this bucket; the API streams these files.
 
 Usage:
     python setup_supabase_storage.py          # Setup both environments
@@ -12,6 +18,7 @@ Usage:
 """
 from __future__ import annotations
 
+import os
 import sys
 import argparse
 import json
@@ -35,8 +42,9 @@ sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(script_dir))
 from db_environments import ENVIRONMENTS, require  # noqa: E402
 
-# Default bucket name
-BUCKET_NAME = 'munlink-files'
+# Bucket names (override with SUPABASE_STORAGE_BUCKET / SUPABASE_PRIVATE_BUCKET)
+BUCKET_NAME = os.getenv('SUPABASE_STORAGE_BUCKET', 'munlink-files')
+PRIVATE_BUCKET_NAME = os.getenv('SUPABASE_PRIVATE_BUCKET', 'munlinkprivate-files')
 
 
 def list_buckets(base_url: str, service_key: str) -> list:
@@ -56,7 +64,8 @@ def list_buckets(base_url: str, service_key: str) -> list:
         return []
 
 
-def create_bucket(base_url: str, service_key: str, bucket_name: str, public: bool = True) -> bool:
+def create_bucket(base_url: str, service_key: str, bucket_name: str, public: bool = True,
+                  file_size_limit: int = 10485760) -> bool:
     """Create a storage bucket using REST API."""
     url = f"{base_url}/storage/v1/bucket"
     headers = {
@@ -69,7 +78,7 @@ def create_bucket(base_url: str, service_key: str, bucket_name: str, public: boo
         'id': bucket_name,
         'name': bucket_name,
         'public': public,
-        'file_size_limit': 10485760,  # 10MB
+        'file_size_limit': file_size_limit,
         'allowed_mime_types': [
             'image/jpeg',
             'image/png',
@@ -139,6 +148,22 @@ def setup_environment(env_key: str, env_config: Dict[str, str]) -> bool:
         else:
             print(f"  [FAILED] Failed to create bucket")
             return False
+
+    private_bucket = next(
+        (b for b in buckets if (b.get('name') or b.get('id')) == PRIVATE_BUCKET_NAME), None
+    )
+    if private_bucket is not None:
+        if private_bucket.get('public'):
+            print(f"  [FAILED] Bucket '{PRIVATE_BUCKET_NAME}' is PUBLIC. Make it private in the dashboard.")
+            return False
+        print(f"  [OK] Private bucket '{PRIVATE_BUCKET_NAME}' already exists")
+    else:
+        print(f"  Creating private bucket '{PRIVATE_BUCKET_NAME}'...")
+        if create_bucket(base_url, service_key, PRIVATE_BUCKET_NAME, public=False, file_size_limit=26214400):
+            print(f"  [OK] Private bucket '{PRIVATE_BUCKET_NAME}' created")
+        else:
+            print("  [FAILED] Failed to create private bucket")
+            return False
     
     # Test access
     print(f"\n  Testing bucket access...")
@@ -160,6 +185,10 @@ def print_policy_guidance():
     print("""
 For BOTH dev and prod Supabase projects, go to:
   Storage > Policies > New Policy
+
+Only the PUBLIC bucket (munlink-files) gets a read policy. The private bucket
+(munlinkprivate-files) must have NO policies: the API reads it with the
+service role key, which bypasses RLS.
 
 OPTION 1: Simple Public Access (Recommended)
 -------------------------------------------
@@ -189,10 +218,7 @@ CREATE POLICY "Public read access"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'munlink-files');
 
--- Allow service role full access (automatic, but explicit)
-CREATE POLICY "Service role full access"
-ON storage.objects
-USING (auth.role() = 'service_role');
+-- No policy is needed for the service role: it bypasses RLS.
 """)
 
 
@@ -250,8 +276,8 @@ def main():
 
 2. The storage buckets are now ready for file uploads!
 
-3. To verify everything works:
-   python detect_legacy_files.py --report
+3. Move sensitive files uploaded before the private bucket existed:
+   python apps/api/scripts/migrate_private_storage.py --env dev
 """)
     
     # Exit with error code if any failed

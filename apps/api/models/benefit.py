@@ -1,6 +1,7 @@
 """Benefits program models."""
 from datetime import datetime
 from apps.api.utils.time import utc_now
+from apps.api.utils.supabase_storage import redact_file_entries
 try:
     from apps.api import db
 except ImportError:
@@ -155,7 +156,7 @@ class BenefitApplication(db.Model):
             'user_id': self.user_id,
             'program_id': self.program_id,
             'application_data': self.application_data,
-            'supporting_documents': self.supporting_documents,
+            'supporting_documents': redact_file_entries(self.supporting_documents),
             'status': self.status,
             'reviewed_by_id': self.reviewed_by_id,
             'admin_notes': self.admin_notes,

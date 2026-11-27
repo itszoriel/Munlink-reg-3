@@ -1,6 +1,7 @@
 import { Navigate, Link, useLocation } from 'react-router-dom'
 import type { ReactElement } from 'react'
 import { useAppStore } from '@/lib/store'
+import { hasUploadedIdDocuments } from '@/lib/verification'
 import { LogIn, Mail, IdCard, Clock, ShieldCheck } from 'lucide-react'
 
 type Props = {
@@ -29,7 +30,7 @@ export default function ProtectedRoute({ children, allow, showGate = true }: Pro
   }
 
   // Check if user has uploaded ID
-  const hasUploadedId = !!(user?.valid_id_front || user?.valid_id_back || user?.selfie_with_id)
+  const hasUploadedId = hasUploadedIdDocuments(user)
 
   // Determine gate status
   type GateStatus = 'notLoggedIn' | 'emailNotVerified' | 'idNotUploaded' | 'pendingApproval' | 'allowed'
@@ -39,7 +40,8 @@ export default function ProtectedRoute({ children, allow, showGate = true }: Pro
     gateStatus = 'notLoggedIn'
   } else if (!emailVerified) {
     gateStatus = 'emailNotVerified'
-  } else if (!hasUploadedId) {
+  } else if (!hasUploadedId && !adminVerified) {
+    // Verified residents stay unlocked even after ID files pass retention.
     gateStatus = 'idNotUploaded'
   } else if (!adminVerified) {
     gateStatus = 'pendingApproval'

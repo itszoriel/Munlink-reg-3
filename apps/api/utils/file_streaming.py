@@ -2,10 +2,14 @@
 Serve stored files to authorized callers without trusting the stored reference.
 
 Stored references can be a local upload path, a Supabase storage path, or a full
-URL. Remote URLs are fetched only from allowlisted hosts (the configured
-Supabase host plus ``ALLOWED_FILE_DOMAINS``), redirects are never followed, and
-responses are size-capped. Only PDFs and images are rendered inline; anything
-else is sent as a download so it cannot run in the API origin.
+URL. Objects in our Supabase project are downloaded with the service key, so
+private-bucket files are never exposed through public or signed URLs. Sensitive
+categories are read from the private bucket first and fall back to the public
+bucket only for records written before the private-storage migration. Other
+remote URLs are fetched only from allowlisted hosts (``ALLOWED_FILE_DOMAINS``),
+redirects are never followed, and responses are size-capped. Only PDFs and
+images are rendered inline; anything else is sent as a download so it cannot
+run in the API origin.
 """
 from __future__ import annotations
 
@@ -17,6 +21,8 @@ from urllib.parse import urlparse
 
 import requests
 from flask import current_app, send_file
+
+from apps.api.utils import supabase_storage as storage
 
 MAX_REMOTE_FILE_BYTES = 25 * 1024 * 1024
 REMOTE_TIMEOUT_SECONDS = 15
@@ -87,12 +93,16 @@ def send_file_bytes(data: bytes, content_type: str, download_name: str):
     """Send bytes inline only for safe document/image types."""
     mime = _mime_type(content_type, download_name)
     inline = mime in INLINE_MIME_TYPES
-    return send_file(
+    response = send_file(
         BytesIO(data),
         mimetype=mime if inline else 'application/octet-stream',
         as_attachment=not inline,
         download_name=download_name,
     )
+    # Stored files are personal records: keep them out of shared and browser caches.
+    response.headers['Cache-Control'] = 'private, no-store'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 def _local_upload_path(normalized: str) -> Path | None:
@@ -105,34 +115,54 @@ def _local_upload_path(normalized: str) -> Path | None:
     return candidate if candidate.is_file() else None
 
 
-def stream_storage_file(file_ref: str, download_name: str = 'document'):
-    """Stream a stored file by allowlisted URL, local upload path, or storage path."""
+def _candidate_buckets(path: str, origin_bucket: str | None = None) -> list[str]:
+    """Buckets to try for an object, private bucket first for sensitive paths."""
+    buckets = []
+    if storage.is_private_path(path):
+        buckets.append(storage.get_private_bucket())
+    buckets.append(origin_bucket or storage.get_public_bucket())
+    return list(dict.fromkeys(buckets))
+
+
+def _download_first(path: str, buckets: list[str]) -> tuple[bytes, str]:
+    for bucket in buckets:
+        try:
+            return storage.download_file(path, bucket=bucket)
+        except FileNotFoundError:
+            continue
+    raise FileNotFoundError("File not found")
+
+
+def read_stored_file(file_ref: str) -> tuple[bytes, str]:
+    """Return (bytes, content type) for a stored URL, storage path, or local path."""
     if not file_ref:
         raise FileNotFoundError("Missing file reference")
 
     normalized = str(file_ref).strip().replace('\\', '/')
     if normalized.startswith(('http://', 'https://')):
-        data, content_type = fetch_remote_file(normalized)
-        return send_file_bytes(data, content_type, download_name)
+        located = storage.parse_storage_url(normalized)
+        if located is not None:
+            bucket, path = located
+            return _download_first(path, _candidate_buckets(path, origin_bucket=bucket))
+        return fetch_remote_file(normalized)
 
-    local_path = _local_upload_path(normalized.lstrip('/'))
+    relative = normalized.lstrip('/')
+    local_path = _local_upload_path(relative)
     if local_path is not None:
         with open(local_path, 'rb') as handle:
             data = handle.read()
-        return send_file_bytes(data, mimetypes.guess_type(str(local_path))[0] or '', download_name)
+        return data, mimetypes.guess_type(str(local_path))[0] or ''
 
-    # DB values may hold a storage path instead of a URL: sign it and fetch it.
-    try:
-        from apps.api.utils.supabase_storage import get_signed_url
-
-        signed = get_signed_url(normalized, expires_in=300)
-    except Exception:
-        signed = None
-    if signed:
-        data, content_type = fetch_remote_file(signed)
-        return send_file_bytes(data, content_type, download_name)
+    if storage.is_supabase_configured():
+        return _download_first(relative, _candidate_buckets(relative))
 
     raise FileNotFoundError("File not found")
+
+
+def stream_storage_file(file_ref: str, download_name: str = 'document'):
+    """Stream a stored file by Storage URL, storage path, or local upload path."""
+    data, content_type = read_stored_file(file_ref)
+    return send_file_bytes(data, content_type, download_name)
 
 
 def references_request_upload(file_ref: str, request_id: int) -> bool:

@@ -39,10 +39,13 @@
 ## Uploads
 
 - Enforce content type, extension, size, and ownership checks.
-- Generate server-side names rather than trusting client filenames.
-- Keep payment proofs and identity media private.
+- Generate server-side names rather than trusting client filenames. Storage folders (municipality, user, request) come from the database record, never from form fields.
+- Sensitive categories go to the private bucket (`SUPABASE_PRIVATE_BUCKET`): `verification`, `document_requests`, `generated_docs`, `benefits`, `claims`, `qr_codes`, `manual-payments`, and `special_status` (`PRIVATE_CATEGORIES` in `apps/api/utils/supabase_storage.py`). The database stores their storage path, never a public or signed URL.
+- Only public-safe media (profile photos, marketplace, announcements, program and issue images) uses the public bucket and public URLs.
+- API responses never include storage locations of sensitive files. `User.to_dict` reports `id_documents` presence flags; residents view their own ID through `GET /api/auth/verification-docs/<id_front|id_back|selfie>`.
 - Treat local and cloud storage paths consistently through the central storage handler.
-- Serve stored files only through `apps/api/utils/file_streaming.py`. It fetches remote files only from the `SUPABASE_URL` host and `ALLOWED_FILE_DOMAINS`, never follows redirects, caps size, and renders only PDFs and images inline.
+- Serve stored files only through `apps/api/utils/file_streaming.py`. Objects in our Supabase project are downloaded server-side with the service key (private bucket first, public bucket only for records not yet migrated). Other remote files are fetched only from `ALLOWED_FILE_DOMAINS`, never following redirects. Responses are size-capped, sent with `Cache-Control: private, no-store`, and only PDFs and images render inline.
+- The private bucket has no storage policies. Never add a public or anon read policy to it.
 - Never store client-supplied file references. Document request supporting files come only from the upload endpoint, and downloads check that the path belongs to that request.
 - Audit sensitive reads and administrative mutations.
 
