@@ -446,3 +446,25 @@ def test_supporting_document_lists_only_expose_file_names():
     assert storage.redact_file_entries(entries) == ['a.pdf', {'path': 'b.png', 'requirement': 'Valid ID'}]
     assert storage.redact_file_entries(None) is None
     assert storage.redact_file_entries('["generated_docs/system/iba/doc_1.pdf"]') == ['doc_1.pdf']
+
+
+def test_missing_private_bucket_is_created_on_first_upload(app, monkeypatch):
+    calls = []
+    state = {'bucket_exists': False}
+
+    def fake_post(url, headers=None, data=None, json=None, **kwargs):
+        calls.append(url)
+        if url.endswith('/storage/v1/bucket'):
+            assert json['public'] is False and json['id'] == PRIVATE
+            state['bucket_exists'] = True
+            return FakeResponse(200, b'{"name":"munlinkprivate-files"}')
+        if f'/object/{PRIVATE}/' in url and not state['bucket_exists']:
+            return FakeResponse(400, b'{"statusCode":"404","error":"Bucket not found","message":"Bucket not found"}')
+        return FakeResponse(200, b'{}')
+
+    monkeypatch.setattr(storage.requests, 'post', fake_post)
+    with app.test_request_context():
+        path = storage.upload_file_to_path(BytesIO(b'%PDF-1.4'), 'generated_docs/system/iba/doc_1.pdf')
+    assert path == 'generated_docs/system/iba/doc_1.pdf'
+    assert [url.rsplit('/storage/v1/', 1)[1] for url in calls] == [
+        f'object/{PRIVATE}/{path}', 'bucket', f'object/{PRIVATE}/{path}']

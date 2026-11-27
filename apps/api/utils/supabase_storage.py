@@ -203,6 +203,47 @@ def _path_segment(value: str, fallback: str = 'general') -> str:
     return cleaned or fallback
 
 
+def _is_missing_bucket(response) -> bool:
+    return response.status_code in (400, 404) and 'bucket not found' in (response.text or '').lower()
+
+
+def _create_private_bucket(supabase_url: str, service_key: str, bucket: str) -> bool:
+    """Create the private bucket (never public). True if it exists afterwards."""
+    response = requests.post(
+        f"{supabase_url}/storage/v1/bucket",
+        headers=_get_headers(service_key, 'application/json'),
+        json={'id': bucket, 'name': bucket, 'public': False, 'file_size_limit': MAX_DOWNLOAD_BYTES},
+        timeout=STORAGE_TIMEOUT_SECONDS,
+    )
+    if response.status_code in (200, 201) or 'already exists' in (response.text or '').lower():
+        logger.warning("Created missing private storage bucket '%s'", bucket)
+        return True
+    logger.error("Could not create private bucket '%s': %s", bucket, response.status_code)
+    return False
+
+
+def _post_object(supabase_url: str, service_key: str, bucket: str, storage_path: str,
+                 content: bytes, content_type: str, upsert: bool = False):
+    """Upload one object. Creates the private bucket once if it does not exist yet."""
+    url = f"{supabase_url}/storage/v1/object/{bucket}/{quote(storage_path, safe='/')}"
+    headers = {
+        'Authorization': f'Bearer {service_key}',
+        'apikey': service_key,
+        'Content-Type': content_type,
+    }
+    if upsert:
+        headers['x-upsert'] = 'true'
+
+    response = requests.post(url, headers=headers, data=content, timeout=STORAGE_TIMEOUT_SECONDS)
+    if (
+        _is_missing_bucket(response)
+        and bucket == get_private_bucket()
+        and _create_private_bucket(supabase_url, service_key, bucket)
+    ):
+        response = requests.post(url, headers=headers, data=content, timeout=STORAGE_TIMEOUT_SECONDS)
+    return response
+
+
 def public_file_label(ref) -> str:
     """File name of a stored reference, safe to show to clients."""
     raw = str(ref or '').split('?', 1)[0].replace('\\', '/').rstrip('/')
@@ -423,15 +464,7 @@ def upload_file(
             }
             content_type = content_type_map.get(ext, 'application/octet-stream')
         
-        # Upload via REST API
-        upload_url = f"{supabase_url}/storage/v1/object/{bucket}/{storage_path}"
-        headers = {
-            'Authorization': f'Bearer {service_key}',
-            'apikey': service_key,
-            'Content-Type': content_type,
-        }
-        
-        response = requests.post(upload_url, headers=headers, data=content, timeout=STORAGE_TIMEOUT_SECONDS)
+        response = _post_object(supabase_url, service_key, bucket, storage_path, content, content_type)
 
         if response.status_code not in (200, 201):
             raise SupabaseStorageError(f"Upload failed: {response.status_code} - {response.text}")
@@ -509,17 +542,7 @@ def upload_file_to_path(
         storage_path = _safe_object_path(storage_path)
         bucket = bucket or bucket_for_path(storage_path)
 
-        # Upload via REST API
-        upload_url = f"{supabase_url}/storage/v1/object/{bucket}/{quote(storage_path, safe='/')}"
-        headers = {
-            'Authorization': f'Bearer {service_key}',
-            'apikey': service_key,
-            'Content-Type': content_type,
-        }
-        if upsert:
-            headers['x-upsert'] = 'true'
-
-        response = requests.post(upload_url, headers=headers, data=content, timeout=STORAGE_TIMEOUT_SECONDS)
+        response = _post_object(supabase_url, service_key, bucket, storage_path, content, content_type, upsert)
 
         if response.status_code not in (200, 201):
             raise SupabaseStorageError(f"Upload failed: {response.status_code} - {response.text}")
