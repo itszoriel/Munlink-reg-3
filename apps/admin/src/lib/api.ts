@@ -12,7 +12,7 @@ export const setAuthFailureHandler = (handler: AuthFailureHandler | null) => {
 }
 
 // API Configuration
-// VITE_API_URL is baked in at build time (see Dockerfile.admin ARG). It should be the
+// VITE_API_URL is baked in at build time (Render static-site environment). It should be the
 // API origin without a trailing /api (e.g. https://munlink-api.onrender.com).
 // Falls back to same-origin '' so the admin nginx /api/ proxy handles requests if unset.
 const API_BASE_URL =

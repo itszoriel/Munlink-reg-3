@@ -6,14 +6,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 type AdminRole = 'provincial_admin' | 'municipal_admin' | 'barangay_admin'
 
-// Province seals for visual feedback
+// Province seal for visual feedback (Zambales only)
 const provinceSealMap: Record<string, string> = {
-  'aurora': new URL('../../../../public/logos/provinces/aurora.png', import.meta.url).toString(),
-  'bataan': new URL('../../../../public/logos/provinces/bataan.png', import.meta.url).toString(),
-  'bulacan': new URL('../../../../public/logos/provinces/bulacan.png', import.meta.url).toString(),
-  'nueva-ecija': new URL('../../../../public/logos/provinces/nueva-ecija.png', import.meta.url).toString(),
-  'pampanga': new URL('../../../../public/logos/provinces/pampanga.png', import.meta.url).toString(),
-  'tarlac': new URL('../../../../public/logos/provinces/tarlac.png', import.meta.url).toString(),
   'zambales': new URL('../../../../public/logos/provinces/zambales.png', import.meta.url).toString(),
 }
 

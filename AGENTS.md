@@ -171,17 +171,10 @@ Backend setup (from repo docs):
 - Root runner: `npm run test`
 
 ## Deployment
-- Render is primary:
-  - `render.yaml`
-  - `apps/api/Dockerfile`
-  - `Dockerfile.web`
-  - `Dockerfile.admin`
-- Railway remains supported:
-  - `railway.toml`
-  - `apps/api/railway.toml`
-  - `apps/web/railway.toml`
-  - `apps/admin/railway.toml`
-- Docker is supported (`docker-compose.yml`, `Dockerfile.*`).
+- Render (free plan) via the `render.yaml` blueprint:
+  - API: Docker image from `apps/api/Dockerfile`
+  - Web and admin: static sites built from `apps/web` and `apps/admin`
+- Deploys run only after CI passes on `main`. See `docs/DEPLOYMENT.md`.
 
 ## Agent Working Rules (Condensed)
 - Follow existing patterns and file placement.
