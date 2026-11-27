@@ -109,9 +109,11 @@ def create_app(config_class=Config):
     # Initialize rate limiter
     if app.config.get('RATELIMIT_ENABLED', True):
         limiter.init_app(app)
-        # Exempt CORS preflight OPTIONS requests from rate limiting
-        limiter.request_filter(lambda: request.method == 'OPTIONS')
-        app.logger.info("Rate limiting enabled (OPTIONS preflight exempt)")
+        # Exempt CORS preflight and health checks (keep-alive pings) from rate limiting
+        limiter.request_filter(
+            lambda: request.method == 'OPTIONS' or request.path in ('/health', '/health/db')
+        )
+        app.logger.info("Rate limiting enabled (OPTIONS preflight and health checks exempt)")
     else:
         app.logger.warning("Rate limiting is DISABLED - not recommended for production")
     
@@ -252,6 +254,7 @@ def create_app(config_class=Config):
     )
     from apps.api.routes.admin import admin_bp
     from apps.api.routes.superadmin import superadmin_bp
+    from apps.api.routes.internal import internal_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(provinces_bp)
@@ -265,6 +268,7 @@ def create_app(config_class=Config):
     app.register_blueprint(stripe_webhook_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(superadmin_bp)
+    app.register_blueprint(internal_bp)
 
     # Health check endpoint
     @app.route('/health', methods=['GET'])
@@ -276,35 +280,21 @@ def create_app(config_class=Config):
             'version': '1.0.0'
         }), 200
     
-    # Database health check endpoint
+    # Database health check. The Supabase pg_cron keep-alive and the external
+    # uptime monitor call this every few minutes: each call wakes the Render
+    # container and runs a real query, so neither Render nor Supabase goes idle.
     @app.route('/health/db', methods=['GET'])
     def db_health_check():
-        """Health check endpoint that tests database connectivity"""
-        import time
-        start = time.time()
+        """Return only ok/error; connection details stay in the server log."""
         try:
-            # Test database connection with a simple query
             from sqlalchemy import text
-            result = db.session.execute(text('SELECT 1'))
-            result.fetchone()
+            db.session.execute(text('SELECT 1')).fetchone()
             db.session.rollback()  # Don't leave transaction open
-            elapsed = time.time() - start
-            return jsonify({
-                'status': 'healthy',
-                'database': 'connected',
-                'latency_ms': round(elapsed * 1000, 2),
-                'service': 'MunLink Region III API'
-            }), 200
+            return jsonify({'status': 'ok'}), 200
         except Exception as e:
-            elapsed = time.time() - start
-            app.logger.error(f"Database health check failed: {e}")
-            return jsonify({
-                'status': 'unhealthy',
-                'database': 'disconnected',
-                'latency_ms': round(elapsed * 1000, 2),
-                # Connection details (host, project ref) stay in the server log.
-                'error': 'Database connection failed'
-            }), 503
+            db.session.rollback()
+            app.logger.error("Database health check failed: %s", e)
+            return jsonify({'status': 'error'}), 503
     
     # Root endpoint
     @app.route('/', methods=['GET'])

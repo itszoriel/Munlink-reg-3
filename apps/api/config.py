@@ -328,6 +328,10 @@ class Config:
     MANUAL_PAY_TO_NAME = os.getenv('MANUAL_PAY_TO_NAME', '')
     MANUAL_PAY_TO_NUMBER = os.getenv('MANUAL_PAY_TO_NUMBER', '09764859463')
     SUPABASE_PRIVATE_BUCKET = os.getenv('SUPABASE_PRIVATE_BUCKET', 'munlinkprivate-files')
+
+    # Shared secret for /internal/* endpoints called by Supabase pg_cron (32+ chars).
+    # Empty disables them. Keep the same value in Supabase Vault.
+    INTERNAL_CRON_SECRET = os.getenv('INTERNAL_CRON_SECRET', '')
     
     # QR Codes
     # Default to WEB_URL + /verify, or use QR_BASE_URL if set

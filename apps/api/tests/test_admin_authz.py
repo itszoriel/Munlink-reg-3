@@ -297,4 +297,4 @@ def test_database_health_hides_connection_details(tmp_path):
     })
     response = create_app(config).test_client().get('/health/db')
     assert response.status_code == 503
-    assert response.get_json()['error'] == 'Database connection failed'
+    assert response.get_json() == {'status': 'error'}
