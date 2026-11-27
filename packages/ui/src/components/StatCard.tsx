@@ -122,7 +122,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   }
 
   const content = (
-    <div className={`card-stat bg-white p-6 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${onClick ? 'cursor-pointer' : ''} ${className || ''}`.trim()}>
+    <div className={`card-stat bg-white p-6 transition-all duration-200 hover:shadow-md  ${onClick ? 'cursor-pointer' : ''} ${className || ''}`.trim()}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-slate-600">{title}</p>
@@ -155,7 +155,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           )}
         </div>
         {icon ? (
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={iconStyle}>
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={iconStyle}>
             {icon}
           </div>
         ) : null}

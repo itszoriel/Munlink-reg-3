@@ -17,7 +17,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
 }) => {
   return (
     <div
-      className={`bg-white/70 backdrop-blur-xl rounded-2xl p-4 md:p-6 shadow-lg border border-white/50 mb-6 ${className || ''}`.trim()}
+      className={`bg-white rounded-lg p-4 md:p-6 shadow-lg border border-white/50 mb-6 ${className || ''}`.trim()}
     >
       <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 items-stretch lg:items-center">
         {children}

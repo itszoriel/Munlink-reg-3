@@ -34,7 +34,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   )
 
   return (
-    <div className={`rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-card-foreground)] shadow-sm ${className || ''}`.trim()}>
+    <div className={`rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-card-foreground)] shadow-sm ${className || ''}`.trim()}>
       <div className="p-4 sm:p-6 flex items-start gap-4">
         <Avatar src={avatarUrl} alt={name} fallback={name} size={64} className="flex-shrink-0" />
         <div className="min-w-0 flex-1">

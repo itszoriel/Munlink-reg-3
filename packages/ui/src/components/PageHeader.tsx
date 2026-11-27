@@ -25,7 +25,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     <div className={`mb-6 md:mb-8 ${className || ''}`.trim()}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-serif font-semibold text-[var(--color-surface-foreground)]">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--color-surface-foreground)]">
             {title}
           </h1>
           {subtitle && (

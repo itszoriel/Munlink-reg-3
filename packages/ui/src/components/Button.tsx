@@ -23,13 +23,13 @@ const sizeClasses: Record<NonNullable<ButtonProps['size']>, string> = {
 }
 
 const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:brightness-95',
+  primary: 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:bg-[var(--color-primary-hover)]',
   secondary: 'bg-[var(--color-card)] text-[var(--color-card-foreground)] border border-[var(--color-border)] hover:bg-[var(--color-surface)]',
   ghost: 'bg-transparent text-[var(--color-surface-foreground)] hover:bg-[var(--color-card)]',
-  danger: 'bg-red-600 text-white hover:bg-red-700',
-  gradient: 'bg-ocean-gradient text-white hover:scale-105 transition-transform shadow-lg',
-  outline: 'bg-transparent border-2 border-[color:var(--color-primary)] text-[color:var(--color-primary)] hover:bg-[color:var(--color-primary-light)] hover:border-[color:var(--color-primary-hover)]',
-  success: 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md hover:shadow-lg hover:shadow-emerald-500/20',
+  danger: 'bg-red-700 text-white hover:bg-red-800',
+  gradient: 'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)]',
+  outline: 'bg-transparent border border-[color:var(--color-primary)] text-[color:var(--color-primary)] hover:bg-[color:var(--color-primary-light)] hover:border-[color:var(--color-primary-hover)]',
+  success: 'bg-emerald-700 text-white hover:bg-emerald-800',
 }
 
 export const Button: React.FC<ButtonProps> = ({

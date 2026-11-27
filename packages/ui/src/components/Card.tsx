@@ -12,7 +12,7 @@ export type CardProps = {
 
 export const Card: React.FC<CardProps> = ({ title, subtitle, actions, children, className, glass }) => {
   const baseStyles = glass
-    ? 'rounded-2xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl'
+    ? 'rounded-lg bg-white border border-white/50 shadow-md'
     : 'rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm'
   return (
     <div className={`${baseStyles} text-[var(--color-card-foreground)] ${className || ''}`.trim()}>
