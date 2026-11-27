@@ -219,16 +219,23 @@ def create_app(config_class=Config):
         jti = jwt_payload['jti']
         return TokenBlacklist.is_token_revoked(jti)
 
-    # Only real session tokens may authenticate requests. Anything else signed with
-    # the JWT key (e.g. old email-verification JWTs) is rejected everywhere.
+    # Every protected request: only real session tokens (not e.g. old
+    # email-verification JWTs), for an existing active account, whose session
+    # has not been ended (logout, password change/reset, suspension).
     @jwt.token_verification_loader
-    def only_session_tokens(jwt_header, jwt_payload):
-        from apps.api.utils.auth import SESSION_TOKEN_TYPES
-        return jwt_payload.get('type') in SESSION_TOKEN_TYPES
+    def verify_session_token(jwt_header, jwt_payload):
+        from flask import g
+        from apps.api.utils.session_guard import session_rejection_code
+        code = session_rejection_code(jwt_payload)
+        g.session_rejection_code = code
+        return code is None
 
     @jwt.token_verification_failed_loader
-    def reject_non_session_token(jwt_header, jwt_payload):
-        return jsonify({'error': 'Invalid token', 'code': 'INVALID_TOKEN_TYPE'}), 401
+    def reject_session_token(jwt_header, jwt_payload):
+        from flask import g
+        from apps.api.utils.session_guard import REJECTION_MESSAGES
+        code = g.get('session_rejection_code') or 'INVALID_TOKEN'
+        return jsonify({'error': REJECTION_MESSAGES.get(code, 'Invalid token'), 'code': code}), 401
     
     # Register blueprints
     from apps.api.routes import (
@@ -295,7 +302,8 @@ def create_app(config_class=Config):
                 'status': 'unhealthy',
                 'database': 'disconnected',
                 'latency_ms': round(elapsed * 1000, 2),
-                'error': str(e)[:200]
+                # Connection details (host, project ref) stay in the server log.
+                'error': 'Database connection failed'
             }), 503
     
     # Root endpoint

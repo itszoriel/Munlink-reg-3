@@ -74,6 +74,7 @@ from apps.api.utils import (
 from apps.api.utils.auth import read_verification_token, verification_email_matches
 from apps.api.utils.audit import log_action
 from apps.api.utils.file_streaming import stream_storage_file
+from apps.api.utils.session_guard import end_user_sessions
 import os
 import requests
 
@@ -102,12 +103,20 @@ def access_token_lifetime(role: str | None) -> timedelta:
     return ROLE_ACCESS_TOKEN_LIFETIMES.get(role or '', DEFAULT_ACCESS_TOKEN_LIFETIME)
 
 
-def _create_session_access_token(user_id, role: str | None) -> str:
-    """Create an access token whose lifetime depends on the role."""
+def _create_session_access_token(user_id, role: str | None, family_id: str | None = None) -> str:
+    """Create an access token whose lifetime depends on the role.
+
+    ``family_id`` ties the token to its login session, so ending the session
+    (logout, password change, suspension) also ends the access token at once.
+    The role claim is informational only; authorization reads the database.
+    """
+    claims = {"role": role}
+    if family_id:
+        claims["family_id"] = family_id
     return create_access_token(
         identity=str(user_id),
         expires_delta=access_token_lifetime(role),
-        additional_claims={"role": role},
+        additional_claims=claims,
     )
 
 
@@ -119,6 +128,7 @@ def _issue_session_tokens(user: User) -> tuple[str, str]:
     superadmin logins.
     """
     refresh_token = None
+    family_id = None
     try:
         from apps.api.models.refresh_token import RefreshTokenFamily, RefreshToken
 
@@ -128,10 +138,11 @@ def _issue_session_tokens(user: User) -> tuple[str, str]:
             ip_address=request.remote_addr,
         )
         db.session.flush()
+        family_id = family.family_id
         refresh_token = create_refresh_token(
             identity=str(user.id),
             expires_delta=REFRESH_TOKEN_LIFETIME,
-            additional_claims={"role": user.role, "family_id": family.family_id},
+            additional_claims={"role": user.role, "family_id": family_id},
         )
         RefreshToken.create_token(
             jti=decode_token(refresh_token)['jti'],
@@ -143,7 +154,7 @@ def _issue_session_tokens(user: User) -> tuple[str, str]:
         current_app.logger.error("Refresh token tracking failed for user %s: %s", user.id, exc)
         raise
 
-    return _create_session_access_token(user.id, user.role), refresh_token
+    return _create_session_access_token(user.id, user.role, family_id), refresh_token
 
 
 # Rate limiting helper - applies limiter if available
@@ -602,7 +613,7 @@ def refresh():
             current_app.logger.error("Token rotation error for user %s: %s", uid, e)
             return jsonify({'error': 'Session check failed. Please try again.', 'code': 'REFRESH_UNAVAILABLE'}), 503
 
-        access_token = _create_session_access_token(user_id, role)
+        access_token = _create_session_access_token(user_id, role, family_id)
 
         response_data = {'access_token': access_token}
         resp = jsonify(response_data)
@@ -1343,15 +1354,21 @@ def change_password():
         # Hash and update password
         user.password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         user.updated_at = utc_now()
+        # Sign out every other device; this session keeps working.
+        ended = end_user_sessions(user.id, 'password_changed', keep_family_id=(get_jwt() or {}).get('family_id'))
         db.session.commit()
-        
-        return jsonify({'message': 'Password changed successfully'}), 200
+
+        message = 'Password changed successfully'
+        if ended:
+            message += '. Other devices have been signed out.'
+        return jsonify({'message': message}), 200
     
     except ValidationError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to change password', 'details': str(e)}), 500
+        current_app.logger.error("Password change failed for user %s: %s", get_jwt_identity(), e)
+        return jsonify({'error': 'Failed to change password'}), 500
 
 
 @auth_bp.route('/password-reset/request', methods=['POST'])

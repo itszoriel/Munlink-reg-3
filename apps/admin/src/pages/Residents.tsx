@@ -258,6 +258,37 @@ export default function Residents() {
     }
   }
 
+  const handleSuspendToggle = async (resident: any) => {
+    const id = String(resident.id)
+    const suspending = resident.status !== 'suspended'
+    const reason = window.prompt(
+      suspending
+        ? 'Why are you suspending this resident? They will be signed out of every device.'
+        : 'Why are you reactivating this resident?'
+    )
+    if (reason === null) return
+    if (reason.trim().length < 5) {
+      setError('Please enter a reason of at least 5 characters.')
+      return
+    }
+    try {
+      setError(null)
+      setActionLoading(id)
+      if (suspending) {
+        await userApi.suspendUser(Number(id), reason.trim())
+        updateRowStatus(id, 'suspended')
+      } else {
+        const res: any = await userApi.reactivateUser(Number(id), reason.trim())
+        updateRowStatus(id, res?.user?.admin_verified ? 'verified' : 'pending')
+      }
+      invalidateMultiple([CACHE_KEYS.RESIDENTS, CACHE_KEYS.PENDING_VERIFICATIONS, CACHE_KEYS.DASHBOARD])
+    } catch (err: any) {
+      setError(handleApiError(err))
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const handleReject = async (e: any, resident: any) => {
     e.stopPropagation()
     const id = String(resident.id)
@@ -548,20 +579,9 @@ export default function Residents() {
                     <>
                       <button
                         className={`icon-btn ${r.status==='suspended' ? 'success' : 'danger'}`}
-                        onClick={async (e: React.MouseEvent) => {
+                        onClick={(e: React.MouseEvent) => {
                           e.stopPropagation()
-                          const id = String(r.id)
-                          try {
-                            setActionLoading(id)
-                            const res = await fetch(`${(import.meta as any).env?.VITE_API_BASE_URL || (import.meta as any).env?.VITE_API_URL || ''}/api/admin/users/${id}/suspend`, {
-                              method: 'POST',
-                              headers: { 'Authorization': `Bearer ${useAdminStore.getState().accessToken}` }
-                            })
-                            const ok = res.ok
-                            if (ok) updateRowStatus(id, r.status==='suspended' ? 'verified' : 'suspended')
-                          } finally {
-                            setActionLoading(null)
-                          }
+                          void handleSuspendToggle(r)
                         }}
                         disabled={actionLoading === String(r.id)}
                         title={r.status==='suspended' ? 'Unsuspend' : 'Suspend'}

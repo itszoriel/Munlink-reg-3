@@ -33,6 +33,7 @@ from apps.api.utils.special_status import (
 from apps.api.utils.constants import SPECIAL_STATUS_TYPES
 from apps.api.utils.zambales_scope import is_valid_zambales_municipality
 from apps.api.utils.admin_audit import log_admin_action
+from apps.api.utils.admin_scope import load_staff_context
 from apps.api.models.municipality import Municipality
 from apps.api.utils.file_streaming import stream_storage_file as _stream_storage_file
 from apps.api.utils.storage_handler import StorageError, save_file
@@ -382,29 +383,8 @@ def renew_student_status(status_id):
 # ============================================
 
 def _get_admin_context():
-    """Get admin user context and verify admin role."""
-    user = get_jwt_identity()
-    if isinstance(user, dict):
-        user_id = user.get('id')
-    else:
-        user_id = user
-
-    admin = db.session.get(User, user_id)
-    if not admin:
-        return None
-
-    # Check if user is admin
-    admin_roles = ['superadmin', 'provincial_admin', 'municipal_admin', 'barangay_admin']
-    if admin.role not in admin_roles:
-        return None
-
-    return {
-        'user': admin,
-        'user_id': admin.id,
-        'role': admin.role,
-        'municipality_id': admin.admin_municipality_id,
-        'barangay_id': admin.admin_barangay_id,
-    }
+    """Current active admin and scope, read from the database (not the JWT role claim)."""
+    return load_staff_context()
 
 
 @special_status_bp.route('/admin/special-statuses/pending', methods=['GET'])

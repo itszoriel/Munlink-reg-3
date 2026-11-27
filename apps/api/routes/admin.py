@@ -37,7 +37,9 @@ from apps.api.utils.validators import ValidationError
 from apps.api.utils.email_sender import send_user_status_email
 from apps.api.models.audit import AuditLog
 from apps.api.utils.audit import log_action as log_generic_action
+from apps.api.models.admin_audit_log import AuditAction
 from apps.api.utils.admin_audit import (
+    log_admin_action,
     log_resident_verified,
     log_resident_rejected,
 )
@@ -70,6 +72,12 @@ from apps.api.utils.zambales_scope import (
 )
 from apps.api.utils.fee_calculator import calculate_document_fee, are_requirements_submitted
 from apps.api.utils.supabase_storage import redact_file_entries
+from apps.api.utils.admin_scope import (
+    can_access_resident,
+    load_staff_context,
+    resident_scope_conditions,
+)
+from apps.api.utils.session_guard import end_user_sessions
 from apps.api.utils.file_streaming import (
     references_request_upload,
     stream_storage_file as _stream_storage_file,
@@ -185,7 +193,11 @@ def enforce_admin_role():
     Security: This middleware MUST return an error response if authentication
     fails. Silently passing would allow unauthenticated access.
     """
-    from flask_jwt_extended.exceptions import NoAuthorizationError, InvalidHeaderError
+    from flask_jwt_extended.exceptions import (
+        InvalidHeaderError,
+        NoAuthorizationError,
+        UserClaimsVerificationError,
+    )
     from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
     
     # Skip JWT verification for OPTIONS requests (CORS preflight)
@@ -194,11 +206,13 @@ def enforce_admin_role():
     
     try:
         verify_jwt_in_request()
-        claims = get_jwt() or {}
-        role = claims.get('role')
-        if role not in ADMIN_ROLES:
-            current_app.logger.warning(f"Admin access denied: role={role}")
+        # The database decides: the role claim in a token can be stale.
+        if load_staff_context() is None:
+            current_app.logger.warning("Admin access denied for user %s", get_jwt_identity())
             return jsonify({'error': 'Forbidden', 'code': 'ROLE_MISMATCH'}), 403
+    except UserClaimsVerificationError:
+        # Disabled account or ended session: the JWT error handler returns the code.
+        raise
     except NoAuthorizationError:
         # No token provided
         return jsonify({'error': 'Authorization required', 'code': 'NO_AUTH'}), 401
@@ -219,45 +233,13 @@ def enforce_admin_role():
         return jsonify({'error': 'Authentication failed', 'code': 'AUTH_ERROR'}), 401
 
 def get_admin_municipality_id():
-    """Get the municipality ID for the current admin user.
+    """Municipality scope of the current admin (None for province-wide or non-admins).
 
-    ZAMBALES SCOPE: Returns None if admin's municipality is outside Zambales
-    or is Olongapo (excluded).
-
-    For barangay_admin: Gets municipality from their assigned barangay if admin_municipality_id is not set.
+    ZAMBALES SCOPE: never returns a municipality outside Zambales or Olongapo.
+    Barangay admins get the municipality of their assigned barangay.
     """
-    # get_jwt_identity returns whatever was used as identity when creating
-    # the token. We cast to int for DB lookup.
-    identity = get_jwt_identity()
-    try:
-        user_id = int(identity)
-    except (TypeError, ValueError):
-        current_app.logger.debug("Invalid JWT identity: %s", identity)
-        return None
-    user = db.session.get(User, user_id)
-
-    if not user or user.role not in ADMIN_ROLES:
-        current_app.logger.debug(
-            "Admin user validation failed for identity %s (user=%s role=%s)",
-            user_id,
-            bool(user),
-            user.role if user else None,
-        )
-        return None
-
-    admin_muni_id = user.admin_municipality_id
-
-    # For barangay_admin, get municipality from their barangay if not set directly
-    if not admin_muni_id and user.role == 'barangay_admin' and user.admin_barangay_id:
-        brgy = db.session.get(Barangay, user.admin_barangay_id)
-        if brgy:
-            admin_muni_id = brgy.municipality_id
-
-    # ZAMBALES SCOPE: Validate admin's municipality is in Zambales (excluding Olongapo)
-    if admin_muni_id and not is_valid_zambales_municipality(admin_muni_id):
-        current_app.logger.warning("Admin municipality %s is outside Zambales scope", admin_muni_id)
-        return None
-    return admin_muni_id
+    ctx = _get_staff_context()
+    return ctx['municipality_id'] if ctx else None
 
 def require_admin_municipality():
     """Ensure admin has a valid municipality scope.
@@ -289,31 +271,8 @@ def _scope_filter(field, municipality_scope):
 
 
 def _get_staff_context():
-    """Return the current admin user and scoped identifiers."""
-    try:
-        user_id = int(get_jwt_identity())
-    except Exception:
-        return None
-    user = db.session.get(User, user_id)
-    if not user:
-        return None
-    role_lower = (user.role or '').lower()
-    ctx = {
-        'user': user,
-        'role': user.role,
-        'role_lower': role_lower,
-        'is_super': role_lower == 'superadmin',
-        'is_provincial': role_lower == 'provincial_admin',
-        'municipality_id': user.admin_municipality_id if user.admin_municipality_id and is_valid_zambales_municipality(user.admin_municipality_id) else None,
-        'barangay_id': user.admin_barangay_id,
-    }
-    if ctx['barangay_id']:
-        brgy = db.session.get(Barangay, ctx['barangay_id'])
-        if not brgy or not is_valid_zambales_municipality(brgy.municipality_id):
-            ctx['barangay_id'] = None
-        elif ctx['municipality_id'] and brgy.municipality_id != ctx['municipality_id']:
-            ctx['barangay_id'] = None
-    return ctx
+    """Return the current active admin and their scope, read from the database."""
+    return load_staff_context()
 
 
 def _parse_datetime(value, field_name):
@@ -481,35 +440,40 @@ def _announcement_query_for_staff(ctx):
 @admin_bp.route('/users/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_user_detail(user_id):
-    """Get a single user's details for admin review, including verification files."""
+    """Get a single user's details for admin review (presence flags for ID files only)."""
     try:
-        municipality_id = get_admin_municipality_id()
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
         user = db.session.get(User, user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        # If admin has municipality scope, enforce it, but allow access
-        # when there is an active transfer (pending/approved) that involves
-        # the admin's municipality as source or destination.
-        if municipality_id not in (None, 'ALL') and user.municipality_id != municipality_id and user.role != 'municipal_admin':
-            try:
-                from apps.api.models.transfer import TransferRequest
-            except ImportError:
-                from apps.api.models.transfer import TransferRequest
-            active_transfer = TransferRequest.query.filter(
-                and_(
-                    TransferRequest.user_id == user.id,
-                    TransferRequest.status.in_(['pending', 'approved']),
-                    or_(
-                        _scope_filter(TransferRequest.from_municipality_id, municipality_id),
-                        _scope_filter(TransferRequest.to_municipality_id, municipality_id),
-                    ),
-                )
-            ).first()
-            if not active_transfer:
-                return jsonify({'error': 'User not in your municipality'}), 403
+        if not can_access_resident(ctx, user) and not _has_transfer_involving_scope(user, ctx):
+            return jsonify({'error': 'User not in your jurisdiction'}), 403
         return jsonify(user.to_dict(include_sensitive=True, include_municipality=True)), 200
     except Exception as e:
-        return jsonify({'error': 'Failed to get user detail', 'details': str(e)}), 500
+        current_app.logger.error("Failed to get user detail %s: %s", user_id, e)
+        return jsonify({'error': 'Failed to get user detail'}), 500
+
+
+def _has_transfer_involving_scope(user, ctx) -> bool:
+    """Municipal admins may review residents moving into or out of their municipality."""
+    if ctx.get('role_lower') != 'municipal_admin' or not ctx.get('municipality_id'):
+        return False
+    from apps.api.models.transfer import TransferRequest
+
+    return TransferRequest.query.filter(
+        and_(
+            TransferRequest.user_id == user.id,
+            TransferRequest.status.in_(['pending', 'approved']),
+            or_(
+                TransferRequest.from_municipality_id == ctx['municipality_id'],
+                TransferRequest.to_municipality_id == ctx['municipality_id'],
+            ),
+        )
+    ).first() is not None
+
+
 @admin_bp.route('/users/pending', methods=['GET'])
 @jwt_required()
 def get_pending_users():
@@ -518,16 +482,16 @@ def get_pending_users():
     ZAMBALES SCOPE: Only returns users from Zambales municipalities (excluding Olongapo).
     """
     try:
-        municipality_id = get_admin_municipality_id()
-        # ZAMBALES SCOPE: Always filter to Zambales municipalities only
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+        # ZAMBALES SCOPE plus the admin's own municipality / barangay
         filters = [
             User.role == 'resident',
             User.admin_verified == False,
             User.is_active == True,
-            User.municipality_id.in_(ZAMBALES_MUNICIPALITY_IDS),  # Zambales scope
+            *resident_scope_conditions(ctx),
         ]
-        if municipality_id:
-            filters.append(User.municipality_id == municipality_id)
 
         pending_users = (
             User.query
@@ -540,7 +504,8 @@ def get_pending_users():
         return jsonify({'users': users_data, 'count': len(users_data)}), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get pending users', 'details': str(e)}), 500
+        current_app.logger.error("Failed to get pending users: %s", e)
+        return jsonify({'error': 'Failed to get pending users'}), 500
 
 @admin_bp.route('/users/<int:user_id>/verify', methods=['POST'])
 @jwt_required()
@@ -565,38 +530,31 @@ def verify_user(user_id):
         user = db.session.get(User, user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        
-        if user.municipality_id != municipality_id:
+
+        if not can_access_resident(ctx, user):
             return jsonify({'error': 'User not in your municipality'}), 403
-        
+
         if user.role != 'resident':
             return jsonify({'error': 'User is not a resident'}), 400
-        
-        # Approve the user
+
+        # Approve the user. The audit entry commits together with the change.
         user.admin_verified = True
         user.admin_verified_at = utc_now()
         user.updated_at = utc_now()
-        
-        db.session.commit()
+        log_resident_verified(
+            admin_id=current_admin.id,
+            resident_id=user.id,
+            resident_name=f"{user.first_name} {user.last_name}",
+            municipality_id=user.municipality_id,
+            barangay_id=user.barangay_id,
+        )
 
         # Send approval email (best-effort)
         try:
             if user.email:
                 send_user_status_email(user.email, approved=True)
-        except Exception:
-            pass
-
-        # Audit log (best-effort)
-        try:
-            log_resident_verified(
-                admin_id=current_admin.id if current_admin else None,
-                resident_id=user.id,
-                resident_name=f"{user.first_name} {user.last_name}",
-                municipality_id=user.municipality_id,
-                barangay_id=user.barangay_id,
-            )
-        except Exception:
-            pass
+        except Exception as exc:
+            current_app.logger.warning("Approval email failed for user %s: %s", user.id, exc)
         
         return jsonify({
             'message': 'User verified successfully',
@@ -605,7 +563,8 @@ def verify_user(user_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to verify user', 'details': str(e)}), 500
+        current_app.logger.error("Failed to verify user %s: %s", user_id, e)
+        return jsonify({'error': 'Failed to verify user'}), 500
 
 @admin_bp.route('/users/<int:user_id>/reject', methods=['POST'])
 @jwt_required()
@@ -634,36 +593,30 @@ def reject_user(user_id):
         user = db.session.get(User, user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        
-        if user.municipality_id != municipality_id:
+
+        if not can_access_resident(ctx, user):
             return jsonify({'error': 'User not in your municipality'}), 403
-        
+
         if user.role != 'resident':
             return jsonify({'error': 'User is not a resident'}), 400
-        
-        # Reject the user (deactivate)
+
+        # Reject the user (deactivate and sign out). The audit entry commits with the change.
         user.is_active = False
         user.updated_at = utc_now()
-        
-        db.session.commit()
+        end_user_sessions(user.id, 'account_rejected')
+        log_resident_rejected(
+            admin_id=current_admin.id,
+            resident_id=user.id,
+            resident_name=f"{user.first_name} {user.last_name}",
+            reason=reason
+        )
 
         # Send rejection email (best-effort)
         try:
             if user.email:
                 send_user_status_email(user.email, approved=False, reason=reason)
-        except Exception:
-            pass
-
-        # Audit log (best-effort)
-        try:
-            log_resident_rejected(
-                admin_id=current_admin.id if current_admin else None,
-                resident_id=user.id,
-                resident_name=f"{user.first_name} {user.last_name}",
-                reason=reason
-            )
-        except Exception:
-            pass
+        except Exception as exc:
+            current_app.logger.warning("Rejection email failed for user %s: %s", user.id, exc)
         
         return jsonify({
             'message': 'User rejected successfully',
@@ -672,87 +625,165 @@ def reject_user(user_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to reject user', 'details': str(e)}), 500
+        current_app.logger.error("Failed to reject user %s: %s", user_id, e)
+        return jsonify({'error': 'Failed to reject user'}), 500
+
+def _resident_account_action(user_id: int):
+    """Shared checks for suspend/reactivate. Returns (ctx, admin, user, reason) or a response."""
+    ctx = _get_staff_context()
+    if not ctx or ctx['role_lower'] not in ('municipal_admin', 'barangay_admin', 'provincial_admin', 'superadmin'):
+        return jsonify({'error': 'Admin access required'}), 403
+    admin = ctx['user']
+    if not admin.has_permission('residents:approve'):
+        return jsonify({'error': 'Permission denied: residents:approve required', 'code': 'PERMISSION_DENIED'}), 403
+
+    data = request.get_json(silent=True) or {}
+    reason = str(data.get('reason') or '').strip()
+    if len(reason) < 5:
+        return jsonify({'error': 'A reason of at least 5 characters is required'}), 400
+    if len(reason) > 500:
+        return jsonify({'error': 'Reason must be 500 characters or fewer'}), 400
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if user.role != 'resident':
+        return jsonify({'error': 'User is not a resident'}), 400
+    if not can_access_resident(ctx, user):
+        return jsonify({'error': 'User not in your jurisdiction'}), 403
+    return ctx, admin, user, reason
+
 
 @admin_bp.route('/users/<int:user_id>/suspend', methods=['POST'])
 @jwt_required()
 def suspend_user(user_id: int):
-    """Toggle suspend/unsuspend a resident in the admin's municipality."""
+    """Suspend a resident: block sign-in and end their sessions. Requires a reason."""
     try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):
-            return municipality_id
+        checked = _resident_account_action(user_id)
+        if not isinstance(checked, tuple) or len(checked) != 4:
+            return checked
+        ctx, admin, user, reason = checked
+        if not user.is_active:
+            return jsonify({'error': 'User is already suspended', 'code': 'ALREADY_SUSPENDED'}), 409
+
+        user.is_active = False
+        user.updated_at = utc_now()
+        ended = end_user_sessions(user.id, 'account_suspended')
+        log_admin_action(
+            admin_id=admin.id,
+            admin_email=admin.email,
+            action=AuditAction.RESIDENT_SUSPENDED,
+            resource_type='resident',
+            resource_id=user.id,
+            details={
+                'reason': reason,
+                'municipality_id': user.municipality_id,
+                'barangay_id': user.barangay_id,
+                'sessions_ended': ended,
+            },
+        )
+        return jsonify({'message': 'User suspended', 'user': user.to_dict(include_sensitive=True)}), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error("Failed to suspend user %s: %s", user_id, e)
+        return jsonify({'error': 'Failed to update user status'}), 500
+
+
+@admin_bp.route('/users/<int:user_id>/reactivate', methods=['POST'])
+@jwt_required()
+def reactivate_user(user_id: int):
+    """Reactivate a suspended or rejected resident. Requires a reason."""
+    try:
+        checked = _resident_account_action(user_id)
+        if not isinstance(checked, tuple) or len(checked) != 4:
+            return checked
+        ctx, admin, user, reason = checked
+        if user.is_active:
+            return jsonify({'error': 'User is already active', 'code': 'ALREADY_ACTIVE'}), 409
+
+        user.is_active = True
+        user.updated_at = utc_now()
+        log_admin_action(
+            admin_id=admin.id,
+            admin_email=admin.email,
+            action=AuditAction.RESIDENT_REACTIVATED,
+            resource_type='resident',
+            resource_id=user.id,
+            details={
+                'reason': reason,
+                'municipality_id': user.municipality_id,
+                'barangay_id': user.barangay_id,
+            },
+        )
+        return jsonify({'message': 'User reactivated', 'user': user.to_dict(include_sensitive=True)}), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error("Failed to reactivate user %s: %s", user_id, e)
+        return jsonify({'error': 'Failed to update user status'}), 500
+
+
+@admin_bp.route('/users/<int:user_id>/verification-docs', methods=['POST'])
+@jwt_required()
+def admin_upload_user_verification_docs(user_id: int):
+    """Allow an admin to replace a resident's verification documents (audited)."""
+    try:
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
+        admin = ctx['user']
+        if not admin.has_permission('residents:approve'):
+            return jsonify({'error': 'Permission denied: residents:approve required', 'code': 'PERMISSION_DENIED'}), 403
 
         user = db.session.get(User, user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         if user.role != 'resident':
             return jsonify({'error': 'User is not a resident'}), 400
-        if user.municipality_id != municipality_id:
-            return jsonify({'error': 'User not in your municipality'}), 403
-
-        user.is_active = not bool(user.is_active)
-        user.updated_at = utc_now()
-        db.session.commit()
-
-        return jsonify({'message': 'User status updated', 'user': user.to_dict(include_sensitive=True)}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to update user status', 'details': str(e)}), 500
-
-@admin_bp.route('/users/<int:user_id>/verification-docs', methods=['POST'])
-@jwt_required()
-def admin_upload_user_verification_docs(user_id: int):
-    """Allow admin to re-upload verification documents for a user."""
-    try:
-        municipality_id = require_admin_municipality()
-        if isinstance(municipality_id, tuple):
-            return municipality_id
-
-        user = db.session.get(User, user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-
-        if user.municipality_id != municipality_id:
-            return jsonify({'error': 'User not in your municipality'}), 403
+        if not can_access_resident(ctx, user):
+            return jsonify({'error': 'User not in your jurisdiction'}), 403
 
         if not (request.content_type and 'multipart/form-data' in request.content_type):
             return jsonify({'error': 'Files must be uploaded as multipart/form-data'}), 400
 
-        municipality = db.session.get(Municipality, municipality_id)
+        municipality = db.session.get(Municipality, user.municipality_id) if user.municipality_id else None
         municipality_slug = municipality.slug if municipality else 'general'
 
-        saved_any = False
+        replaced = []
+        for field in ('valid_id_front', 'valid_id_back', 'selfie_with_id'):
+            upload = request.files.get(field)
+            if upload and getattr(upload, 'filename', ''):
+                setattr(
+                    user,
+                    field,
+                    save_verification_document(upload, user.id, municipality_slug, field, user_type='residents'),
+                )
+                replaced.append(field)
 
-        id_front = request.files.get('valid_id_front')
-        if id_front and getattr(id_front, 'filename', ''):
-            user.valid_id_front = save_verification_document(id_front, user.id, municipality_slug, 'valid_id_front', user_type='residents')
-            saved_any = True
-
-        id_back = request.files.get('valid_id_back')
-        if id_back and getattr(id_back, 'filename', ''):
-            user.valid_id_back = save_verification_document(id_back, user.id, municipality_slug, 'valid_id_back', user_type='residents')
-            saved_any = True
-
-        selfie = request.files.get('selfie_with_id')
-        if selfie and getattr(selfie, 'filename', ''):
-            user.selfie_with_id = save_verification_document(selfie, user.id, municipality_slug, 'selfie_with_id', user_type='residents')
-            saved_any = True
-
-        if not saved_any:
+        if not replaced:
             return jsonify({'error': 'Please upload at least one verification file'}), 400
 
         user.updated_at = utc_now()
-        db.session.commit()
+        log_admin_action(
+            admin_id=admin.id,
+            admin_email=admin.email,
+            action=AuditAction.RESIDENT_DOCS_REPLACED,
+            resource_type='resident',
+            resource_id=user.id,
+            details={'documents': replaced, 'municipality_id': user.municipality_id},
+        )
 
         return jsonify({
             'message': 'Verification documents updated successfully',
             'user': user.to_dict(include_sensitive=True, include_municipality=True)
         }), 200
 
+    except ValidationError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to upload verification documents', 'details': str(e)}), 500
+        current_app.logger.error("Admin verification upload failed for user %s: %s", user_id, e)
+        return jsonify({'error': 'Failed to upload verification documents'}), 500
 
 
 @admin_bp.route('/residents/<int:user_id>/documents/<string:doc_type>', methods=['GET'])
@@ -799,8 +830,9 @@ def get_resident_document(user_id, doc_type):
         if not reason:
             return jsonify({'error': 'Reason parameter required'}), 400
 
-        # Get admin context (allow None for superadmins)
-        admin_municipality_id = get_admin_municipality_id()
+        ctx = _get_staff_context()
+        if not ctx:
+            return jsonify({'error': 'Admin access required'}), 403
 
         # Get resident
         user = db.session.get(User, user_id)
@@ -810,12 +842,10 @@ def get_resident_document(user_id, doc_type):
         if user.role != 'resident':
             return jsonify({'error': 'User is not a resident'}), 400
 
-        # Validate municipality scope (unless superadmin)
-        if current_user.role != 'superadmin':
-            if not admin_municipality_id:
-                return jsonify({'error': 'Admin access required'}), 403
-            if user.municipality_id != admin_municipality_id:
-                return jsonify({'error': 'Access denied: user not in your municipality'}), 403
+        # Scope: superadmin/provincial Zambales-wide, municipal own municipality,
+        # barangay own barangay.
+        if not can_access_resident(ctx, user):
+            return jsonify({'error': 'Access denied: user not in your municipality'}), 403
 
         # Get file path
         doc_field_map = {
@@ -878,9 +908,10 @@ def get_verified_users():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         
+        ctx = _get_staff_context()
         verified_users = User.query.filter(
             and_(
-                _scope_filter(User.municipality_id, municipality_id),
+                *resident_scope_conditions(ctx),
                 User.role == 'resident',
                 User.admin_verified == True,
                 User.is_active == True
@@ -906,7 +937,8 @@ def get_verified_users():
         }), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get verified users', 'details': str(e)}), 500
+        current_app.logger.error("Failed to get verified users: %s", e)
+        return jsonify({'error': 'Failed to get verified users'}), 500
 
 @admin_bp.route('/users/stats', methods=['GET'])
 @jwt_required()
@@ -2455,6 +2487,7 @@ def admin_update_benefit_application_status(application_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
 
         # Resident notifications (best-effort)
         try:
@@ -3096,7 +3129,7 @@ def generate_document_request_pdf(request_id: int):
                 notes=None,
             )
         except Exception:
-            pass
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
         db.session.commit()
 
         try:
@@ -3313,14 +3346,18 @@ def regenerate_document_qr_code(request_id: int):
         # Audit log
         try:
             log_generic_action(
+                user_id=ctx['user_id'],
+                municipality_id=req.municipality_id,
+                entity_type='document_request',
+                entity_id=req.id,
                 action='regenerate_qr',
-                target_type='document_request',
-                target_id=request_id,
-                municipality_id=municipality_id,
-                details={'new_qr_url': new_qr_url[:100] if new_qr_url else None}
+                actor_role=ctx['role_lower'],
+                new_values={'qr_available': bool(new_qr_url)},
             )
+            db.session.commit()
         except Exception:
-            pass
+            db.session.rollback()
+            current_app.logger.exception("Audit log write failed: regenerate_qr request %s", request_id)
         
         return jsonify({
             'message': 'QR code regenerated successfully',
@@ -3407,14 +3444,18 @@ def regenerate_document_pdf(request_id: int):
         # Audit log
         try:
             log_generic_action(
+                user_id=ctx['user_id'],
+                municipality_id=req.municipality_id,
+                entity_type='document_request',
+                entity_id=req.id,
                 action='regenerate_pdf',
-                target_type='document_request',
-                target_id=request_id,
-                municipality_id=municipality_id,
-                details={'new_pdf_url': new_pdf_url[:100] if new_pdf_url else None}
+                actor_role=ctx['role_lower'],
+                new_values={'document_available': bool(new_pdf_url)},
             )
+            db.session.commit()
         except Exception:
-            pass
+            db.session.rollback()
+            current_app.logger.exception("Audit log write failed: regenerate_pdf request %s", request_id)
         
         return jsonify({
             'message': 'PDF regenerated successfully',
@@ -3758,6 +3799,7 @@ def verify_office_payment(request_id: int):
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+                current_app.logger.exception("Audit log write failed (log_generic_action)")
 
             return jsonify({'error': 'Invalid payment code'}), 400
 
@@ -3785,6 +3827,7 @@ def verify_office_payment(request_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
 
         return jsonify({
             'message': 'Payment verified successfully',
@@ -3881,6 +3924,7 @@ def resend_office_payment_code(request_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
 
         return jsonify({'message': 'Payment code resent successfully'}), 200
 
@@ -3960,6 +4004,7 @@ def admin_ready_for_pickup(request_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
         try:
             user = db.session.get(User, req.user_id)
             doc_type = db.session.get(DocumentType, req.document_type_id)
@@ -4078,6 +4123,7 @@ def admin_generate_claim_token(request_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
 
         return jsonify({
             'message': 'Claim token generated',
@@ -4284,6 +4330,7 @@ def admin_approve_manual_payment(request_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
 
         return jsonify({'message': 'Manual payment approved', 'request': req.to_dict()}), 200
     except Exception as e:
@@ -4347,6 +4394,7 @@ def admin_reject_manual_payment(request_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
 
         return jsonify({'message': 'Manual payment rejected', 'request': req.to_dict()}), 200
     except Exception as e:
@@ -4410,6 +4458,7 @@ def update_document_request_content(request_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
 
         return jsonify({'message': 'Content updated', 'request': req.to_dict(include_user=True, include_audit=True)}), 200
     except Exception as e:
@@ -4422,9 +4471,8 @@ def update_document_request_content(request_id: int):
 def admin_municipality_performance():
     """If admin is province-level (role 'admin'), return multiple municipalities; otherwise return current only."""
     try:
-        verify_jwt_in_request()
-        claims = get_jwt() or {}
-        role = claims.get('role')
+        ctx = _get_staff_context()
+        role = ctx['role_lower'] if ctx else None
         current_id = get_admin_municipality_id()
         if not current_id:
             return jsonify({'error': 'Admin access required'}), 403
@@ -4765,6 +4813,7 @@ def admin_cleanup():
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_generic_action)")
 
         return jsonify({'deleted_count': deleted, 'archived_url': archived_url}), 200
     except Exception as e:
