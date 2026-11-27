@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API tests and audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements*.txt
+      - name: System libraries
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libmagic1
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Lint (syntax errors and undefined names)
+        run: flake8 . --select=E9,F63,F7,F82 --exclude=venv,migrations,__pycache__ --show-source
+      - name: Tests
+        working-directory: .
+        run: python -m pytest apps/api/tests -q -p no:cacheprovider
+      - name: Dependency vulnerabilities
+        run: pip-audit -r requirements.txt --progress-spinner off
+
+  frontend:
+    name: Web and admin build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build -w packages/ui
+      - name: Lint
+        run: |
+          npm run lint -w apps/web
+          npm run lint -w apps/admin
+      - name: Type-check and build
+        env:
+          VITE_API_URL: https://munlink-api-5s9w.onrender.com
+          VITE_PUBLIC_SITE_URL: https://munlink-zambales.onrender.com
+        run: |
+          npm run build -w apps/web
+          npm run build -w apps/admin
+      - name: Dependency vulnerabilities (production, high and above)
+        run: npm audit --omit=dev --audit-level=high
+
+  docker:
+    name: API image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build apps/api/Dockerfile
+        run: docker build --file apps/api/Dockerfile --tag munlink-api:ci apps/api

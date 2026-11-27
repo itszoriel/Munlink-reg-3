@@ -10,12 +10,23 @@ npm run test
 npm run build
 ```
 
-For backend-only work:
+`npm run test` runs the API test suite and both frontend linters.
+
+For backend-only work (install `apps/api/requirements-dev.txt` first):
 
 ```powershell
-cd apps/api
-pytest
+npm run test:api
 ```
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and push to `main`:
+
+- API: flake8 (syntax errors and undefined names), pytest, and `pip-audit` on `requirements.txt`.
+- Frontend: lint, type-check and build web and admin, and `npm audit --omit=dev --audit-level=high`.
+- Docker: builds `apps/api/Dockerfile`.
+
+`.github/workflows/secret-scan.yml` runs gitleaks. Render deploys only after these checks pass.
 
 Use the existing commands from `package.json` and `scripts/`; do not invent alternate project runners.
 

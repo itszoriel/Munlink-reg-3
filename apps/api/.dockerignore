@@ -1,0 +1,16 @@
+# Docker build context is apps/api (see render.yaml). Ship code only.
+venv/
+.venv/
+tests/
+tmp-tests/
+.pytest_cache/
+.pytest_tmp/
+__pycache__/
+*.pyc
+uploads/
+*.sqlite
+*.db
+.env
+.env.*
+requirements-dev.txt
+railway.toml

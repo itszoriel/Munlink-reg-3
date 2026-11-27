@@ -56,7 +56,7 @@ Copy-Item env.example.txt .env
 cd apps/api
 python -m venv venv
 .\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 flask db upgrade
 python scripts/seed_data.py
 
@@ -123,7 +123,7 @@ SMS delivery is currently under maintenance because PhilSMS credits are unavaila
 
 ## Deployment
 
-[Render](docs/DEPLOYMENT.md#render) is the primary configuration. The root [render.yaml](render.yaml) provisions `munlink-api`, `munlink-web`, and `munlink-admin`. Railway remains supported as an alternative.
+[Render](docs/DEPLOYMENT.md#render) is the primary configuration. The root [render.yaml](render.yaml) provisions `munlink-api` and the static sites `munlink-zambales` and `munlink-zambales-admin`. Railway remains supported as an alternative.
 
 The current Render blueprint uses free plans. Free instances may sleep, so the notification worker running with the API cannot retry queued messages while the API is suspended. Choose an always-on plan when continuous retries are required.
 

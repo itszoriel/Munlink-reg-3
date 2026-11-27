@@ -835,6 +835,7 @@ def tx_handover_seller(transaction_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_tx_action)")
         return jsonify({'message': 'Handover marked by seller', 'transaction': tx.to_dict()}), 200
     except TransitionError as e:
         return jsonify({'error': str(e)}), 400
@@ -877,6 +878,7 @@ def tx_handover_buyer(transaction_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_tx_action)")
         return jsonify({'message': 'Buyer confirmed receipt', 'transaction': tx.to_dict()}), 200
     except TransitionError as e:
         return jsonify({'error': str(e)}), 400
@@ -920,6 +922,7 @@ def tx_return_buyer(transaction_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_tx_action)")
         return jsonify({'message': 'Return marked by buyer', 'transaction': tx.to_dict()}), 200
     except TransitionError as e:
         return jsonify({'error': str(e)}), 400
@@ -971,6 +974,7 @@ def tx_return_seller(transaction_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_tx_action)")
         return jsonify({'message': 'Return confirmed by seller', 'transaction': tx.to_dict()}), 200
     except TransitionError as e:
         return jsonify({'error': str(e)}), 400
@@ -1022,6 +1026,7 @@ def tx_complete(transaction_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_tx_action)")
         return jsonify({'message': 'Transaction completed', 'transaction': tx.to_dict()}), 200
     except TransitionError as e:
         return jsonify({'error': str(e)}), 400
@@ -1073,6 +1078,7 @@ def tx_dispute(transaction_id: int):
             db.session.commit()
         except Exception:
             db.session.rollback()
+            current_app.logger.exception("Audit log write failed (log_tx_action)")
         return jsonify({'message': 'Transaction disputed', 'transaction': tx.to_dict()}), 200
     except Exception as e:
         db.session.rollback()
@@ -1094,14 +1100,20 @@ def tx_audit(transaction_id: int):
         except Exception:
             uid = user_id
         if uid not in (tx.buyer_id, tx.seller_id):
-            # Still allow if role claim is admin (if present)
-            try:
-                from flask_jwt_extended import get_jwt
-                claims = get_jwt() or {}
-                role = claims.get('role')
-                if role not in ('superadmin', 'municipal_admin'):
-                    return jsonify({'error': 'Forbidden'}), 403
-            except Exception:
+            # Otherwise only a superadmin, or a municipal admin of the item's municipality.
+            from apps.api.utils.admin_scope import load_staff_context
+
+            ctx = load_staff_context()
+            item = db.session.get(Item, tx.item_id)
+            allowed = bool(ctx) and (
+                ctx['is_super']
+                or (
+                    ctx['role_lower'] == 'municipal_admin'
+                    and item is not None
+                    and item.municipality_id == ctx['municipality_id']
+                )
+            )
+            if not allowed:
                 return jsonify({'error': 'Forbidden'}), 403
 
         # Sort by created_at ascending

@@ -94,6 +94,9 @@ class AuditAction:
     # Resident management actions
     RESIDENT_VERIFIED = 'resident_verified'
     RESIDENT_REJECTED = 'resident_rejected'
+    RESIDENT_SUSPENDED = 'resident_suspended'
+    RESIDENT_REACTIVATED = 'resident_reactivated'
+    RESIDENT_DOCS_REPLACED = 'resident_docs_replaced'
 
     # Sensitive data access
     RESIDENT_ID_VIEWED = 'resident_id_viewed'

@@ -14,7 +14,9 @@
 - Restrict credentialed CORS to explicit web and admin origins.
 - Preserve rate limits on authentication, password reset, 2FA, and other abuse-prone routes.
 - Protected frontend calls wait for `isAuthBootstrapped`.
-- Only `access` and `refresh` JWTs authenticate requests; a global verification loader in `apps/api/app.py` rejects every other token type.
+- Only `access` and `refresh` JWTs authenticate requests. The verification loader in `apps/api/app.py` (`apps/api/utils/session_guard.py`) runs on every protected request and rejects other token types, tokens of missing or inactive accounts (`ACCOUNT_DISABLED`), and tokens whose login session has ended (`SESSION_REVOKED`).
+- Access tokens carry their session's `family_id`. Ending a session (logout, password change or reset, refresh-token reuse, resident rejection or suspension) ends its access token immediately, not at expiry. Changing a password signs out every other device; the current one keeps working.
+- Never authorize from the JWT `role` claim. Admin routes resolve the caller with `load_staff_context()` in `apps/api/utils/admin_scope.py`, which reads the current role, `is_active`, and assignment from the database, so a demoted or deactivated admin loses access on their next request.
 - Email-verification links use signed `itsdangerous` tokens bound to the account's email (`apps/api/utils/auth.py`). They are never JWTs and cannot log anyone in.
 - Every login path issues tokens through `_issue_session_tokens` in `apps/api/routes/auth.py`, so refresh tokens are always tracked, rotated, and checked for reuse. Superadmin access tokens last 15 minutes; others last 1 hour.
 - `/refresh` fails closed: if rotation or reuse checks cannot run, no token is issued.

@@ -1,46 +1,52 @@
-# MunLink Region 3 API - Dockerfile
-FROM python:3.12-slim
+# MunLink Zambales API
+# Build stage compiles wheels; the runtime image has no compiler and runs as a
+# non-root user.
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
-    postgresql-client \
+FROM python:3.12-slim AS builder
+WORKDIR /build
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libpq-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements
 COPY requirements.txt .
+RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PORT=5000
 
-# Create upload directories
-RUN mkdir -p uploads/region3/marketplace/items \
-    uploads/region3/profiles \
-    uploads/region3/verification \
-    uploads/region3/generated_docs
+# libpq5: psycopg2 runtime. libmagic1: python-magic file-type checks.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq5 libmagic1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 10001 munlink
 
-# Create startup script
-RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'set -e' >> /start.sh && \
-    echo 'export PYTHONPATH=$PYTHONPATH:/app' >> /start.sh && \
-    echo 'echo "Starting MunLink API..."' >> /start.sh && \
-    echo 'echo "Running database migrations..."' >> /start.sh && \
-    echo 'flask db upgrade heads || echo "Warning: Migration failed or skipped"' >> /start.sh && \
-    echo 'echo "Starting Notification Worker..."' >> /start.sh && \
-    echo 'nohup python scripts/notification_worker.py > /dev/stdout 2>&1 &' >> /start.sh && \
-    echo 'echo "Starting Gunicorn on port ${PORT:-5000}..."' >> /start.sh && \
-    echo 'exec gunicorn app:app --bind 0.0.0.0:${PORT:-5000} --workers 2 --threads 2 --timeout 120 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile -' >> /start.sh && \
-    chmod +x /start.sh
+WORKDIR /app
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
-# Expose port
+COPY --chown=munlink:munlink . .
+RUN mkdir -p uploads/region3 && chown -R munlink:munlink uploads
+
+# Startup:
+# - migrations must succeed, otherwise the container exits and Render keeps the
+#   previous deploy running instead of serving a half-migrated schema;
+# - the notification worker restarts itself if it crashes (pg_cron also calls
+#   /internal/notifications/run, so delivery continues either way);
+# - one gunicorn worker keeps the in-memory rate limits accurate on the single
+#   free instance; threads handle concurrency.
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'set -e' \
+    'echo "Running database migrations..."' \
+    'flask db upgrade heads' \
+    '(while true; do python scripts/notification_worker.py || true; echo "Notification worker exited; restarting in 5s"; sleep 5; done) &' \
+    'exec gunicorn app:app --bind 0.0.0.0:${PORT} --workers 1 --threads 8 --timeout 120 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile -' \
+    > /app/start.sh \
+    && chmod 755 /app/start.sh
+
+USER munlink
 EXPOSE 5000
-
-# Run startup script
-CMD ["/start.sh"]
+CMD ["/app/start.sh"]

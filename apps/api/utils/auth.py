@@ -189,13 +189,13 @@ def municipality_admin_required(municipality_id=None):
 
 
 def roles_required(allowed_roles):
-    """Generic role-based guard using JWT claims for fast checks."""
+    """Role guard. Uses the current database role, never the JWT role claim."""
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             verify_jwt_in_request()
-            claims = get_jwt() or {}
-            role = claims.get('role')
+            user = db.session.get(User, get_jwt_identity())
+            role = user.role if user is not None and user.is_active else None
             if role not in allowed_roles:
                 return jsonify({'error': 'Forbidden', 'code': 'ROLE_MISMATCH'}), 403
             return fn(*args, **kwargs)
@@ -234,7 +234,7 @@ def check_user_access_level(user, required_level):
 
 EMAIL_VERIFICATION_MAX_AGE_SECONDS = 24 * 60 * 60
 _EMAIL_VERIFICATION_SALT = 'munlink-email-verification'
-SESSION_TOKEN_TYPES = ('access', 'refresh')
+from apps.api.utils.session_guard import SESSION_TOKEN_TYPES  # noqa: E402,F401  (re-export)
 
 
 def _email_fingerprint(email: str) -> str:

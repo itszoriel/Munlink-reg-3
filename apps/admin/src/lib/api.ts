@@ -313,6 +313,12 @@ export const userApi = {
   rejectUser: (userId: number, reason: string): Promise<ApiResponse> =>
     apiClient.post(`/api/admin/users/${userId}/reject`, { reason }).then(res => res.data),
 
+  // Suspend / reactivate a resident (reason required, audited server-side)
+  suspendUser: (userId: number, reason: string): Promise<ApiResponse<{ user: any }>> =>
+    apiClient.post(`/api/admin/users/${userId}/suspend`, { reason }).then(res => res.data),
+  reactivateUser: (userId: number, reason: string): Promise<ApiResponse<{ user: any }>> =>
+    apiClient.post(`/api/admin/users/${userId}/reactivate`, { reason }).then(res => res.data),
+
   // Get user statistics
   getUserStats: (): Promise<ApiResponse<{
     total_users: number

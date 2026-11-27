@@ -1,5 +1,5 @@
 """
-MunLink Region III - Flask API Application
+MunLink Zambales - Flask API Application
 Main application entry point
 """
 import sys
@@ -109,9 +109,11 @@ def create_app(config_class=Config):
     # Initialize rate limiter
     if app.config.get('RATELIMIT_ENABLED', True):
         limiter.init_app(app)
-        # Exempt CORS preflight OPTIONS requests from rate limiting
-        limiter.request_filter(lambda: request.method == 'OPTIONS')
-        app.logger.info("Rate limiting enabled (OPTIONS preflight exempt)")
+        # Exempt CORS preflight and health checks (keep-alive pings) from rate limiting
+        limiter.request_filter(
+            lambda: request.method == 'OPTIONS' or request.path in ('/health', '/health/db')
+        )
+        app.logger.info("Rate limiting enabled (OPTIONS preflight and health checks exempt)")
     else:
         app.logger.warning("Rate limiting is DISABLED - not recommended for production")
     
@@ -219,16 +221,23 @@ def create_app(config_class=Config):
         jti = jwt_payload['jti']
         return TokenBlacklist.is_token_revoked(jti)
 
-    # Only real session tokens may authenticate requests. Anything else signed with
-    # the JWT key (e.g. old email-verification JWTs) is rejected everywhere.
+    # Every protected request: only real session tokens (not e.g. old
+    # email-verification JWTs), for an existing active account, whose session
+    # has not been ended (logout, password change/reset, suspension).
     @jwt.token_verification_loader
-    def only_session_tokens(jwt_header, jwt_payload):
-        from apps.api.utils.auth import SESSION_TOKEN_TYPES
-        return jwt_payload.get('type') in SESSION_TOKEN_TYPES
+    def verify_session_token(jwt_header, jwt_payload):
+        from flask import g
+        from apps.api.utils.session_guard import session_rejection_code
+        code = session_rejection_code(jwt_payload)
+        g.session_rejection_code = code
+        return code is None
 
     @jwt.token_verification_failed_loader
-    def reject_non_session_token(jwt_header, jwt_payload):
-        return jsonify({'error': 'Invalid token', 'code': 'INVALID_TOKEN_TYPE'}), 401
+    def reject_session_token(jwt_header, jwt_payload):
+        from flask import g
+        from apps.api.utils.session_guard import REJECTION_MESSAGES
+        code = g.get('session_rejection_code') or 'INVALID_TOKEN'
+        return jsonify({'error': REJECTION_MESSAGES.get(code, 'Invalid token'), 'code': code}), 401
     
     # Register blueprints
     from apps.api.routes import (
@@ -245,6 +254,7 @@ def create_app(config_class=Config):
     )
     from apps.api.routes.admin import admin_bp
     from apps.api.routes.superadmin import superadmin_bp
+    from apps.api.routes.internal import internal_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(provinces_bp)
@@ -258,6 +268,7 @@ def create_app(config_class=Config):
     app.register_blueprint(stripe_webhook_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(superadmin_bp)
+    app.register_blueprint(internal_bp)
 
     # Health check endpoint
     @app.route('/health', methods=['GET'])
@@ -265,50 +276,35 @@ def create_app(config_class=Config):
         """Health check endpoint for monitoring"""
         return jsonify({
             'status': 'ok',
-            'service': 'MunLink Region III API',
+            'service': 'MunLink Zambales API',
             'version': '1.0.0'
         }), 200
     
-    # Database health check endpoint
+    # Database health check. The Supabase pg_cron keep-alive and the external
+    # uptime monitor call this every few minutes: each call wakes the Render
+    # container and runs a real query, so neither Render nor Supabase goes idle.
     @app.route('/health/db', methods=['GET'])
     def db_health_check():
-        """Health check endpoint that tests database connectivity"""
-        import time
-        start = time.time()
+        """Return only ok/error; connection details stay in the server log."""
         try:
-            # Test database connection with a simple query
             from sqlalchemy import text
-            result = db.session.execute(text('SELECT 1'))
-            result.fetchone()
+            db.session.execute(text('SELECT 1')).fetchone()
             db.session.rollback()  # Don't leave transaction open
-            elapsed = time.time() - start
-            return jsonify({
-                'status': 'healthy',
-                'database': 'connected',
-                'latency_ms': round(elapsed * 1000, 2),
-                'service': 'MunLink Region III API'
-            }), 200
+            return jsonify({'status': 'ok'}), 200
         except Exception as e:
-            elapsed = time.time() - start
-            app.logger.error(f"Database health check failed: {e}")
-            return jsonify({
-                'status': 'unhealthy',
-                'database': 'disconnected',
-                'latency_ms': round(elapsed * 1000, 2),
-                'error': str(e)[:200]
-            }), 503
+            db.session.rollback()
+            app.logger.error("Database health check failed: %s", e)
+            return jsonify({'status': 'error'}), 503
     
     # Root endpoint
     @app.route('/', methods=['GET'])
     def root():
         """API root endpoint"""
         return jsonify({
-            'message': 'MunLink Region III API',
+            'message': 'MunLink Zambales API',
             'version': '1.0.0',
-            'region': 'Central Luzon (Region III)',
-            'provinces': 7,
-            'municipalities': 129,
-            'docs': '/api/docs'
+            'province': 'Zambales',
+            'health': '/health',
         }), 200
     
     # Public verify route (for QR codes)
