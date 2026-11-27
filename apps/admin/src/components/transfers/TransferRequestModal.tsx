@@ -25,8 +25,8 @@ export default function TransferRequestModal({ open, onClose, transfer }: { open
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white w-full sm:w-[95%] sm:max-w-2xl max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col" tabIndex={-1}>
+      <div className="absolute inset-0 bg-black/50 " onClick={onClose} />
+      <div className="relative bg-white w-full sm:w-[95%] sm:max-w-2xl max-h-[90vh] overflow-hidden rounded-t-lg sm:rounded-lg shadow-lg flex flex-col" tabIndex={-1}>
         <div className="flex-shrink-0 px-4 py-3 sm:px-5 sm:py-4 border-b flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold">Transfer Details</h3>

@@ -53,9 +53,9 @@ export default function Reports() {
 
   const metrics = useMemo(() => ([
     { label: 'Total Users', value: String(report?.users?.total_users ?? 0), change: '+0%', trend: 'up', icon: User2Icon, color: 'ocean' },
-    { label: 'Active Listings', value: String(report?.marketplace?.total_items ?? 0), change: '+0%', trend: 'up', icon: ShoppingBasketIcon, color: 'forest' },
-    { label: 'Documents Issued', value: String((report?.documents?.total_requests ?? report?.documents?.issued_total) ?? 0), change: '+0%', trend: 'up', icon: LucidePaperclip, color: 'purple' },
-    { label: 'Active Announcements', value: String(report?.announcements?.active_announcements ?? 0), change: '+0%', trend: 'up', icon: BellIcon, color: 'sunset' },
+    { label: 'Active Listings', value: String(report?.marketplace?.total_items ?? 0), change: '+0%', trend: 'up', icon: ShoppingBasketIcon, color: 'ocean' },
+    { label: 'Documents Issued', value: String((report?.documents?.total_requests ?? report?.documents?.issued_total) ?? 0), change: '+0%', trend: 'up', icon: LucidePaperclip, color: 'ocean' },
+    { label: 'Active Announcements', value: String(report?.announcements?.active_announcements ?? 0), change: '+0%', trend: 'up', icon: BellIcon, color: 'ocean' },
   ] as const), [report])
 
   const documents = (report?.documents?.top_requested as any[]) || []
@@ -70,7 +70,7 @@ export default function Reports() {
         </div>
         {tab === 'overview' && (
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <select name="reportRange" id="report-range" aria-label="Select report date range" value={range} onChange={(e)=> setRange(e.target.value)} className="px-4 py-2 bg-white/70 backdrop-blur-xl border border-neutral-200 rounded-xl font-medium">
+            <select name="reportRange" id="report-range" aria-label="Select report date range" value={range} onChange={(e)=> setRange(e.target.value)} className="px-4 py-2 bg-white border border-neutral-200 rounded-lg font-medium">
               <option value="last_7_days">Last 7 days</option>
               <option value="last_30_days">Last 30 days</option>
               <option value="last_90_days">Last 90 days</option>
@@ -82,7 +82,7 @@ export default function Reports() {
 
       {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
 
-      <div className="mb-6 inline-flex rounded-xl border overflow-hidden">
+      <div className="mb-6 inline-flex rounded-lg border overflow-hidden">
         {(['overview','export','audit'] as const).map((t) => (
           <button key={t} onClick={()=> setTab(t)} className={`px-4 py-2 text-sm ${tab===t?'bg-ocean-600 text-white':'bg-white hover:bg-neutral-50'}`}>{t==='overview'?'Overview':t==='export'?'Export Data':'Audit Logs'}</button>
         ))}
@@ -93,17 +93,17 @@ export default function Reports() {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-8">
             {((loading && !hasLoadedOnce) ? [...Array(4)] : metrics).map((metric: any, i: number) => (
-              <div key={i} className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-white/50 shadow-lg hover:scale-105 transition-transform">
+              <div key={i} className="bg-white rounded-lg p-4 sm:p-6 border border-white/50 shadow-lg transition-transform">
                 {loading && !hasLoadedOnce ? (
                   <>
-                    <div className="h-12 w-12 skeleton rounded-xl mb-4" />
+                    <div className="h-12 w-12 skeleton rounded-lg mb-4" />
                     <div className="h-6 w-24 skeleton rounded mb-2" />
                     <div className="h-3 w-20 skeleton rounded" />
                   </>
                 ) : (
                   <>
                     <div className="flex items-start justify-between mb-4">
-                      <div className={`w-12 h-12 bg-${metric.color}-100 rounded-xl flex items-center justify-center text-2xl`}>
+                      <div className={`w-12 h-12 bg-${metric.color}-100 rounded-lg flex items-center justify-center text-2xl`}>
                         {(() => {
                           const Icon = metric.icon
                           return <Icon className="w-6 h-6 text-neutral-900" />
@@ -120,14 +120,14 @@ export default function Reports() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="overflow-hidden rounded-3xl shadow-xl border border-white/50 bg-gradient-to-br from-ocean-600 via-ocean-500 to-forest-600">
-              <div className="px-6 py-5 border-b border-white/20">
-                <h2 className="text-xl font-bold text-white">User Growth</h2>
-                <p className="text-sm text-white/80 mt-1">New registrations over time</p>
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div className="px-6 py-5 border-b border-slate-200">
+                <h2 className="text-xl font-bold text-slate-900">User Growth</h2>
+                <p className="text-sm text-slate-600 mt-1">New registrations over time</p>
               </div>
-              <div className="p-6 bg-white/10">
+              <div className="p-6">
                 {growth.length === 0 ? (
-                  <div className="h-64 rounded-2xl flex items-center justify-center text-sm text-white/80">No data</div>
+                  <div className="h-64 rounded-lg flex items-center justify-center text-sm text-slate-600">No data</div>
                 ) : (
                   <div className="h-64 w-full">
                     {(() => {
@@ -147,25 +147,25 @@ export default function Reports() {
                         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                           <defs>
                             <linearGradient id="growth-fill" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
-                              <stop offset="100%" stopColor="rgba(255,255,255,0.05)" />
+                              <stop offset="0%" stopColor="rgba(36,61,107,0.12)" />
+                              <stop offset="100%" stopColor="rgba(36,61,107,0.12)" />
                             </linearGradient>
                           </defs>
                           {yTicks.map((t, i) => (
                             <g key={i}>
-                              <line x1={padding} y1={scaleY(t)} x2={width - padding} y2={scaleY(t)} stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-                              <text x={8} y={scaleY(t) + 4} fontSize="10" fill="rgba(255,255,255,0.7)">{t}</text>
+                              <line x1={padding} y1={scaleY(t)} x2={width - padding} y2={scaleY(t)} stroke="#e2e8f0" strokeWidth="1" />
+                              <text x={8} y={scaleY(t) + 4} fontSize="10" fill="#64748b">{t}</text>
                             </g>
                           ))}
                           <path d={areaD} fill="url(#growth-fill)" />
-                          <path d={pathD} fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+                          <path d={pathD} fill="none" stroke="#243d6b" strokeWidth="2.5" strokeLinecap="round" />
                           {points.map((p, i) => (
-                            <circle key={i} cx={scaleX(p.x)} cy={scaleY(p.y)} r="3" fill="#fff" />
+                            <circle key={i} cx={scaleX(p.x)} cy={scaleY(p.y)} r="3" fill="#243d6b" />
                           ))}
                           {points.length > 0 && (
                             <>
-                              <text x={padding} y={height - 4} fontSize="10" fill="rgba(255,255,255,0.85)">{points[0].label}</text>
-                              <text x={width - padding - 40} y={height - 4} fontSize="10" fill="rgba(255,255,255,0.85)" textAnchor="end">{points[points.length - 1].label}</text>
+                              <text x={padding} y={height - 4} fontSize="10" fill="#64748b">{points[0].label}</text>
+                              <text x={width - padding - 40} y={height - 4} fontSize="10" fill="#64748b" textAnchor="end">{points[points.length - 1].label}</text>
                             </>
                           )}
                         </svg>
@@ -175,15 +175,15 @@ export default function Reports() {
                 )}
               </div>
             </div>
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-md border border-white/50 overflow-hidden">
               <div className="px-6 py-5 border-b border-neutral-200"><h2 className="text-xl font-bold text-neutral-900">Marketplace Activity</h2><p className="text-sm text-neutral-600 mt-1">Transaction type breakdown</p></div>
               <div className="p-6 space-y-4">
                 {(() => {
                   const stats = (report?.marketplace || {}) as any
                   const total = Math.max(1, Number(stats.total_items || 0))
                   const buckets = [
-                    { label: 'Pending', value: Number(stats.pending_items || 0), color: 'sunset' },
-                    { label: 'Approved', value: Number(stats.approved_items || 0), color: 'forest' },
+                    { label: 'Pending', value: Number(stats.pending_items || 0), color: 'ocean' },
+                    { label: 'Approved', value: Number(stats.approved_items || 0), color: 'ocean' },
                     { label: 'Rejected', value: Number(stats.rejected_items || 0), color: 'red' },
                   ]
                   return buckets.map((item, i) => {
@@ -191,7 +191,7 @@ export default function Reports() {
                     return (
                       <div key={i}>
                         <div className="flex items-center justify-between mb-2"><span className="text-sm font-medium text-neutral-700">{item.label}</span><span className="text-sm font-bold text-neutral-900">{item.value} ({pct}%)</span></div>
-                        <div className="h-3 bg-neutral-100 rounded-full overflow-hidden"><div className={`h-full bg-gradient-to-r from-${item.color}-400 to-${item.color}-600 rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} /></div>
+                        <div className="h-3 bg-neutral-100 rounded-full overflow-hidden"><div className={`h-full bg-${item.color}-600 rounded-full transition-all duration-1000`} style={{ width: `${pct}%` }} /></div>
                       </div>
                     )
                   })
@@ -200,21 +200,21 @@ export default function Reports() {
             </div>
           </div>
 
-          <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-hidden mb-8">
+          <div className="bg-white rounded-lg shadow-md border border-white/50 overflow-hidden mb-8">
             <div className="px-6 py-5 border-b border-neutral-200"><h2 className="text-xl font-bold text-neutral-900">Document Requests</h2><p className="text-sm text-neutral-600 mt-1">Most requested documents</p></div>
             <div className="p-6">
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[...Array(3)].map((_,i)=> (<div key={i} className="h-28 skeleton rounded-2xl" />))}
+                  {[...Array(3)].map((_,i)=> (<div key={i} className="h-28 skeleton rounded-lg" />))}
                 </div>
               ) : documents.length === 0 ? (
                 <div className="text-sm text-neutral-600">No document requests in the selected range.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {documents.map((doc: any) => (
-                    <div key={doc.name} className="bg-neutral-50 rounded-2xl p-4 hover:bg-ocean-50 transition-colors">
+                    <div key={doc.name} className="bg-neutral-50 rounded-lg p-4 hover:bg-ocean-50 transition-colors">
                       <div className="flex items-start justify-between mb-3">
-                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shadow-sm">
+                        <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl shadow-sm">
                           <FileText className="w-6 h-6 text-ocean-700" />
                         </div>
                         <span className="text-2xl font-bold text-neutral-900">{doc.count}</span>

@@ -1,24 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Button, Select, getBestRegion3Seal } from '@munlink/ui'
 import {
   AlertTriangle,
-  ArrowRight,
-  BookOpen,
-  Building2,
-  CalendarDays,
-  ClipboardList,
   FileSearch,
   Gift,
-  Hand,
-  Landmark,
-  MapPin,
   Megaphone,
-  ShieldCheck,
   ShoppingBag,
-  Sparkles,
   Users,
 } from 'lucide-react'
 import { adminApi, userApi, issueApi, marketplaceApi, announcementApi } from '../lib/api'
@@ -28,8 +17,6 @@ import { useCachedFetch } from '../lib/useCachedFetch'
 import { CACHE_KEYS } from '../lib/dataStore'
 import { getMunicipalityVisual } from '../lib/municipalityVisuals'
 
-const HERO_FALLBACK_IMAGE = '/assets/about.jpg'
-
 type MetricTone = 'sky' | 'emerald' | 'amber' | 'violet' | 'rose'
 type ActivityTone = 'ocean' | 'forest' | 'sunset' | 'purple' | 'red'
 type ActivityIconCode = 'residents' | 'concern' | 'marketplace' | 'announcement'
@@ -38,7 +25,6 @@ export default function Dashboard() {
   const user = useAdminStore((s) => s.user)
   const isAuthBootstrapped = useAdminStore((s) => s.isAuthBootstrapped)
   const navigate = useNavigate()
-  const [heroImage, setHeroImage] = useState(HERO_FALLBACK_IMAGE)
 
   const municipalityName = (user as any)?.admin_municipality_name || (user as any)?.municipality_name || 'Zambales'
   const municipalitySlug = (user as any)?.admin_municipality_slug || (user as any)?.municipality_slug
@@ -57,10 +43,6 @@ export default function Dashboard() {
     municipality: municipalitySlug || municipalityName,
     province: 'Zambales',
   })
-
-  useEffect(() => {
-    setHeroImage(municipalityVisual.landmark || HERO_FALLBACK_IMAGE)
-  }, [municipalityVisual.landmark])
 
   const { data: dashData, loading: dashLoading, refetch: refetchDash } = useCachedFetch(
     CACHE_KEYS.DASHBOARD,
@@ -120,15 +102,15 @@ export default function Dashboard() {
   const gradientClass = (color: 'ocean' | 'forest' | 'sunset' | 'red') => {
     switch (color) {
       case 'ocean':
-        return 'from-ocean-400 to-ocean-600'
+        return 'bg-ocean-600'
       case 'forest':
-        return 'from-forest-400 to-forest-600'
+        return 'bg-forest-600'
       case 'sunset':
-        return 'from-sunset-400 to-sunset-600'
+        return 'bg-sunset-600'
       case 'red':
-        return 'from-red-400 to-red-600'
+        return 'bg-red-600'
       default:
-        return 'from-neutral-400 to-neutral-600'
+        return 'bg-neutral-600'
     }
   }
 
@@ -166,8 +148,8 @@ export default function Dashboard() {
 
   const overview = [
     { label: 'Verifications', value: verifications7, max: Math.max(10, verifications7), color: 'ocean' as const },
-    { label: 'Documents', value: documents7, max: Math.max(10, documents7 || 10), color: 'forest' as const },
-    { label: 'Marketplace', value: marketplace7, max: Math.max(10, marketplace7), color: 'sunset' as const },
+    { label: 'Documents', value: documents7, max: Math.max(10, documents7 || 10), color: 'ocean' as const },
+    { label: 'Marketplace', value: marketplace7, max: Math.max(10, marketplace7), color: 'ocean' as const },
     { label: 'Community Concerns', value: problems7, max: Math.max(10, problems7), color: 'red' as const },
   ]
 
@@ -282,121 +264,27 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${municipalityVisual.theme.pageGradient}`}>
-      <div className="space-y-8">
-        <motion.section
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-[32px] border border-white/60 shadow-2xl"
-        >
-          <div className="absolute inset-0">
-            <img
-              src={heroImage}
-              alt={municipalityVisual.landmarkLabel}
-              className="h-full w-full object-cover brightness-[0.5] contrast-[1.12] saturate-[1.04]"
-              onError={(event) => {
-                if (event.currentTarget.src.endsWith(HERO_FALLBACK_IMAGE)) return
-                setHeroImage(HERO_FALLBACK_IMAGE)
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/78 to-slate-950/58" />
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/30 via-transparent to-slate-950/30" />
-          </div>
-
-          <div className="relative z-10 p-6 text-white md:p-8 lg:p-9">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)] lg:items-end">
-              <div className="max-w-3xl rounded-[24px] border border-white/10 bg-slate-950/72 p-5 text-white shadow-[0_24px_70px_rgba(2,6,23,0.5)] md:p-6">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold text-white backdrop-blur ${municipalityVisual.theme.badgeClass}`}>
-                    <MapPin className="h-4 w-4" />
-                    {municipalityName}
-                  </span>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/72 px-4 py-2 text-sm font-medium text-white">
-                    <Building2 className="h-4 w-4" />
-                    Municipal admin workspace
-                  </span>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/72 px-4 py-2 text-sm font-medium text-white">
-                    <CalendarDays className="h-4 w-4" />
-                    {dateStr}
-                  </span>
-                  {municipalityVisual.isCapital && (
-                    <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-100/90 px-4 py-2 text-sm font-semibold text-amber-900">
-                      <Landmark className="h-4 w-4" />
-                      Capital of Zambales
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-6 flex items-start gap-4">
-                  <div className="hidden h-14 w-14 rounded-2xl border border-white/12 bg-slate-900/75 text-white shadow-lg md:flex md:items-center md:justify-center">
-                    <Hand className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white [text-shadow:0_6px_20px_rgba(2,6,23,0.5)] md:text-4xl lg:text-5xl">
-                      Welcome back, {adminName}
-                    </h1>
-                    <p className="mt-3 max-w-xl text-base leading-7 text-white md:text-lg">
-                      You are managing the <span className="font-semibold text-white">{municipalityName}</span> portal. Review residents, announcements, community concerns, and programs from one municipality-aware workspace.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/residents')}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-300/20 bg-sky-500/22 px-5 py-3 text-base font-semibold text-white shadow-lg transition hover:bg-sky-500/30"
-                  >
-                    <FileSearch className="h-5 w-5 text-white" />
-                    Review residents
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/announcements')}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-slate-900/72 px-5 py-3 text-base font-semibold text-white transition hover:bg-slate-900/84"
-                  >
-                    <Megaphone className="h-5 w-5" />
-                    Manage announcements
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-[24px] border border-white/10 bg-slate-950/80 p-4 text-white shadow-[0_24px_70px_rgba(2,6,23,0.42)]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Municipality fact
-                    </div>
-                    <h2 className="mt-3 text-2xl font-bold text-white">{municipalityName}</h2>
-                    <p className="mt-2 text-sm leading-6 text-white">{municipalityVisual.spotlight}</p>
-                  </div>
-                  <img
-                    src={municipalitySeal.src}
-                    alt={municipalitySeal.alt}
-                    className="h-16 w-16 rounded-2xl border border-white/15 bg-slate-900/78 object-contain p-2 shadow-sm"
-                  />
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/82 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white">Quick data</div>
-                  <p className="mt-2 text-sm leading-6 text-white">
-                    {municipalityVisual.operationsNote}
-                  </p>
-                  <a
-                    href={municipalityVisual.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-flex text-xs font-medium text-sky-100 underline decoration-white/40 underline-offset-4 transition hover:text-white"
-                  >
-                    {municipalityVisual.sourceLabel}
-                  </a>
-                </div>
-              </div>
+    <div className={`min-h-screen bg-[#f6f7f9]`}>
+      <div className="space-y-6">
+        <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-end md:justify-between">
+          <div className="flex items-center gap-4">
+            <img src={municipalitySeal.src} alt={municipalitySeal.alt} className="h-14 w-14 rounded-full border border-slate-200 bg-white object-contain p-1" />
+            <div>
+              <p className="text-sm text-slate-600">
+                {municipalityName}{municipalityVisual.isCapital ? ' · Capital of Zambales' : ''} · {dateStr}
+              </p>
+              <h1 className="mt-0.5 text-2xl font-semibold text-slate-900">Good day, {adminName}</h1>
             </div>
           </div>
-        </motion.section>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => navigate('/announcements')} leadingIcon={<Megaphone className="h-4 w-4" aria-hidden="true" />}>
+              Announcements
+            </Button>
+            <Button onClick={() => navigate('/residents')} leadingIcon={<FileSearch className="h-4 w-4" aria-hidden="true" />}>
+              Review residents
+            </Button>
+          </div>
+        </header>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {stats.map((item) => (
@@ -410,66 +298,6 @@ export default function Dashboard() {
               onClick={item.onClick}
             />
           ))}
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-          <SectionFrame
-            title="How to use this portal"
-            subtitle="A quick guide for first-time municipal admins"
-            actions={
-              <Button size="sm" onClick={() => navigate('/how-to-use')} trailingIcon={<ArrowRight className="h-4 w-4" />}>
-                Open full guide
-              </Button>
-            }
-          >
-            <div className="grid gap-4 md:grid-cols-3">
-              <QuickGuideStep
-                icon={<ClipboardList className="h-5 w-5" />}
-                title="Start with the top cards"
-                text="Use the queue counts first, then open the page that matches the next task you need to finish."
-              />
-              <QuickGuideStep
-                icon={<ShieldCheck className="h-5 w-5" />}
-                title="Clear one queue at a time"
-                text="Residents, concerns, announcements, and programs each have their own working page so your review stays focused."
-              />
-              <QuickGuideStep
-                icon={<BookOpen className="h-5 w-5" />}
-                title="Use the guide when unsure"
-                text="Open the help page for a walkthrough of the screens that are available in the municipal portal."
-              />
-            </div>
-          </SectionFrame>
-
-          <div className={`rounded-[28px] border p-6 shadow-sm ${municipalityVisual.theme.panelClass}`}>
-            <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${municipalityVisual.theme.iconClass}`}>
-              <Landmark className="h-6 w-6" />
-            </div>
-            <h2 className="mt-4 text-2xl font-bold text-slate-900">Quick fact about your municipality</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              This panel highlights a verified local fact about {municipalityName} so the admin workspace stays grounded in the municipality it serves.
-            </p>
-            <div className="mt-5 rounded-2xl border border-white/70 bg-white/80 p-4">
-              <div className="text-sm font-semibold text-slate-900">{municipalityVisual.landmarkLabel}</div>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{municipalityVisual.fact}</p>
-              <a
-                href={municipalityVisual.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-flex text-xs font-medium text-ocean-700 underline decoration-ocean-300 underline-offset-4 transition hover:text-ocean-800"
-              >
-                {municipalityVisual.sourceLabel}
-              </a>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={() => navigate('/announcements')} trailingIcon={<ArrowRight className="h-4 w-4" />}>
-                Open announcements
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/reports')}>
-                View reports
-              </Button>
-            </div>
-          </div>
         </section>
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -504,10 +332,10 @@ export default function Dashboard() {
                     type="button"
                     key={`${entry.id}-${index}`}
                     onClick={() => navigate('/announcements')}
-                    className="w-full rounded-2xl border border-slate-200 bg-white/85 p-4 text-left transition hover:border-slate-300 hover:bg-white"
+                    className="w-full rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-slate-300 hover:bg-white"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-violet-700">
+                      <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
                         <Megaphone className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -523,8 +351,8 @@ export default function Dashboard() {
                 </Button>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-8 text-center">
-                <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-violet-700 shadow-sm">
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/80 p-8 text-center">
+                <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-lg bg-white text-violet-700 shadow-sm">
                   <Megaphone className="h-8 w-8" aria-hidden="true" />
                 </div>
                 <h3 className="mt-4 font-bold text-slate-900">No announcements yet</h3>
@@ -538,8 +366,8 @@ export default function Dashboard() {
           <SectionFrame title="Recent Activity" subtitle="Latest municipal actions across your queues">
             <div className="space-y-3">
               {recentActivity.map((entry, index) => (
-                <div key={index} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/90 p-3 transition hover:border-slate-200 hover:bg-slate-100">
-                  <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${activityToneIconClass(entry.color)}`}>
+                <div key={index} className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/90 p-3 transition hover:border-slate-200 hover:bg-slate-100">
+                  <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${activityToneIconClass(entry.color)}`}>
                     <ActivityIcon code={entry.icon} className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -549,7 +377,7 @@ export default function Dashboard() {
                 </div>
               ))}
               {recentActivity.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center text-sm text-slate-500">
+                <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center text-sm text-slate-500">
                   {loading ? 'Loading recent activity...' : 'No recent activity.'}
                 </div>
               )}
@@ -560,7 +388,7 @@ export default function Dashboard() {
             title="Activity Overview"
             subtitle="Quick pulse of the last 7 days"
             actions={(
-              <Select name="activityRange" aria-label="Select activity date range" className="min-w-[10rem] rounded-xl border-slate-200 bg-white text-sm" onChange={() => {}}>
+              <Select name="activityRange" aria-label="Select activity date range" className="min-w-[10rem] rounded-lg border-slate-200 bg-white text-sm" onChange={() => {}}>
                 <option>Last 7 days</option>
                 <option>Last 30 days</option>
                 <option>Last 90 days</option>
@@ -578,7 +406,7 @@ export default function Dashboard() {
                     </div>
                     <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className={`h-full rounded-full bg-gradient-to-r ${gradientClass(item.color)} transition-all duration-700 ease-out shadow-sm`}
+                        className={`h-full rounded-full ${gradientClass(item.color)} transition-all duration-700 ease-out shadow-sm`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -589,18 +417,6 @@ export default function Dashboard() {
           </SectionFrame>
         </section>
       </div>
-    </div>
-  )
-}
-
-function QuickGuideStep({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
-  return (
-    <div className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-5">
-      <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[color:var(--admin-accent-600)] shadow-sm">
-        {icon}
-      </div>
-      <h3 className="mt-4 text-sm font-bold text-slate-900">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
     </div>
   )
 }
@@ -619,10 +435,10 @@ function SectionFrame({
   className?: string
 }) {
   return (
-    <section className={`overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-sm backdrop-blur ${className || ''}`.trim()}>
-      <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 md:flex-row md:items-start md:justify-between md:px-6">
+    <section className={`overflow-hidden rounded-lg border border-slate-200 bg-white ${className || ''}`.trim()}>
+      <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           {subtitle ? <p className="mt-1 text-sm text-slate-600">{subtitle}</p> : null}
         </div>
         {actions ? <div className="shrink-0">{actions}</div> : null}
@@ -653,15 +469,15 @@ function DashboardMetricCard({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-[28px] border p-5 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg ${toneStyles.card}`}
+      className={`w-full rounded-lg border p-4 text-left transition-colors ${toneStyles.card}`}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-slate-600">{title}</p>
-          <p className="mt-3 text-4xl font-bold tracking-tight text-slate-950">{value.toLocaleString()}</p>
-          <p className={`mt-3 text-sm ${toneStyles.hint}`}>{hint}</p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{value.toLocaleString()}</p>
+          <p className={`mt-1 text-sm ${toneStyles.hint}`}>{hint}</p>
         </div>
-        <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${toneStyles.icon}`}>
+        <div className={`inline-flex h-9 w-9 items-center justify-center rounded-md ${toneStyles.icon}`}>
           {icon}
         </div>
       </div>
@@ -676,52 +492,14 @@ function ActivityIcon({ code, className }: { code: ActivityIconCode; className?:
   return <Users className={className || 'h-5 w-5'} aria-hidden="true" />
 }
 
-function metricToneStyles(tone: MetricTone) {
-  switch (tone) {
-    case 'emerald':
-      return {
-        card: 'border-emerald-100/80 bg-white/92 hover:border-emerald-200',
-        icon: 'bg-emerald-100 text-emerald-700',
-        hint: 'text-emerald-700/85',
-      }
-    case 'amber':
-      return {
-        card: 'border-amber-100/80 bg-white/92 hover:border-amber-200',
-        icon: 'bg-amber-100 text-amber-700',
-        hint: 'text-amber-700/85',
-      }
-    case 'violet':
-      return {
-        card: 'border-violet-100/80 bg-white/92 hover:border-violet-200',
-        icon: 'bg-violet-100 text-violet-700',
-        hint: 'text-violet-700/85',
-      }
-    case 'rose':
-      return {
-        card: 'border-rose-100/80 bg-white/92 hover:border-rose-200',
-        icon: 'bg-rose-100 text-rose-700',
-        hint: 'text-rose-700/85',
-      }
-    default:
-      return {
-        card: 'border-sky-100/80 bg-white/92 hover:border-sky-200',
-        icon: 'bg-sky-100 text-sky-700',
-        hint: 'text-sky-700/85',
-      }
+function metricToneStyles(_tone: MetricTone) {
+  return {
+    card: 'border-slate-200 bg-white hover:border-navy-300',
+    icon: 'bg-navy-50 text-navy-700',
+    hint: 'text-slate-600',
   }
 }
 
-function activityToneIconClass(tone: ActivityTone) {
-  switch (tone) {
-    case 'forest':
-      return 'bg-emerald-100 text-emerald-700'
-    case 'sunset':
-      return 'bg-amber-100 text-amber-700'
-    case 'purple':
-      return 'bg-violet-100 text-violet-700'
-    case 'red':
-      return 'bg-rose-100 text-rose-700'
-    default:
-      return 'bg-sky-100 text-sky-700'
-  }
+function activityToneIconClass(_tone: ActivityTone) {
+  return 'bg-slate-100 text-slate-700'
 }

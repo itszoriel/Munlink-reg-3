@@ -52,7 +52,7 @@ export function ViewIDReasonModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+      <div className="bg-white rounded-lg shadow-md max-w-md w-full mx-4 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Verify Access - {docTypeLabels[docType]}
         </h3>

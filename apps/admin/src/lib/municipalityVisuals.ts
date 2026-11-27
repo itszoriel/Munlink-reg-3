@@ -19,37 +19,20 @@ export type MunicipalityVisual = {
   theme: MunicipalityTheme
 }
 
+const civic: MunicipalityTheme = {
+  pageGradient: '',
+  badgeClass: 'border-white/30 bg-slate-950/40 text-white',
+  panelClass: 'border-slate-200 bg-white',
+  iconClass: 'bg-navy-50 text-navy-700',
+}
+
+// One civic look for every municipality; the landmark photo is what sets them apart.
 const themes = {
-  coast: {
-    pageGradient: 'from-sky-50 via-white to-cyan-100/70',
-    badgeClass: 'border-sky-300/30 bg-slate-950/68 text-white shadow-lg shadow-slate-950/30',
-    panelClass: 'border-sky-100/80 bg-gradient-to-br from-sky-50 via-white to-cyan-50',
-    iconClass: 'bg-sky-100 text-sky-700',
-  },
-  civic: {
-    pageGradient: 'from-ocean-50 via-white to-emerald-100/50',
-    badgeClass: 'border-ocean-300/30 bg-slate-950/68 text-white shadow-lg shadow-slate-950/30',
-    panelClass: 'border-ocean-100/80 bg-gradient-to-br from-ocean-50 via-white to-emerald-50',
-    iconClass: 'bg-ocean-100 text-ocean-700',
-  },
-  forest: {
-    pageGradient: 'from-emerald-50 via-white to-lime-100/50',
-    badgeClass: 'border-emerald-300/30 bg-slate-950/68 text-white shadow-lg shadow-slate-950/30',
-    panelClass: 'border-emerald-100/80 bg-gradient-to-br from-emerald-50 via-white to-lime-50',
-    iconClass: 'bg-emerald-100 text-emerald-700',
-  },
-  sunset: {
-    pageGradient: 'from-amber-50 via-white to-orange-100/60',
-    badgeClass: 'border-amber-300/30 bg-slate-950/68 text-white shadow-lg shadow-slate-950/30',
-    panelClass: 'border-amber-100/80 bg-gradient-to-br from-amber-50 via-white to-orange-50',
-    iconClass: 'bg-amber-100 text-amber-700',
-  },
-  royal: {
-    pageGradient: 'from-indigo-50 via-white to-violet-100/60',
-    badgeClass: 'border-indigo-300/30 bg-slate-950/68 text-white shadow-lg shadow-slate-950/30',
-    panelClass: 'border-indigo-100/80 bg-gradient-to-br from-indigo-50 via-white to-violet-50',
-    iconClass: 'bg-indigo-100 text-indigo-700',
-  },
+  coast: civic,
+  civic,
+  forest: civic,
+  sunset: civic,
+  royal: civic,
 } satisfies Record<string, MunicipalityTheme>
 
 export const ZAMBALES_MUNICIPALITY_VISUALS: MunicipalityVisual[] = [

@@ -124,9 +124,9 @@ export default function Programs() {
   
   const stats = useMemo(() => ([
     { icon: '📋', label: 'Active Programs', value: String(activeCount), color: 'ocean' },
-    { icon: '👥', label: 'Total Beneficiaries', value: beneficiariesTotal !== null ? beneficiariesTotal.toLocaleString() : '0', color: 'forest' },
-    { icon: '⏳', label: 'Pending Applications', value: String(pendingApplicationsCount), color: 'sunset' },
-    { icon: '✅', label: 'Approved This Month', value: String(approvedThisMonthCount), color: 'purple' },
+    { icon: '👥', label: 'Total Beneficiaries', value: beneficiariesTotal !== null ? beneficiariesTotal.toLocaleString() : '0', color: 'ocean' },
+    { icon: '⏳', label: 'Pending Applications', value: String(pendingApplicationsCount), color: 'ocean' },
+    { icon: '✅', label: 'Approved This Month', value: String(approvedThisMonthCount), color: 'ocean' },
   ]), [activeCount, beneficiariesTotal, pendingApplicationsCount, approvedThisMonthCount])
 
   const openCreate = () => setCreateOpen(true)
@@ -319,7 +319,7 @@ export default function Programs() {
           <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mb-2">Programs with Benefits</h1>
           <p className="text-neutral-600">Manage government assistance and community programs</p>
         </div>
-        <button onClick={openCreate} className="px-4 py-2 sm:px-6 sm:py-3 bg-forest-gradient hover:scale-105 text-white rounded-xl font-semibold transition-all shadow-lg hidden sm:flex items-center gap-2" aria-haspopup="dialog" aria-controls="create-program-modal">
+        <button onClick={openCreate} className="btn-primary hidden sm:inline-flex" aria-haspopup="dialog" aria-controls="create-program-modal">
           <span className="text-lg" aria-hidden>+</span>
           Create New Program
         </button>
@@ -327,8 +327,8 @@ export default function Programs() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-white/70 backdrop-blur-xl rounded-2xl p-6 border border-white/50 shadow-lg hover:scale-105 transition-transform">
-            <div className={`inline-flex w-12 h-12 bg-${stat.color}-100 rounded-xl items-center justify-center mb-3`}>
+          <div key={i} className="bg-white rounded-lg p-6 border border-white/50 shadow-lg transition-transform">
+            <div className={`inline-flex w-12 h-12 bg-${stat.color}-100 rounded-lg items-center justify-center mb-3`}>
               <IconFromCode code={stat.icon as string} className="w-6 h-6" />
             </div>
             <p className="text-3xl font-bold text-neutral-900 mb-1">{stat.value}</p>
@@ -337,14 +337,14 @@ export default function Programs() {
         ))}
       </div>
 
-      <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-2 shadow-lg border border-white/50 mb-6 -mx-2 px-2 overflow-x-auto">
+      <div className="bg-white rounded-lg p-2 shadow-lg border border-white/50 mb-6 -mx-2 px-2 overflow-x-auto">
         <div className="inline-flex gap-2 min-w-max">
           {[
             { value: 'active', label: 'Active Programs', count: activeCount },
             { value: 'applications', label: 'Applications', count: applicationsCount ?? 0 },
             { value: 'archived', label: 'Archived', count: programs.filter((p:any)=>!p.is_active).length },
           ].map((tab) => (
-            <button key={tab.value} onClick={() => setActiveTab(tab.value as any)} className={`shrink-0 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === tab.value ? 'bg-ocean-gradient text-white shadow-lg' : 'text-neutral-700 hover:bg-neutral-100'}`}>
+            <button key={tab.value} onClick={() => setActiveTab(tab.value as any)} className={`shrink-0 px-6 py-3 rounded-lg font-medium transition-all ${activeTab === tab.value ? 'bg-navy-700 text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}>
               {tab.label}
               <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${activeTab === tab.value ? 'bg-white/20' : 'bg-neutral-200'}`}>{tab.count}</span>
             </button>
@@ -355,8 +355,8 @@ export default function Programs() {
       {error && <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 text-yellow-800 px-3 py-2 text-sm">{error}</div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading && [...Array(6)].map((_, i) => (
-          <div key={i} className="bg-white/70 rounded-3xl p-6 border border-white/50">
-            <div className="h-32 skeleton rounded-2xl mb-4" />
+          <div key={i} className="bg-white rounded-lg p-6 border border-white/50">
+            <div className="h-32 skeleton rounded-lg mb-4" />
             <div className="h-4 w-40 skeleton rounded mb-2" />
             <div className="h-3 w-24 skeleton rounded" />
           </div>
@@ -372,8 +372,8 @@ export default function Programs() {
           </div>
         )}
         {!loading && activeTab === 'active' && programs.filter((p:any)=>p.is_active).map((program, i) => (
-          <div key={i} className="group bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50 hover:shadow-2xl hover:scale-105 transition-all duration-300">
-            <div className="relative h-32 bg-gradient-to-br from-ocean-500 to-ocean-700 flex items-center justify-center overflow-hidden">
+          <div key={i} className="group bg-white rounded-lg shadow-lg border border-white/50 hover:shadow-lg transition-all duration-300">
+            <div className="relative h-32 bg-ocean-700 flex items-center justify-center overflow-hidden">
               {program.image_path ? (
                 <img src={mediaUrl(program.image_path)} alt={`${program.title} image`} className="absolute inset-0 w-full h-full object-cover" />
               ) : null}
@@ -391,21 +391,21 @@ export default function Programs() {
               </div>
               <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{program.description}</p>
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-neutral-50 rounded-xl p-3">
+                <div className="bg-neutral-50 rounded-lg p-3">
                   <p className="text-xs text-neutral-600 mb-1">Beneficiaries</p>
                   <p className="text-lg font-bold text-neutral-900">{program.beneficiaries}</p>
                 </div>
                 {Number(program.duration_days) > 0 && (
-                  <div className="bg-neutral-50 rounded-xl p-3">
+                  <div className="bg-neutral-50 rounded-lg p-3">
                     <p className="text-xs text-neutral-600 mb-1">Duration (days)</p>
                     <p className="text-lg font-bold text-neutral-900">{program.duration_days}</p>
                   </div>
                 )}
               </div>
               <div className="relative flex gap-2">
-                <button onClick={async () => { try { const res = await benefitsApi.getProgramById(program.id); setViewProgram((res as any)?.data || res) } catch (e: any) { setError(handleApiError(e)) } }} className="flex-1 py-2 bg-ocean-100 hover:bg-ocean-200 text-ocean-700 rounded-xl text-sm font-medium transition-colors">View Details</button>
-                <button onClick={() => { setViewProgram({ ...program, _edit: true }) }} className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Edit</button>
-                <button onClick={async ()=>{ try { setActionLoading(program.id); await benefitsAdminApi.completeProgram(program.id); updateProgram(program.id, { is_active: false, status: 'archived', completed_at: new Date().toISOString() }); showToast('Program marked as completed','success') } catch(e:any){ setError(handleApiError(e)) } finally { setActionLoading(null) } }} className="flex-1 py-2 bg-forest-100 hover:bg-forest-200 text-forest-700 rounded-xl text-sm font-medium transition-colors" disabled={actionLoading===program.id}>Done</button>
+                <button onClick={async () => { try { const res = await benefitsApi.getProgramById(program.id); setViewProgram((res as any)?.data || res) } catch (e: any) { setError(handleApiError(e)) } }} className="flex-1 py-2 bg-ocean-100 hover:bg-ocean-200 text-ocean-700 rounded-lg text-sm font-medium transition-colors">View Details</button>
+                <button onClick={() => { setViewProgram({ ...program, _edit: true }) }} className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg text-sm font-medium transition-colors">Edit</button>
+                <button onClick={async ()=>{ try { setActionLoading(program.id); await benefitsAdminApi.completeProgram(program.id); updateProgram(program.id, { is_active: false, status: 'archived', completed_at: new Date().toISOString() }); showToast('Program marked as completed','success') } catch(e:any){ setError(handleApiError(e)) } finally { setActionLoading(null) } }} className="flex-1 py-2 bg-forest-100 hover:bg-forest-200 text-forest-700 rounded-lg text-sm font-medium transition-colors" disabled={actionLoading===program.id}>Done</button>
               </div>
             </div>
           </div>
@@ -421,7 +421,7 @@ export default function Programs() {
         )}
         {!loading && activeTab === 'applications' && applications.length > 0 && (
           <div className="col-span-full">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3">
               <label className="inline-flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
                 <input
                   type="checkbox"
@@ -448,7 +448,7 @@ export default function Programs() {
           </div>
         )}
         {!loading && activeTab === 'applications' && displayedApplications.map((app: any) => (
-          <div key={app.id} className="bg-white/70 rounded-3xl p-5 border border-white/50">
+          <div key={app.id} className="bg-white rounded-lg p-5 border border-white/50">
             {(() => {
               const requiredDocs = getRequiredDocuments(app)
               const supportingDocs = getSupportingDocuments(app)
@@ -464,7 +464,7 @@ export default function Programs() {
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${app.status==='approved'?'bg-emerald-100 text-emerald-700':app.status==='rejected'?'bg-rose-100 text-rose-700':app.status==='under_review'?'bg-yellow-100 text-yellow-700':'bg-neutral-100 text-neutral-700'}`}>{app.status}</span>
             </div>
-            <div className="mt-3 rounded-xl border border-neutral-200 bg-white p-3">
+            <div className="mt-3 rounded-lg border border-neutral-200 bg-white p-3">
               {(() => {
                 const applicationDataEntries = getApplicationDataEntries(app)
                 if (applicationDataEntries.length === 0) return null
@@ -574,8 +574,8 @@ export default function Programs() {
           </div>
         )}
         {!loading && activeTab === 'archived' && programs.filter((p:any)=>!p.is_active).map((program, i) => (
-          <div key={i} className="group bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/50">
-            <div className="relative h-32 bg-gradient-to-br from-ocean-500 to-ocean-700 flex items-center justify-center overflow-hidden">
+          <div key={i} className="group bg-white rounded-lg shadow-lg border border-white/50">
+            <div className="relative h-32 bg-ocean-700 flex items-center justify-center overflow-hidden">
               {program.image_path ? (
                 <img src={mediaUrl(program.image_path)} alt={`${program.title} image`} className="absolute inset-0 w-full h-full object-cover" />
               ) : null}
@@ -593,12 +593,12 @@ export default function Programs() {
               </div>
               <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{program.description}</p>
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-neutral-50 rounded-xl p-3">
+                <div className="bg-neutral-50 rounded-lg p-3">
                   <p className="text-xs text-neutral-600 mb-1">Beneficiaries</p>
                   <p className="text-lg font-bold text-neutral-900">{program.beneficiaries}</p>
                 </div>
                 {Number(program.duration_days) > 0 && (
-                  <div className="bg-neutral-50 rounded-xl p-3">
+                  <div className="bg-neutral-50 rounded-lg p-3">
                     <p className="text-xs text-neutral-600 mb-1">Duration (days)</p>
                     <p className="text-lg font-bold text-neutral-900">{program.duration_days}</p>
                   </div>
@@ -751,7 +751,7 @@ export default function Programs() {
         <Modal open={true} onOpenChange={(o)=>{ if(!o) setReviewApplication(null) }} title={`Review Documents — ${reviewApplication.user?.first_name || ''} ${reviewApplication.user?.last_name || ''}`} size="md">
           <div className="max-h-[calc(100vh-320px)] sm:max-h-[calc(100vh-250px)] overflow-y-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-4 sm:pb-0">
             <div className="space-y-3">
-              <div className="p-3 border rounded-xl bg-neutral-50 text-sm">
+              <div className="p-3 border rounded-lg bg-neutral-50 text-sm">
                 <div><span className="font-medium">Application No:</span> {reviewApplication.application_number || 'N/A'}</div>
                 <div><span className="font-medium">Program:</span> {reviewApplication.program?.name || 'Unknown'}</div>
                 <div><span className="font-medium">Submitted:</span> {(reviewApplication.created_at || '').slice(0, 10) || 'N/A'}</div>
@@ -759,7 +759,7 @@ export default function Programs() {
               </div>
 
               {reviewApplicationData.length > 0 ? (
-                <div className="p-3 border rounded-xl">
+                <div className="p-3 border rounded-lg">
                   <div className="text-sm font-semibold mb-2">Applicant Responses</div>
                   <div className="space-y-1.5">
                     {reviewApplicationData.map(([key, value]) => (
@@ -770,11 +770,11 @@ export default function Programs() {
                   </div>
                 </div>
               ) : (
-                <div className="p-3 border rounded-xl text-sm text-neutral-600">No additional applicant responses were submitted.</div>
+                <div className="p-3 border rounded-lg text-sm text-neutral-600">No additional applicant responses were submitted.</div>
               )}
 
               {reviewRequiredDocs.length > 0 ? (
-                <div className="p-3 border rounded-xl">
+                <div className="p-3 border rounded-lg">
                   <div className="text-sm font-semibold mb-2">Required Documents Checklist</div>
                   <div className="space-y-2">
                     {reviewRequiredDocs.map((requiredDoc: string, index: number) => {
@@ -810,11 +810,11 @@ export default function Programs() {
                   )}
                 </div>
               ) : (
-                <div className="p-3 border rounded-xl text-sm text-neutral-600">No required documents configured for this program.</div>
+                <div className="p-3 border rounded-lg text-sm text-neutral-600">No required documents configured for this program.</div>
               )}
 
               {reviewSupportingDocs.length > reviewRequiredDocs.length && (
-                <div className="p-3 border rounded-xl">
+                <div className="p-3 border rounded-lg">
                   <div className="text-sm font-semibold mb-2">Additional Uploaded Files</div>
                   <div className="flex flex-wrap gap-2">
                     {reviewSupportingDocs.slice(reviewRequiredDocs.length).map((path: string, idx: number) => (
@@ -832,7 +832,7 @@ export default function Programs() {
               )}
 
               {(reviewApplication.admin_notes || reviewApplication.rejection_reason) && (
-                <div className="p-3 border rounded-xl bg-neutral-50">
+                <div className="p-3 border rounded-lg bg-neutral-50">
                   {reviewApplication.admin_notes && (
                     <div className="text-sm text-neutral-800"><span className="font-medium">Admin Notes:</span> {reviewApplication.admin_notes}</div>
                   )}
@@ -879,7 +879,7 @@ export default function Programs() {
             transition={{ duration: 0.2 }}
           >
             <motion.button
-              className="relative flex items-center justify-center bg-gradient-to-r from-forest-500 to-forest-600 text-white shadow-lg shadow-forest-500/30 hover:shadow-forest-500/50 transition-shadow"
+              className="relative flex items-center justify-center bg-forest-600 text-white shadow-lg transition-shadow"
               onClick={() => {
                 if (fabExpanded) {
                   setCreateOpen(true)
@@ -1082,7 +1082,7 @@ function ProgramForm({
     >
       <div className="space-y-2">
         <div className="text-sm font-medium text-neutral-700">Program Image {requireImage ? <span className="text-red-500">*</span> : null}</div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-3">
+        <div className="rounded-lg border border-neutral-200 bg-white p-3">
           <div className="flex items-start gap-3">
             <div className="h-16 w-24 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200 flex items-center justify-center">
               {imageFile ? (

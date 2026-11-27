@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
+import AdminAuthPanel from '@/components/AdminAuthPanel'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { superAdminApi, handleApiError } from '../lib/api'
 import { useAdminStore } from '../lib/store'
-import { Shield, Mail, Lock, ArrowLeft, KeyRound } from 'lucide-react'
+import { Shield, ShieldCheck, FileText, Mail, Lock, ArrowLeft, KeyRound } from 'lucide-react'
 
 type LoginStep = 'credentials' | '2fa'
 
@@ -151,109 +151,25 @@ export default function SuperAdminLoginPage() {
     setError(null)
   }
 
+  const superFeatures = [
+    { icon: ShieldCheck, label: 'Two-step sign-in', desc: 'Password plus a code sent to your email' },
+    { icon: Lock, label: 'Short sessions', desc: 'Super admin sessions expire after 15 minutes' },
+    { icon: FileText, label: 'Audited', desc: 'Every sign-in and admin change is logged' },
+  ]
+
   return (
     <div className="fixed inset-0 flex">
-      {/* Left Panel - Background Image */}
-      <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden">
-        <img
-          src="/assets/superadmin_login.jpg"
-          alt="Super Admin Login"
-          className="absolute inset-0 h-full w-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/60 via-blue-900/50 to-black/60" />
-
-        {/* Zambales Province Logo Watermark */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <motion.img
-            src="/logos/provinces/zambales.png"
-            alt="Zambales Province Seal"
-            className="w-[500px] h-[500px] object-contain opacity-10"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 0.1, scale: 1 }}
-            transition={{ duration: 0.8 }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-          />
-        </div>
-
-        {/* Grid overlay */}
-        <div className="absolute inset-0 bg-grid-pattern opacity-[0.05]" />
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
-          <div className="max-w-lg">
-
-            {/* Logo mark */}
-            <motion.div
-              className="mb-8"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <span className="text-4xl xl:text-5xl font-serif font-bold text-white tracking-tight drop-shadow-lg">MunLink</span>
-            </motion.div>
-
-            <motion.div
-              className="mb-6"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/20">
-                <Shield className="w-8 h-8 text-white" />
-                <span className="text-white font-semibold text-lg">Super Admin Portal</span>
-              </div>
-            </motion.div>
-
-            <motion.h1
-              className="text-4xl xl:text-5xl font-serif font-bold text-white leading-tight mb-6 drop-shadow-lg"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-            >
-              {step === 'credentials' ? 'Secure Authentication' : 'Verify Your Identity'}
-            </motion.h1>
-
-            <motion.p
-              className="text-white/90 text-lg leading-relaxed mb-10 drop-shadow"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-            >
-              {step === 'credentials'
-                ? 'Protected by two-factor authentication. Manage administrator accounts and oversee platform operations.'
-                : `We've sent a 6-digit verification code to ${email}. Enter it below to complete your login.`
-              }
-            </motion.p>
-
-            {/* Security Features */}
-            <motion.div
-              className="space-y-3"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-            >
-              <div className="flex items-center gap-3 text-white/80">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-sm">2-Factor Authentication Required</span>
-              </div>
-              <div className="flex items-center gap-3 text-white/80">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-sm">Audit Logging Enabled</span>
-              </div>
-              <div className="flex items-center gap-3 text-white/80">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-sm">Session Monitoring Active</span>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Bottom gradient fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/50 to-transparent" />
-      </div>
+      <AdminAuthPanel
+        image="/assets/superadmin_login.jpg"
+        office="Platform administration"
+        title={step === 'credentials' ? 'Super admin sign-in' : 'Check your email'}
+        description={step === 'credentials' ? 'Protected by a one-time code sent to your email. Manage admin accounts and review the audit log.' : `We sent a 6-digit code to ${email}. Enter it to finish signing in.`}
+        features={superFeatures}
+        wide
+      />
 
       {/* Right Panel - Login Form */}
-      <div className="w-full lg:w-1/2 xl:w-[45%] flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 relative">
+      <div className="w-full lg:w-1/2 xl:w-[45%] flex items-center justify-center bg-slate-50 relative">
         {/* Back button - only show on 2FA step */}
         {step === '2fa' && (
           <button
@@ -268,16 +184,16 @@ export default function SuperAdminLoginPage() {
         <div className={`w-full max-w-md px-6 sm:px-8 py-12 relative z-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* Mobile logo */}
           <div className="lg:hidden mb-8 flex flex-col items-center">
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl shadow-lg mb-3">
+            <div className="p-3 bg-blue-600 rounded-lg shadow-lg mb-3">
               <Shield className="h-10 w-10 text-white" />
             </div>
-            <span className="text-2xl font-serif font-bold text-slate-900">Super Admin</span>
+            <span className="text-2xl font-bold text-slate-900">Super Admin</span>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+          <div className="bg-white rounded-lg shadow-md border border-gray-100 p-8">
             {/* Header */}
             <div className="text-center lg:text-left mb-8">
-              <h2 className="text-2xl font-serif font-semibold text-gray-900 mb-2">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-2">
                 {step === 'credentials' ? 'Secure Login' : 'Enter Verification Code'}
               </h2>
               <p className="text-gray-500 text-sm">
@@ -289,7 +205,7 @@ export default function SuperAdminLoginPage() {
 
             {/* Error Alert */}
             {error && (
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-100 mb-6 animate-shake">
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-100 mb-6 animate-shake">
                 <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -311,7 +227,7 @@ export default function SuperAdminLoginPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                      className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm"
                       placeholder="admin@example.com"
                       required
                       autoComplete="email"
@@ -330,7 +246,7 @@ export default function SuperAdminLoginPage() {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-12 pr-12 py-3.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm"
+                      className="w-full pl-12 pr-12 py-3.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm"
                       placeholder="Enter your password"
                       required
                       autoComplete="current-password"
@@ -358,7 +274,7 @@ export default function SuperAdminLoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="relative w-full py-4 px-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
+                  className="relative w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden group"
                 >
                   <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}>
                     Continue with 2FA
@@ -393,7 +309,7 @@ export default function SuperAdminLoginPage() {
               /* 2FA Verification Form */
               <div className="space-y-6">
                 {/* Info box */}
-                <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-100">
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-50 border border-blue-100">
                   <KeyRound className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-blue-700">
                     <p className="font-medium mb-1">Verification code sent</p>
@@ -413,7 +329,7 @@ export default function SuperAdminLoginPage() {
                       value={digit}
                       onChange={(e) => handleCodeChange(index, e.target.value)}
                       onKeyDown={(e) => handleCodeKeyDown(index, e)}
-                      className="w-12 h-14 text-center text-2xl font-bold bg-white border-2 border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                      className="w-12 h-14 text-center text-2xl font-bold bg-white border-2 border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
                       autoFocus={index === 0}
                     />
                   ))}
@@ -423,7 +339,7 @@ export default function SuperAdminLoginPage() {
                 <button
                   onClick={() => handleVerify2FA()}
                   disabled={loading || code.join('').length !== 6}
-                  className="relative w-full py-4 px-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+                  className="relative w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
                 >
                   {loading ? (
                     <div className="flex items-center justify-center gap-2">

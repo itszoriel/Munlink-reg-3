@@ -43,14 +43,14 @@ export default function VerifyTicket() {
   return (
     <div className="min-h-screen">
       {/* Hero */}
-      <div className="mb-6 rounded-2xl bg-gradient-to-r from-ocean-50 via-blue-50 to-emerald-50 border border-white/60 p-6">
-        <h1 className="text-fluid-3xl font-serif font-semibold text-neutral-900">Verify Claim Ticket</h1>
+      <div className="mb-6 rounded-lg bg-ocean-50 border border-white/60 p-6">
+        <h1 className="text-fluid-3xl font-semibold text-neutral-900">Verify Claim Ticket</h1>
         <p className="text-sm text-neutral-600 mt-1">Scan the QR to paste a token, or use the fallback code with the request ID.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Form card */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border p-5 shadow-sm">
+        <div className="lg:col-span-2 bg-white rounded-lg border p-5 shadow-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="ticket-token" className="block text-sm font-medium mb-1">Token (from QR)</label>
@@ -70,9 +70,9 @@ export default function VerifyTicket() {
         </div>
 
         {/* Tips / Status panel */}
-        <div className="bg-white rounded-2xl border p-5 shadow-sm">
+        <div className="bg-white rounded-lg border p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-xl bg-ocean-gradient text-white flex items-center justify-center">QR</div>
+            <div className="h-10 w-10 rounded-lg bg-ocean-gradient text-white flex items-center justify-center">QR</div>
             <div>
               <div className="font-semibold">How it works</div>
               <div className="text-xs text-neutral-600">Token or code + request ID</div>
@@ -84,7 +84,7 @@ export default function VerifyTicket() {
             <li>Use the Verify button; results appear below.</li>
           </ul>
           {result && (
-            <div className="mt-4 rounded-xl border p-3 bg-neutral-50">
+            <div className="mt-4 rounded-lg border p-3 bg-neutral-50">
               {result.ok ? (
                 <div className="text-sm">
                   <div className="text-emerald-700 font-medium mb-1">Valid ticket</div>

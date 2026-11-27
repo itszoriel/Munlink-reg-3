@@ -1,71 +1,76 @@
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ConnoisseurStackInteractor, type MenuItem } from '@/components/ui/connoisseur-stack-interactor'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Building2, Landmark, Home, ShieldCheck } from 'lucide-react'
+
+const TRACKS = [
+  {
+    to: '/login',
+    icon: Building2,
+    title: 'Municipal admin',
+    description: 'Verify residents, process document requests and manage programs for one municipality.',
+  },
+  {
+    to: '/barangay/login',
+    icon: Home,
+    title: 'Barangay admin',
+    description: 'Handle barangay announcements, programs and reports for one barangay.',
+  },
+  {
+    to: '/provincial/login',
+    icon: Landmark,
+    title: 'Provincial admin',
+    description: 'Province-wide announcements and reports across Zambales.',
+  },
+  {
+    to: '/superadmin/login',
+    icon: ShieldCheck,
+    title: 'Super admin',
+    description: 'Manage admin accounts and review the audit log. Requires email verification.',
+  },
+]
 
 export default function RoleSelector() {
-  const navigate = useNavigate()
-
-  const visualItems: MenuItem[] = [
-    {
-      num: '01',
-      name: 'Super Admin',
-      clipId: 'clip-original',
-      image: '/assets/superadmin_login.jpg',
-      onSelect: () => navigate('/superadmin/login'),
-    },
-    {
-      num: '02',
-      name: 'Provincial Admin',
-      clipId: 'clip-hexagons',
-      image: '/assets/provincial.jpg',
-      onSelect: () => navigate('/provincial/login'),
-    },
-    {
-      num: '03',
-      name: 'Municipal Admin',
-      clipId: 'clip-pixels',
-      image: '/assets/admin_login.jpg',
-      onSelect: () => navigate('/login'),
-    },
-    {
-      num: '04',
-      name: 'Barangay Admin',
-      clipId: 'clip-stripes',
-      image: '/assets/barangay.jpg',
-      onSelect: () => navigate('/barangay/login'),
-    },
-  ]
-
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-[#f7fbff] via-[#f3f6ff] to-[#e8f5ff]">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -left-16 top-6 w-[340px] h-[340px] bg-ocean-200/30 blur-[110px]" />
-        <div className="absolute -right-16 bottom-0 w-[340px] h-[340px] bg-purple-200/25 blur-[110px]" />
-      </div>
+    <div className="min-h-screen bg-[#f6f7f9]">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex h-16 max-w-5xl items-center gap-3 px-4 sm:px-6">
+          <img src="/logos/munlink-logo.png" alt="" className="h-9 w-9 rounded-full object-cover" />
+          <div className="leading-tight">
+            <p className="text-base font-semibold text-slate-900">MunLink Zambales</p>
+            <p className="text-xs text-slate-600">Staff portal</p>
+          </div>
+        </div>
+      </header>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="text-center"
-        >
-          <p className="text-[11px] md:text-xs font-semibold uppercase tracking-[0.28em] text-ocean-700/80">
-            Admin Portal
-          </p>
-          <h1 className="mt-2 text-3xl md:text-[2.6rem] font-serif font-bold text-slate-900 leading-tight">
-            Choose Your Governance Track
-          </h1>
-          <p className="mt-2 text-sm md:text-base text-slate-600 max-w-3xl mx-auto">
-            Hover to explore the feel of each admin level. Click a track to jump into its dedicated sign-in flow.
-          </p>
-        </motion.div>
+      <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Sign in to the staff portal</h1>
+        <p className="mt-2 text-slate-600">Choose the office you work for. Each one has its own sign-in.</p>
 
-        <ConnoisseurStackInteractor
-          items={visualItems}
-          className="rounded-[24px] border border-white/60 shadow-2xl !min-h-[430px] md:!min-h-[470px] bg-gradient-to-br from-slate-900 via-slate-800 to-sky-900"
-        />
-      </div>
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+          {TRACKS.map(({ to, icon: Icon, title, description }) => (
+            <li key={to}>
+              <Link
+                to={to}
+                className="group flex h-full items-start gap-4 rounded-lg border border-slate-200 bg-white p-5 transition-colors hover:border-navy-300 hover:bg-navy-50/40"
+              >
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-navy-50 text-navy-700">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className="flex-1">
+                  <span className="flex items-center justify-between gap-2 text-base font-semibold text-slate-900">
+                    {title}
+                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-navy-700" aria-hidden="true" />
+                  </span>
+                  <span className="mt-1 block text-sm leading-relaxed text-slate-600">{description}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <p className="mt-8 text-sm text-slate-600">
+          Residents should use the public MunLink site instead. Staff accounts are created by a super admin.
+        </p>
+      </main>
     </div>
   )
 }

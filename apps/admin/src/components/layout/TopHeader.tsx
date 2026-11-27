@@ -31,7 +31,6 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
     if (path === '/programs') return 'Programs'
     if (path === '/requests') return 'Requests'
     if (path === '/problems') return 'Community Concerns'
-    if (path === '/admins') return 'Admins'
     if (path === '/reports') return 'Reports'
     if (path === '/announcements') return 'Announcements'
     if (path === '/transactions') return 'Transactions'
@@ -100,7 +99,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
         ? `${(user as any)?.admin_barangay_name || 'Barangay'} Admin Portal`
         : `${user?.admin_municipality_name || 'Municipality'} Admin Portal`
   return (
-    <header className={`fixed top-0 right-0 left-0 ${leftOffset} h-16 bg-white md:bg-white/90 md:backdrop-blur-xl border-b border-neutral-200 z-40 transition-all duration-300`}>
+    <header className={`fixed top-0 right-0 left-0 ${leftOffset} h-16 bg-white md:bg-white border-b border-neutral-200 z-40 transition-all duration-300`}>
       <div className="h-full px-4 md:px-6 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <button className="md:hidden w-9 h-9 bg-neutral-100 hover:bg-neutral-200 rounded-lg flex items-center justify-center" onClick={onOpenMobile} aria-label="Open menu">
@@ -118,7 +117,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
         <div className="flex items-center gap-3">
           {/* Mobile avatar button opens quick actions */}
           <button
-            className="md:hidden flex items-center gap-2 px-3 py-2 bg-neutral-50 hover:bg-neutral-100 rounded-xl transition-colors"
+            className="md:hidden flex items-center gap-2 px-3 py-2 bg-neutral-50 hover:bg-neutral-100 rounded-lg transition-colors"
             onClick={() => { onCloseMobileSidebar?.(); setMenuOpen(true); }}
             aria-label="Open account menu"
           >
@@ -132,7 +131,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
           </button>
 
           <div className="relative group hidden md:block">
-            <button className="flex items-center gap-2 px-3 py-2 bg-neutral-50 hover:bg-neutral-100 rounded-xl transition-colors">
+            <button className="flex items-center gap-2 px-3 py-2 bg-neutral-50 hover:bg-neutral-100 rounded-lg transition-colors">
               <div className="relative">
               {user?.profile_picture ? (
                 <img src={resolveImageUrl(user.profile_picture)} alt="Profile" className="w-8 h-8 rounded-full object-cover" />
@@ -146,7 +145,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
               <span className="text-sm font-medium text-neutral-700">{user?.first_name} {user?.last_name}</span>
               <svg className="w-4 h-4 text-neutral-500 group-hover:text-neutral-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
             </button>
-            <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all hidden md:block">
+            <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all hidden md:block">
               <div className="px-4 py-3 border-b border-neutral-200">
                 <p className="font-semibold text-sm text-neutral-900">{user?.first_name} {user?.last_name}</p>
                 <p className="text-xs text-neutral-600">{user?.email}</p>
@@ -160,7 +159,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
                 <a href={PUBLIC_SITE_URL} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-2 hover:bg-neutral-50 transition-colors"><Globe className="w-4 h-4" aria-hidden="true" /><span className="text-sm font-medium text-neutral-700">View Public Site</span></a>
               </div>
               <div className="px-4 py-3 border-t border-neutral-200">
-                <button onClick={handleLogout} className="w-full btn bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium">
+                <button onClick={handleLogout} className="w-full btn bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                   Logout
                 </button>
@@ -172,7 +171,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
       {/* Mobile slide-over for account actions */}
       <div className={`fixed inset-0 z-[90] md:hidden ${mobileMenuOpen ? '' : 'hidden'}`}>
         <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
-        <aside className="absolute right-0 top-0 bottom-0 w-[85%] xxs:w-[80%] xs:w-[70%] bg-white flex flex-col shadow-2xl border-l border-neutral-200">
+        <aside className="absolute right-0 top-0 bottom-0 w-[85%] xxs:w-[80%] xs:w-[70%] bg-white flex flex-col shadow-lg border-l border-neutral-200">
           {/* User info header */}
           <div className="flex items-center gap-3 p-4 border-b border-neutral-200 flex-shrink-0">
             {user?.profile_picture ? (
@@ -197,7 +196,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
 
           {/* Logout pinned to bottom */}
           <div className="p-4 border-t border-neutral-200 flex-shrink-0">
-            <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="w-full btn bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium">Logout</button>
+            <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="w-full btn bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium">Logout</button>
           </div>
         </aside>
       </div>

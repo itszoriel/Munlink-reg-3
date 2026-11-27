@@ -32,7 +32,7 @@ export default function MarketplaceTransactionAudit() {
   }, [status, page])
 
   return (
-    <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-5 border border-white/50 shadow-lg">
+    <div className="bg-white rounded-lg p-5 border border-white/50 shadow-lg">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h2 className="text-lg font-semibold text-neutral-900">Marketplace Transaction Audit</h2>
@@ -54,7 +54,7 @@ export default function MarketplaceTransactionAudit() {
       </div>
 
       {loading ? (
-        <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden" style={{ minHeight: 180 }}>
+        <div className="rounded-lg border border-neutral-200 bg-white overflow-hidden" style={{ minHeight: 180 }}>
           <div className="grid grid-cols-8 gap-3 px-4 py-3 border-b border-neutral-100">
             {[6, 16, 10, 12, 12, 9, 14, 6].map((w, i) => (
               <div key={i} className="h-3.5 skeleton rounded" style={{ width: `${w}ch` }} />

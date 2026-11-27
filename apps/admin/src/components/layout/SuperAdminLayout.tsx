@@ -4,8 +4,6 @@ import { useLocation } from 'react-router-dom'
 import Sidebar, { type NavSection } from './Sidebar'
 import TopHeader from './TopHeader'
 import MobileNav from './MobileNav'
-import { getBestRegion3Seal } from '@munlink/ui'
-import { useAdminStore } from '../../lib/store'
 
 interface SuperAdminLayoutProps {
   children: ReactNode
@@ -27,12 +25,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
-  const user = useAdminStore((s) => s.user)
 
-  // Get municipality seal for watermark
-  const municipalitySeal = getBestRegion3Seal({
-    municipality: (user as any)?.admin_municipality_slug || (user as any)?.admin_municipality_name || (user as any)?.municipality_slug || (user as any)?.municipality_name,
-  })
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -49,16 +42,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   }, [isMobileSidebarOpen])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-ocean-50/30 to-forest-50/20">
-      {/* Transparent municipality seal watermark */}
-      <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-0 overflow-hidden">
-        <img
-          src={municipalitySeal.src}
-          alt=""
-          aria-hidden="true"
-          className="w-[600px] h-[600px] object-contain opacity-[0.07] select-none"
-        />
-      </div>
+    <div className="min-h-screen bg-neutral-50">
 
       {/* Unified Sidebar (desktop + mobile) */}
       <Sidebar

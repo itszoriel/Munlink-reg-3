@@ -183,7 +183,7 @@ export default function AuditLogPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-lg border border-slate-200 p-4">
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
           {/* Search */}
           <div className="flex-1 sm:min-w-[200px]">
@@ -264,13 +264,13 @@ export default function AuditLogPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
           {error}
         </div>
       )}
 
       {/* Table/Cards */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
         {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">

@@ -120,9 +120,9 @@ export default function AuditLogs() {
           <button className="btn btn-success min-w-[120px] disabled:opacity-60" disabled={working==='xlsx'} onClick={()=> exportIt('xlsx')}>{working==='xlsx'?'Exporting…':'Export Excel'}</button>
         </div>
       </div>
-      <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-5 border border-white/50 shadow-lg">
+      <div className="bg-white rounded-lg p-5 border border-white/50 shadow-lg">
         {loading ? (
-          <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden" style={{ minHeight: 140 }}>
+          <div className="rounded-lg border border-neutral-200 bg-white overflow-hidden" style={{ minHeight: 140 }}>
             <div className="grid grid-cols-6 gap-3 px-4 py-3 border-b border-neutral-100">
               {[18, 12, 10, 12, 9, 14].map((w, i) => (
                 <div key={i} className="h-3.5 skeleton rounded" style={{ width: `${w}ch` }} />
@@ -139,7 +139,7 @@ export default function AuditLogs() {
             </div>
           </div>
         ) : loadError ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm">
             {loadError}
           </div>
         ) : logs.length === 0 ? (

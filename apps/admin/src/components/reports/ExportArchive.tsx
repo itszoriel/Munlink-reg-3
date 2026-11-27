@@ -41,7 +41,7 @@ export default function ExportData({ defaultRange, onRangeChange }: { defaultRan
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {entities.map((e) => (
-          <div key={e.key} className="bg-white/70 backdrop-blur-xl rounded-2xl p-5 border border-white/50 shadow-lg">
+          <div key={e.key} className="bg-white rounded-lg p-5 border border-white/50 shadow-lg">
             <div className="font-semibold mb-1">{e.label}</div>
             <div className="text-sm text-neutral-600 mb-4">{e.desc}</div>
             <div className="flex items-center gap-2">
