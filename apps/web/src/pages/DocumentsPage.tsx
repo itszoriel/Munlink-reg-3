@@ -226,7 +226,7 @@ export default function DocumentsPage() {
   return (
     <div className="container-responsive py-12">
       <div className="mb-6">
-        <h1 className="text-fluid-3xl font-serif font-semibold text-gray-900">Documents</h1>
+        <h1 className="text-fluid-3xl font-semibold text-gray-900">Documents</h1>
         <p className="text-sm text-gray-600">Request documents for your selected municipality.</p>
       </div>
 
@@ -237,7 +237,7 @@ export default function DocumentsPage() {
         </div>
       )}
       { (searchParams.get('tab') || '').toLowerCase() === 'requests' && (
-        <div className="bg-white rounded-xl border p-4 mb-6">
+        <div className="bg-white rounded-lg border p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">My Requests</h2>
             <button className="btn-secondary" onClick={() => navigate('/documents')}>New Request</button>
@@ -283,7 +283,7 @@ export default function DocumentsPage() {
             <h2 className="text-xl font-bold mb-4">Select Document Type</h2>
             <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="skeleton-card p-4 rounded-xl border border-gray-100">
+                <div key={i} className="skeleton-card p-4 rounded-lg border border-gray-100">
                   <div className="flex items-center justify-between">
                     <div className="space-y-2 flex-1">
                       <div className="h-5 w-2/3 skeleton rounded" />
@@ -342,7 +342,7 @@ export default function DocumentsPage() {
                       {pagedTypes.map((t) => (
                         <button
                           key={t.id}
-                          className={`text-left p-4 rounded-xl border ${selectedTypeId===t.id?'border-ocean-500 bg-ocean-50':'border-gray-200 hover:border-ocean-300'}`}
+                          className={`text-left p-4 rounded-lg border ${selectedTypeId===t.id?'border-ocean-500 bg-ocean-50':'border-gray-200 hover:border-ocean-300'}`}
                           onClick={() => {
                             setSelectedTypeId(t.id)
                             const allowDigital = !!(t as any).supports_digital

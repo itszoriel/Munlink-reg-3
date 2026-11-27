@@ -120,9 +120,9 @@ export default function ResidentHowToUsePage() {
   const barangayName = (user as any)?.barangay_name
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${municipalityVisual.theme.pageGradient} font-sans`}>
+    <div className={`min-h-screen bg-[#f6f7f9] font-sans`}>
       <div className="container-responsive py-10 md:py-12 space-y-8">
-        <section className="rounded-[32px] border border-white/60 bg-white/85 p-6 md:p-8 shadow-xl backdrop-blur">
+        <section className="rounded-[32px] border border-white/60 bg-white p-6 md:p-8 shadow-md ">
           <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-700">
@@ -136,7 +136,7 @@ export default function ResidentHowToUsePage() {
                 Start with the basics, then move through the features one by one. This guide only covers the tools that are already available in the resident website.
               </p>
             </div>
-            <div className={`rounded-2xl border px-4 py-4 shadow-sm ${municipalityVisual.theme.panelClass}`}>
+            <div className={`rounded-lg border px-4 py-4 shadow-sm ${municipalityVisual.theme.panelClass}`}>
               <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
                 <MapPin className="h-4 w-4" />
                 Your current area
@@ -174,8 +174,8 @@ export default function ResidentHowToUsePage() {
           </div>
 
           <aside className="space-y-6">
-            <div className={`rounded-3xl border p-6 shadow-sm ${municipalityVisual.theme.panelClass}`}>
-              <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${municipalityVisual.theme.iconClass}`}>
+            <div className={`rounded-lg border p-6 shadow-sm ${municipalityVisual.theme.panelClass}`}>
+              <div className={`inline-flex h-12 w-12 items-center justify-center rounded-lg ${municipalityVisual.theme.iconClass}`}>
                 <MapPin className="h-6 w-6" />
               </div>
               <h2 className="mt-4 text-2xl font-bold text-slate-900">Municipality reminder</h2>
@@ -185,8 +185,8 @@ export default function ResidentHowToUsePage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+            <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
                 <Package className="h-6 w-6" />
               </div>
               <h2 className="mt-4 text-2xl font-bold text-slate-900">Helpful reminders</h2>
@@ -197,7 +197,7 @@ export default function ResidentHowToUsePage() {
               </ul>
               <Link
                 to="/dashboard"
-                className="mt-5 inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="mt-5 inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 Back to dashboard
               </Link>
@@ -211,7 +211,7 @@ export default function ResidentHowToUsePage() {
 
 function QuickStep({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
       <div className="text-sm font-semibold text-slate-900">{title}</div>
       <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
     </div>
@@ -222,8 +222,8 @@ function GuideCard({ section }: { section: GuideSection }) {
   const Icon = section.icon
 
   return (
-    <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+    <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+      <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
         <Icon className="h-6 w-6" />
       </div>
       <h2 className="mt-4 text-xl font-bold text-slate-900">{section.title}</h2>
@@ -240,7 +240,7 @@ function GuideCard({ section }: { section: GuideSection }) {
       </ol>
       <Link
         to={section.href}
-        className="mt-5 inline-flex items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+        className="mt-5 inline-flex items-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
       >
         {section.hrefLabel}
       </Link>

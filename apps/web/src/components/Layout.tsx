@@ -115,105 +115,101 @@ export default function Layout() {
     return () => document.removeEventListener('click', onDocClick, true)
   }, [])
 
-  return (
-    <div className={"min-h-screen flex flex-col"}>
-      <nav className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-7xl transition-all duration-300 ${scrolled ? 'top-2' : ''}`}>
-        <div className={`bg-white/85 backdrop-blur-xl rounded-2xl px-4 lg:px-6 py-2.5 border border-white/60 transition-shadow duration-300 ${scrolled ? 'shadow-xl' : 'shadow-lg'}`}>
-          <div className="flex items-center justify-between gap-2">
-            <Link to="/" className="text-base lg:text-lg font-serif font-semibold text-gray-900 whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2">
-              <img
-                src="/logos/munlink-logo.png"
-                alt="MunLink Logo"
-                className="h-7 w-7 rounded-full object-cover bg-white/60 border border-white/60 shadow-sm"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-              />
-              <span>MunLink</span>
-            </Link>
+  const navLinkClass = (to: string) => {
+    const active = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
+    return `inline-flex items-center px-2.5 py-2 text-sm font-medium rounded-md transition-colors ${
+      active ? 'text-navy-800 bg-navy-50' : 'text-slate-700 hover:text-navy-800 hover:bg-slate-100'
+    }`
+  }
 
-            <div className="hidden lg:flex items-center gap-1 xl:gap-3 text-gray-900 text-sm">
-              <Link to="/" className="hover:text-ocean-700 transition-colors font-serif px-2 py-1 rounded-lg hover:bg-ocean-50">
-                Home
-              </Link>
-              <Link to="/announcements" className="hover:text-ocean-700 transition-colors font-serif px-2 py-1 rounded-lg hover:bg-ocean-50">
-                Updates
-              </Link>
-              <Link to="/marketplace" className="hover:text-ocean-700 transition-colors font-serif px-2 py-1 rounded-lg hover:bg-ocean-50">
-                Marketplace
-              </Link>
-              <ServicesMenu />
-              
-              <span aria-hidden="true" className="w-px h-5 bg-gray-300 mx-1" />
-              
-              {/* Location context: Hide on Dashboard and Documents */}
-              {!hideLocationSelector && (
-              <div className="flex items-center gap-1 bg-ocean-50/50 rounded-lg px-2 py-1">
-                {/* Municipality/Barangay selection for browsing - available to all users (Province auto-selected to Zambales) */}
+  return (
+    <div className="min-h-screen flex flex-col">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] btn-primary">
+        Skip to content
+      </a>
+      <header className={`sticky top-0 z-50 bg-white border-b border-slate-200 ${scrolled ? 'shadow-sm' : ''}`}>
+        <div className="container-responsive flex h-16 items-center justify-between gap-3">
+          <Link to="/" className="flex flex-shrink-0 items-center gap-2.5" aria-label="MunLink Zambales home">
+            <img
+              src="/logos/munlink-logo.png"
+              alt=""
+              className="h-9 w-9 rounded-full object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+            <span className="leading-tight">
+              <span className="block text-base font-semibold text-slate-900">MunLink Zambales</span>
+              <span className="hidden sm:block text-xs text-slate-600">Province of Zambales</span>
+            </span>
+          </Link>
+
+          <nav className="hidden lg:flex items-center gap-1" aria-label="Main">
+            <Link to="/" className={navLinkClass('/')}>Home</Link>
+            <Link to="/announcements" className={navLinkClass('/announcements')}>Announcements</Link>
+            <Link to="/marketplace" className={navLinkClass('/marketplace')}>Marketplace</Link>
+            <ServicesMenu />
+            <Link to="/about" className={navLinkClass('/about')}>About</Link>
+          </nav>
+
+          <div className="hidden lg:flex items-center gap-2">
+            {!hideLocationSelector && (
+              <div className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-sm" aria-label="Browse location">
+                <MapPin className="h-4 w-4 text-slate-500" aria-hidden="true" />
                 <MunicipalitySelect />
-                <span className="text-gray-300">/</span>
+                <span className="text-slate-300" aria-hidden="true">/</span>
                 <BarangaySelect />
               </div>
-              )}
-              
-              <span aria-hidden="true" className="w-px h-5 bg-gray-300 mx-1" />
-              
-              <Link to="/about" className="hover:text-ocean-700 transition-colors font-serif px-2 py-1 rounded-lg hover:bg-ocean-50">
-                About
-              </Link>
-              {role === 'public' || !isAuthenticated ? (
-                <>
-                  <Link to="/login" className="hover:text-ocean-700 transition-colors font-serif px-3 py-1.5 rounded-lg hover:bg-ocean-50">Login</Link>
-                  <Link to="/register" className="bg-ocean-600 text-white font-serif px-3 py-1.5 rounded-lg hover:bg-ocean-700 transition-colors">Register</Link>
-                </>
-              ) : (
-                <details ref={accountRef} className="relative group">
-                  <summary className="list-none cursor-pointer flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-ocean-50">
-                    {user?.profile_picture ? (
-                      <img src={mediaUrl(user.profile_picture)} alt="Avatar" className="w-7 h-7 rounded-full object-cover border border-white/60" />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-ocean-100 text-ocean-700 flex items-center justify-center text-xs font-semibold">
-                        {(user?.username || 'A').slice(0,2).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="font-serif text-sm">Account ▾</span>
-                  </summary>
-                  <div className="absolute right-0 mt-3 w-52 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 p-2 z-50">
-                    <button onClick={() => { closeAccount(); navigate('/dashboard') }} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50 text-sm font-medium">Dashboard</button>
-                    <button onClick={() => { closeAccount(); navigate('/how-to-use') }} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50 text-sm font-medium">How to use</button>
-                    <button onClick={() => { closeAccount(); navigate('/profile') }} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50 text-sm font-medium">Profile</button>
-                    <hr className="my-2 border-gray-200" />
-                    <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Activity</div>
-                    <button onClick={() => { closeAccount(); navigate('/my-marketplace?tab=transactions') }} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50 text-sm">Transactions</button>
-                    <button onClick={() => { closeAccount(); navigate('/dashboard/requests') }} className="block w-full text-left px-3 py-2 rounded hover:bg-ocean-50 text-sm">Document Requests</button>
-                    <hr className="my-2 border-gray-200" />
-                    <button onClick={() => { closeAccount(); logout(); navigate('/login', { replace: true }) }} className="block w-full text-left px-3 py-2 rounded hover:bg-red-50 text-sm text-red-600 font-medium">Logout</button>
-                  </div>
-                </details>
-              )}
-            </div>
-
-            {/* Mobile hamburger */}
-            <button className="lg:hidden btn-ghost rounded-full p-2" onClick={() => setMobileOpen(true)} aria-label="Open menu">
-              <Menu className="w-5 h-5" aria-hidden="true" />
-            </button>
+            )}
+            {role === 'public' || !isAuthenticated ? (
+              <>
+                <Link to="/login" className="btn-ghost min-h-[40px] py-2">Log in</Link>
+                <Link to="/register" className="btn-primary min-h-[40px] py-2">Register</Link>
+              </>
+            ) : (
+              <details ref={accountRef} className="relative">
+                <summary className="list-none cursor-pointer flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-100">
+                  {user?.profile_picture ? (
+                    <img src={mediaUrl(user.profile_picture)} alt="" className="h-8 w-8 rounded-full object-cover" />
+                  ) : (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-100 text-xs font-semibold text-navy-800">
+                      {(user?.username || 'A').slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="text-sm font-medium text-slate-800">Account</span>
+                </summary>
+                <div className="absolute right-0 mt-2 w-56 rounded-md border border-slate-200 bg-white p-1.5 z-50">
+                  <button onClick={() => { closeAccount(); navigate('/dashboard') }} className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-slate-800 hover:bg-slate-100">Dashboard</button>
+                  <button onClick={() => { closeAccount(); navigate('/profile') }} className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-slate-800 hover:bg-slate-100">Profile</button>
+                  <button onClick={() => { closeAccount(); navigate('/dashboard/requests') }} className="block w-full rounded px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">Document requests</button>
+                  <button onClick={() => { closeAccount(); navigate('/my-marketplace?tab=transactions') }} className="block w-full rounded px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">Marketplace transactions</button>
+                  <button onClick={() => { closeAccount(); navigate('/how-to-use') }} className="block w-full rounded px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">How to use</button>
+                  <hr className="my-1.5 border-slate-200" />
+                  <button onClick={() => { closeAccount(); logout(); navigate('/login', { replace: true }) }} className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50">Log out</button>
+                </div>
+              </details>
+            )}
           </div>
+
+          <button className="lg:hidden btn-ghost min-h-[44px] px-3" onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen}>
+            <Menu className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
-      </nav>
+      </header>
 
       {/* Mobile slide-over menu */}
       <div className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" onClick={() => setMobileOpen(false)} />
-        <aside className={`absolute right-0 top-0 h-full w-[85%] xxs:w-[80%] xs:w-[70%] max-w-sm bg-gradient-to-br from-white to-gray-50 shadow-2xl flex flex-col transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="absolute inset-0 bg-black/60 transition-opacity duration-300" onClick={() => setMobileOpen(false)} />
+        <aside className={`absolute right-0 top-0 h-full w-[85%] xxs:w-[80%] xs:w-[70%] max-w-sm bg-white flex flex-col transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`}>
 
           {/* Header with Logo and Close */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200/80 bg-white/80 backdrop-blur-sm">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200/80 bg-white ">
             <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-2">
               <img
                 src="/logos/munlink-logo.png"
-                alt="MunLink Logo"
+                alt=""
                 className="h-8 w-8 rounded-full object-cover bg-white border border-gray-200 shadow-sm"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
               />
-              <span className="text-lg font-serif font-semibold text-gray-900">MunLink</span>
+              <span className="text-lg font-semibold text-gray-900">MunLink Zambales</span>
             </Link>
             <button
               onClick={() => setMobileOpen(false)}
@@ -230,71 +226,71 @@ export default function Layout() {
               <Link
                 to="/"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
               >
-                <HomeIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <HomeIcon className="w-5 h-5 transition-transform" />
                 <span>Home</span>
               </Link>
 
               <Link
                 to="/announcements"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
               >
-                <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <Bell className="w-5 h-5 transition-transform" />
                 <span>Announcements</span>
               </Link>
 
               <Link
                 to="/marketplace"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
               >
-                <ShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <ShoppingBag className="w-5 h-5 transition-transform" />
                 <span>Marketplace</span>
               </Link>
 
               <div className="pt-3 pb-2">
                 <div className="px-4 py-2 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-2">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                  <div className="h-px flex-1 bg-slate-200"></div>
                   <span>Services</span>
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                  <div className="h-px flex-1 bg-slate-200"></div>
                 </div>
               </div>
 
               <Link
                 to="/documents"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
               >
-                <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <FileText className="w-5 h-5 transition-transform" />
                 <span>Documents</span>
               </Link>
 
               <Link
                 to="/problems"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
               >
-                <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <AlertCircle className="w-5 h-5 transition-transform" />
                 <span>Community Concerns</span>
               </Link>
 
               <Link
                 to="/programs"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
               >
-                <GraduationCap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <GraduationCap className="w-5 h-5 transition-transform" />
                 <span>Programs</span>
               </Link>
 
               <Link
                 to="/about"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium group"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium group"
               >
-                <Info className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <Info className="w-5 h-5 transition-transform" />
                 <span>About</span>
               </Link>
 
@@ -305,10 +301,10 @@ export default function Layout() {
                     <span>Filter by Location</span>
                   </div>
                   <div className="px-4 py-2 space-y-3">
-                    <div className="bg-white/60 rounded-xl p-3 border border-gray-200/80 shadow-sm">
+                    <div className="bg-white rounded-lg p-3 border border-gray-200/80 shadow-sm">
                       <MunicipalitySelect />
                     </div>
-                    <div className="bg-white/60 rounded-xl p-3 border border-gray-200/80 shadow-sm">
+                    <div className="bg-white rounded-lg p-3 border border-gray-200/80 shadow-sm">
                       <BarangaySelect />
                     </div>
                   </div>
@@ -318,21 +314,21 @@ export default function Layout() {
           </div>
 
           {/* Footer Actions */}
-          <div className="p-4 border-t border-gray-200/80 bg-white/80 backdrop-blur-sm">
+          <div className="p-4 border-t border-gray-200/80 bg-white ">
             {role === 'public' || !isAuthenticated ? (
               <div className="space-y-2">
                 <Link
                   to="/login"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-ocean-600 to-ocean-700 hover:from-ocean-700 hover:to-ocean-800 text-white font-semibold rounded-xl shadow-lg shadow-ocean-500/30 active:scale-[0.98] transition-all duration-200"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-ocean-700 hover:bg-ocean-800 text-white font-semibold rounded-lg transition-colors"
                 >
                   <User className="w-4 h-4" />
-                  <span>Login</span>
+                  <span>Log in</span>
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white border-2 border-ocean-600 text-ocean-700 font-semibold rounded-xl hover:bg-ocean-50 active:scale-[0.98] transition-all duration-200"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white border-2 border-ocean-600 text-ocean-700 font-semibold rounded-lg hover:bg-ocean-50 transition-colors"
                 >
                   <span>Register</span>
                 </Link>
@@ -341,21 +337,21 @@ export default function Layout() {
               <div className="space-y-2">
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/dashboard'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-semibold"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-semibold"
                 >
                   <LayoutDashboard className="w-5 h-5" />
                   <span>Dashboard</span>
                 </button>
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/profile'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-semibold"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-semibold"
                 >
                   <User className="w-5 h-5" />
                   <span>Profile</span>
                 </button>
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/how-to-use'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-semibold"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-semibold"
                 >
                   <BookOpen className="w-5 h-5" />
                   <span>How to use</span>
@@ -370,14 +366,14 @@ export default function Layout() {
 
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/my-marketplace?tab=transactions'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium"
                 >
                   <ShoppingBag className="w-5 h-5" />
                   <span>Transactions</span>
                 </button>
                 <button
                   onClick={() => { setMobileOpen(false); navigate('/dashboard/requests'); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-ocean-50 active:bg-ocean-100 transition-all duration-200 text-gray-700 hover:text-ocean-700 font-medium"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-ocean-50 active:bg-ocean-100 transition-colors text-gray-700 hover:text-ocean-700 font-medium"
                 >
                   <FileText className="w-5 h-5" />
                   <span>Document Requests</span>
@@ -386,10 +382,10 @@ export default function Layout() {
                 <div className="pt-2 border-t border-gray-200">
                   <button
                     onClick={() => { setMobileOpen(false); logout(); navigate('/login', { replace: true }) }}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 active:scale-[0.98] transition-all duration-200"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
+                    <span>Log out</span>
                   </button>
                 </div>
               </div>
@@ -398,7 +394,6 @@ export default function Layout() {
         </aside>
       </div>
 
-      <div className="h-24" />
       <AuthStatusBanner />
       {toast && (
         <Toast
@@ -407,7 +402,7 @@ export default function Layout() {
           onClose={() => setToast(null)}
         />
       )}
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <Outlet />
       </main>
 

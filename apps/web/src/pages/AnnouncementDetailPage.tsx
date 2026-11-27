@@ -78,7 +78,7 @@ export default function AnnouncementDetailPage() {
     <div className="container-responsive py-10">
       <div className="mb-4"><Link to="/announcements" className="text-sm text-ocean-700 hover:underline">Back to Announcements</Link></div>
       {loading ? (
-        <div className="h-64 rounded-xl bg-neutral-100" />
+        <div className="h-64 rounded-lg bg-neutral-100" />
         ) : !a ? (
           <div className="text-neutral-600">Announcement not found.</div>
         ) : (

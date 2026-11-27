@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white px-6 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-6 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img
@@ -75,13 +75,13 @@ export default function ResetPasswordPage() {
             className="h-14 w-14 mx-auto mb-3 object-contain"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
           />
-          <h1 className="text-2xl font-serif font-bold text-gray-900">Set a new password</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Set a new password</h1>
           <p className="text-sm text-gray-600 mt-1">
             Choose a strong password you have not used before.
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+        <div className="bg-white rounded-lg shadow-md border border-gray-100 p-8">
           {validating ? (
             <div className="text-center text-sm text-gray-600">Validating reset link...</div>
           ) : success ? (
@@ -121,7 +121,7 @@ export default function ResetPasswordPage() {
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    className="w-full pr-12 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
+                    className="w-full pr-12 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -145,7 +145,7 @@ export default function ResetPasswordPage() {
                 <div className="relative">
                   <input
                     type={showConfirm ? 'text' : 'password'}
-                    className="w-full pr-12 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
+                    className="w-full pr-12 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -175,7 +175,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 px-4 bg-gradient-to-r from-ocean-500 to-ocean-700 text-white font-semibold rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="w-full py-3 px-4 bg-ocean-700 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-60 disabled:cursor-not-allowed "
               >
                 {submitting ? 'Updating...' : 'Update password'}
               </button>

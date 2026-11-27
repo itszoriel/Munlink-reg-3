@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useRef, useState, useEffect, useCallback } from 'react'
+import { ChevronDown } from 'lucide-react'
 
 // Custom event to close other location dropdowns (shared with ProvinceSelect/MunicipalitySelect)
 const CLOSE_LOCATION_DROPDOWNS = 'munlink:closeLocationDropdowns'
@@ -58,17 +59,18 @@ export default function ServicesMenu() {
       <button
         type="button"
         onClick={handleToggle}
-        className="cursor-pointer select-none hover:text-ocean-700 font-serif px-2 py-1 rounded-lg hover:bg-ocean-50"
+        className="inline-flex items-center gap-1 px-2.5 py-2 text-sm font-medium rounded-md text-slate-700 hover:text-navy-800 hover:bg-slate-100 transition-colors"
         aria-haspopup="menu"
         aria-expanded={isOpen}
       >
-        Services ▾
+        Services
+        <ChevronDown className="h-4 w-4" aria-hidden="true" />
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-56 bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 p-2 z-50">
-          <Link to="/documents" onClick={close} className="block px-3 py-2 rounded hover:bg-ocean-50">Documents</Link>
-          <Link to="/problems" onClick={close} className="block px-3 py-2 rounded hover:bg-ocean-50">Community Concerns</Link>
-          <Link to="/programs" onClick={close} className="block px-3 py-2 rounded hover:bg-ocean-50">Programs</Link>
+        <div className="absolute left-0 mt-2 w-60 rounded-md border border-slate-200 bg-white p-1.5 shadow-lg z-50" role="menu">
+          <Link to="/documents" onClick={close} role="menuitem" className="block rounded px-3 py-2 text-sm text-slate-800 hover:bg-slate-100">Documents and certificates</Link>
+          <Link to="/programs" onClick={close} role="menuitem" className="block rounded px-3 py-2 text-sm text-slate-800 hover:bg-slate-100">Benefit programs</Link>
+          <Link to="/problems" onClick={close} role="menuitem" className="block rounded px-3 py-2 text-sm text-slate-800 hover:bg-slate-100">Report a problem</Link>
         </div>
       )}
     </div>

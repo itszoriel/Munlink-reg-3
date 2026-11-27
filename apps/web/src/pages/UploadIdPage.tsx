@@ -61,7 +61,7 @@ export default function UploadIdPage() {
   return (
     <div className="min-h-[calc(100vh-200px)] py-12 px-4">
       <div className="card max-w-2xl mx-auto">
-        <h1 className="text-fluid-3xl font-serif font-semibold mb-2">Upload Verification Documents</h1>
+        <h1 className="text-fluid-3xl font-semibold mb-2">Upload Verification Documents</h1>
         {hasIdDocuments ? (
           <p className="text-sm text-gray-600 mb-6">You have already uploaded ID documents. You can upload new ones to replace the existing ones.</p>
         ) : (

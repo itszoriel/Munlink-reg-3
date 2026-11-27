@@ -100,7 +100,7 @@ export default function ProblemsPage() {
   return (
     <div className="container-responsive py-12">
       <div className="mb-3">
-        <h1 className="text-fluid-3xl font-serif font-semibold">Community Concerns in Municipality</h1>
+        <h1 className="text-fluid-3xl font-semibold">Community Concerns in Municipality</h1>
       </div>
 
       {isMismatch && (
@@ -315,7 +315,7 @@ export default function ProblemsPage() {
           featureDescription="Report a concern in your municipality"
         >
           <motion.button
-            className="relative flex items-center justify-center bg-gradient-to-r from-ocean-500 to-ocean-600 text-white shadow-lg shadow-ocean-500/30 hover:shadow-ocean-500/50 transition-shadow"
+            className="relative flex items-center justify-center bg-ocean-600 text-white shadow-lg transition-shadow"
             disabled={isMismatch}
             animate={{
               width: fabExpanded ? 180 : 56,

@@ -221,11 +221,11 @@ export default function DocumentRequestPage() {
             <img
               src={seal.src}
               alt={seal.alt}
-              className="h-11 w-11 rounded-2xl object-contain bg-white border border-[var(--color-border)] shadow-sm"
+              className="h-11 w-11 rounded-lg object-contain bg-white border border-[var(--color-border)] shadow-sm"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
             <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-serif font-semibold text-gray-900">Document Request</h1>
+              <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Document Request</h1>
               <p className="text-sm text-gray-600">Track status and download when ready.</p>
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function DocumentRequestPage() {
           <div className="h-4 w-1/2 skeleton" />
         </div>
       ) : req ? (
-        <div className="bg-white rounded-xl border p-6">
+        <div className="bg-white rounded-lg border p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-semibold">{req.document_type?.name || 'Document Request'}</h1>
@@ -345,7 +345,7 @@ export default function DocumentRequestPage() {
             </div>
           )}
           {hasClaimTicket && (
-            <div className="mt-6 rounded-xl border-2 border-green-200 bg-green-50 p-5">
+            <div className="mt-6 rounded-lg border-2 border-green-200 bg-green-50 p-5">
               <div className="flex items-center gap-2 mb-4">
                 <QrCode className="w-5 h-5 text-green-700" />
                 <h3 className="text-lg font-semibold text-green-800">Claim Ticket</h3>

@@ -98,7 +98,7 @@ export default function MarketplacePage() {
     <div className="container-responsive py-12">
       <div className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-3 mb-6">
         <div>
-          <h1 className="text-fluid-3xl font-serif font-semibold">Marketplace</h1>
+          <h1 className="text-fluid-3xl font-semibold">Marketplace</h1>
           <p className="text-gray-600 text-sm mt-1">Buy, sell, donate, or lend items within your community. Connect with fellow residents for local transactions.</p>
         </div>
         <div className="w-full xs:w-auto min-w-[140px]">
@@ -173,7 +173,7 @@ export default function MarketplacePage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: index * 0.05 }}
-              className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-ocean-200 transition-all duration-300"
+              className="group bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-ocean-200 transition-all duration-300"
             >
               {/* Image with overlays */}
               <div className="w-full aspect-[4/3] bg-gray-100 overflow-hidden relative">
@@ -188,7 +188,7 @@ export default function MarketplacePage() {
 
                 {/* Location badge - top left */}
                 <div className="absolute top-3 left-3">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-white/95 backdrop-blur-sm text-gray-800 shadow-sm">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-white text-gray-800 shadow-sm">
                     {(item as any).municipality_name || (selectedMunicipality as any)?.name || 'Province-wide'}
                   </span>
                 </div>
@@ -209,7 +209,7 @@ export default function MarketplacePage() {
                 {/* Photo count - bottom left */}
                 {Array.isArray(item.images) && item.images.length > 1 && (
                   <div className="absolute bottom-3 left-3">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-black/70 backdrop-blur-sm text-white shadow-sm">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-black/70 text-white shadow-sm">
                       {item.images.length} Photos
                     </span>
                   </div>
@@ -219,7 +219,7 @@ export default function MarketplacePage() {
                 <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <Link
                     to={`/marketplace/${item.id}`}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/95 backdrop-blur-sm hover:bg-white shadow-sm hover:shadow-md transition-all"
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-white shadow-sm hover:shadow-md transition-all"
                   >
                     View Details
                   </Link>
@@ -317,7 +317,7 @@ export default function MarketplacePage() {
                           const isCross = !!userMunicipalityId && !!item.municipality_id && userMunicipalityId !== item.municipality_id
                           return (
                             <button
-                              className="btn btn-primary w-full py-2.5 text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all"
+                              className="btn btn-primary w-full py-2.5 text-sm font-semibold rounded-lg shadow-sm hover:shadow-md transition-all"
                               disabled={creatingTxId === item.id || isCross || !!myPending[item.id]}
                               title={isCross ? 'Transactions are limited to your municipality' : (myPending[item.id] ? 'You already requested this item' : undefined)}
                             >
@@ -369,7 +369,7 @@ export default function MarketplacePage() {
           onClick={() => setOpen(false)}
         >
           <div 
-            className="bg-white w-full sm:w-[95%] sm:max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl" 
+            className="bg-white w-full sm:w-[95%] sm:max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto rounded-t-lg sm:rounded-lg shadow-lg" 
             tabIndex={-1} 
             onClick={(e) => e.stopPropagation()}
           >
@@ -534,7 +534,7 @@ export default function MarketplacePage() {
               featureDescription="Post an item on the marketplace"
             >
               <motion.button
-                className="relative flex items-center justify-center bg-gradient-to-r from-ocean-500 to-ocean-600 text-white shadow-lg shadow-ocean-500/30 hover:shadow-ocean-500/50 transition-shadow"
+                className="relative flex items-center justify-center bg-ocean-600 text-white shadow-lg transition-shadow"
                 disabled={isViewingMismatch}
                 animate={{
                   width: fabExpanded ? 140 : 56,

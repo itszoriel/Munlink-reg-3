@@ -116,7 +116,7 @@ export default function ProvinceSelect() {
       <button
         type="button"
         onClick={handleToggle}
-        className="cursor-pointer select-none hover:text-ocean-700 font-serif flex items-center gap-2"
+        className="cursor-pointer select-none hover:text-ocean-700 flex items-center gap-2"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
@@ -126,7 +126,7 @@ export default function ProvinceSelect() {
           {selected ? selected.name : 'Province'} ▾
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-72 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 p-2 z-50">
+        <div className="absolute right-0 mt-3 w-72 bg-white rounded-lg shadow-lg border border-white/50 p-2 z-50">
           <input
             type="text"
             placeholder="Search province..."

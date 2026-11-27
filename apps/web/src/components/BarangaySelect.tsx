@@ -97,7 +97,7 @@ export default function BarangaySelect() {
   )
 
   if (!selectedMunicipality) {
-    return <span className="text-sm text-gray-400 font-serif cursor-not-allowed" title="Select a municipality first">Barangay ▾</span>
+    return <span className="text-sm text-gray-400 cursor-not-allowed" title="Select a municipality first">Barangay ▾</span>
   }
 
   return (
@@ -105,14 +105,14 @@ export default function BarangaySelect() {
       <button
         type="button"
         onClick={handleToggle}
-        className="cursor-pointer select-none hover:text-ocean-700 font-serif whitespace-nowrap"
+        className="cursor-pointer select-none hover:text-ocean-700 whitespace-nowrap"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
           {selected ? selected.name : 'Barangay'} ▾
       </button>
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-64 bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl border border-white/50 p-2 z-50">
+        <div className="absolute right-0 mt-3 w-64 bg-white rounded-lg shadow-lg border border-white/50 p-2 z-50">
           <input
             type="text"
             placeholder="Search barangay..."

@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { benefitsApi, documentsApi, marketplaceApi, showToast } from '@/lib/api'
 import Modal from '@/components/ui/Modal'
 import { StatusBadge, getBestRegion3Seal } from '@munlink/ui'
@@ -13,12 +12,8 @@ import {
   ArrowRight,
   BookOpen,
   FileText,
-  Landmark,
-  MapPin,
   Package,
   ShoppingBag,
-  Sparkles,
-  User,
 } from 'lucide-react'
 
 type MyItem = { id: number; title: string; status: string }
@@ -39,12 +34,10 @@ type MyBenefitApp = {
   program?: { name?: string }
 }
 
-const HERO_FALLBACK_IMAGE = '/assets/about.jpg'
 
 export default function DashboardPage() {
   const [appModalOpen, setAppModalOpen] = useState(false)
   const [selectedApp, setSelectedApp] = useState<MyBenefitApp | null>(null)
-  const [heroImage, setHeroImage] = useState(HERO_FALLBACK_IMAGE)
   const user = useAppStore((s) => s.user)
   const isAuthBootstrapped = useAppStore((s) => s.isAuthBootstrapped)
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
@@ -62,10 +55,6 @@ export default function DashboardPage() {
     municipality: (user as any)?.municipality_slug || (user as any)?.municipality_name,
     province: 'Zambales',
   })
-
-  useEffect(() => {
-    setHeroImage(municipalityVisual.landmark || HERO_FALLBACK_IMAGE)
-  }, [municipalityVisual.landmark])
 
   const residentName = (user as any)?.first_name || user?.username || 'Resident'
   const municipalityName = (user as any)?.municipality_name || municipalityVisual.name
@@ -122,113 +111,23 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${municipalityVisual.theme.pageGradient} font-sans`}>
-      <div className="container-responsive py-8 md:py-10 space-y-8">
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="relative overflow-hidden rounded-[32px] border border-white/60 shadow-2xl"
-        >
-          <div className="absolute inset-0">
-            <img
-              src={heroImage}
-              alt={`${municipalityName} landmark`}
-              className="h-full w-full object-cover"
-              onError={(event) => {
-                if (event.currentTarget.src.endsWith(HERO_FALLBACK_IMAGE)) return
-                setHeroImage(HERO_FALLBACK_IMAGE)
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-900/65 to-slate-900/45" />
-            <div className="absolute inset-0 bg-gradient-to-b from-sky-500/20 via-transparent to-emerald-500/20" />
-          </div>
-
-          <div className="relative z-10 p-6 md:p-10 lg:p-12">
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)] lg:items-end">
-              <div className="max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur ${municipalityVisual.theme.badgeClass}`}>
-                    <MapPin className="h-4 w-4" />
-                    {municipalityName}
-                  </span>
-                  {barangayName && (
-                    <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur">
-                      Barangay {barangayName}
-                    </span>
-                  )}
-                  {municipalityVisual.isCapital && (
-                    <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-100/90 px-4 py-2 text-sm font-semibold text-amber-900">
-                      <Landmark className="h-4 w-4" />
-                      Capital of Zambales
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-6 flex items-start gap-4">
-                  <div className="hidden h-14 w-14 rounded-2xl border border-white/30 bg-white/10 text-white shadow-lg backdrop-blur md:flex md:items-center md:justify-center">
-                    <User className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
-                      Welcome back, {residentName}
-                    </h1>
-                    <p className="mt-4 max-w-2xl text-base leading-7 text-white/90 md:text-lg">
-                      You are signed in as a resident of <span className="font-semibold text-white">{municipalityName}</span>. Use this dashboard to follow your requests, keep up with local updates, and open the services you need most.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <Link
-                    to="/documents"
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-base font-semibold text-slate-900 shadow-lg transition hover:bg-slate-100"
-                  >
-                    <FileText className="h-5 w-5 text-sky-700" />
-                    Request a document
-                  </Link>
-                  <Link
-                    to="/how-to-use"
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/35 bg-white/10 px-5 py-3 text-base font-semibold text-white backdrop-blur transition hover:bg-white/20"
-                  >
-                    <BookOpen className="h-5 w-5" />
-                    How to use MunLink
-                  </Link>
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-white/20 bg-white/12 p-5 text-white shadow-xl backdrop-blur-xl">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Municipality fact
-                    </div>
-                    <h2 className="mt-4 text-2xl font-bold text-white">{municipalityName}</h2>
-                    <p className="mt-3 text-sm leading-6 text-white/92">{municipalityVisual.spotlight}</p>
-                  </div>
-                  <img
-                    src={municipalitySeal.src}
-                    alt={municipalitySeal.alt}
-                    className="h-16 w-16 rounded-2xl border border-white/20 bg-white/15 object-contain p-2 shadow-sm"
-                  />
-                </div>
-                <div className="mt-5 rounded-2xl bg-slate-950/20 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/65">Quick data</div>
-                  <p className="mt-2 text-sm leading-6 text-white/90">{municipalityVisual.fact}</p>
-                  <a
-                    href={municipalityVisual.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-flex text-xs font-medium text-sky-100 underline decoration-white/40 underline-offset-4 transition hover:text-white"
-                  >
-                    {municipalityVisual.sourceLabel}
-                  </a>
-                </div>
-              </div>
+    <div className={`min-h-screen bg-[#f6f7f9] font-sans`}>
+      <div className="container-responsive py-8 md:py-10 space-y-6">
+        <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-end md:justify-between">
+          <div className="flex items-center gap-4">
+            <img src={municipalitySeal.src} alt={municipalitySeal.alt} className="h-14 w-14 rounded-full border border-slate-200 bg-white object-contain p-1" />
+            <div>
+              <p className="text-sm text-slate-600">
+                {municipalityName}{barangayName ? ` · ${barangayName}` : ''}
+              </p>
+              <h1 className="mt-0.5 text-2xl font-semibold text-slate-900">Good day, {residentName}</h1>
             </div>
           </div>
-        </motion.section>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/how-to-use" className="btn-secondary">How to use MunLink</Link>
+            <Link to="/documents" className="btn-primary">Request a document</Link>
+          </div>
+        </header>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <DashboardStatCard icon={<Package size={18} />} label="Recent Items" value={items.length} hint="Latest marketplace posts" />
@@ -237,95 +136,11 @@ export default function DashboardPage() {
           <DashboardStatCard icon={<BookOpen size={18} />} label="Applications" value={apps.length} hint="Program applications" />
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
-                  <BookOpen className="h-3.5 w-3.5" />
-                  Start here
-                </div>
-                <h2 className="mt-4 text-2xl font-bold text-slate-900">Quick guide for first-time residents</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                  Keep your next steps simple. Start with your municipality, choose one service, then return here to monitor your activity.
-                </p>
-              </div>
-              <Link
-                to="/how-to-use"
-                className="hidden rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 md:inline-flex"
-              >
-                Open full guide
-              </Link>
-            </div>
-
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <QuickGuideStep
-                number="1"
-                title="Check your local identity"
-                text={`Confirm that ${municipalityName}${barangayName ? ` and Barangay ${barangayName}` : ''} are shown correctly in your account.`}
-              />
-              <QuickGuideStep
-                number="2"
-                title="Choose one main task"
-                text="Most residents start with documents, updates, marketplace activity, or concerns."
-              />
-              <QuickGuideStep
-                number="3"
-                title="Track progress later"
-                text="Use the cards below to revisit requests, applications, items, and transactions without opening too many menus."
-              />
-            </div>
-
-            <Link
-              to="/how-to-use"
-              className="mt-5 inline-flex rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 md:hidden"
-            >
-              Open full guide
-            </Link>
-          </div>
-
-          <div className={`rounded-3xl border p-6 shadow-sm ${municipalityVisual.theme.panelClass}`}>
-            <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${municipalityVisual.theme.iconClass}`}>
-              <MapPin className="h-6 w-6" />
-            </div>
-            <h2 className="mt-4 text-2xl font-bold text-slate-900">Quick fact about your municipality</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              This panel highlights a verified local fact about {municipalityName} alongside the municipality landmark shown on your dashboard.
-            </p>
-            <div className="mt-5 rounded-2xl border border-slate-800/70 bg-slate-950 p-4 shadow-lg">
-              <div className="text-sm font-semibold text-white">{municipalityName}</div>
-              <p className="mt-2 text-sm leading-6 text-white/75">{municipalityVisual.fact}</p>
-              <a
-                href={municipalityVisual.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-flex text-xs font-medium text-sky-200 underline decoration-white/30 underline-offset-4 transition hover:text-white"
-              >
-                {municipalityVisual.sourceLabel}
-              </a>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                to="/announcements"
-                className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
-              >
-                Read updates
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/about"
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-transparent px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white/50"
-              >
-                Explore About page
-              </Link>
-            </div>
-          </div>
-        </section>
 
         {loading && items.length === 0 && txs.length === 0 && reqs.length === 0 && apps.length === 0 ? (
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div key={index} className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-4 h-5 w-1/3 rounded bg-slate-100" />
                 <div className="space-y-3">
                   <div className="h-4 w-2/3 rounded bg-slate-100" />
@@ -535,14 +350,14 @@ function DashboardStatCard({
   hint?: string
 }) {
   return (
-    <div className="group rounded-3xl border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-ocean-500 to-ocean-700 text-white shadow-md">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-navy-50 text-navy-700">
           {icon}
         </div>
         <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</div>
-          <div className="text-3xl font-bold leading-tight text-slate-900">{value}</div>
+          <div className="text-sm font-medium text-slate-600">{label}</div>
+          <div className="text-2xl font-semibold leading-tight text-slate-900">{value}</div>
           {hint && <div className="mt-0.5 text-xs text-slate-500">{hint}</div>}
         </div>
       </div>
@@ -556,18 +371,6 @@ type ListEntry = {
   status: string
   href?: string
   extra?: any
-}
-
-function QuickGuideStep({ number, title, text }: { number: string; title: string; text: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
-        {number}
-      </div>
-      <div className="mt-3 text-sm font-semibold text-slate-900">{title}</div>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
-    </div>
-  )
 }
 
 function ListCard({
@@ -586,24 +389,21 @@ function ListCard({
   renderAction?: (entry: ListEntry) => ReactNode | null
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow duration-300 hover:shadow-md">
-      <div className="mb-5 flex items-center gap-3">
+    <div className="rounded-lg border border-slate-200 bg-white p-5">
+      <div className="mb-4 flex items-center gap-3">
         {icon && (
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-ocean-500 to-ocean-700 text-white shadow-md">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-navy-50 text-navy-700">
             {icon}
           </div>
         )}
-        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
       </div>
 
       <div className="space-y-3">
         {entries.map((entry, index) => (
-          <motion.div
+          <div
             key={`${String(entry.id)}-${index}`}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.05 }}
-            className="grid grid-cols-1 items-center gap-2 rounded-2xl border border-slate-100 px-4 py-3 transition-all hover:border-ocean-200 hover:shadow-sm sm:grid-cols-[minmax(0,1fr)_auto]"
+            className="grid grid-cols-1 items-center gap-2 rounded-md border border-slate-200 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto]"
           >
             <div className="min-w-0">
               {entry.href ? (
@@ -621,7 +421,7 @@ function ListCard({
               <StatusBadge status={entry.status} />
               {renderAction ? renderAction(entry) : null}
             </div>
-          </motion.div>
+          </div>
         ))}
 
         {entries.length === 0 && (

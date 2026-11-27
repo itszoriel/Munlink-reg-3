@@ -214,7 +214,7 @@ function ApplicationModal({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full sm:w-[95%] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl"
+        className="bg-white w-full sm:w-[95%] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-lg sm:rounded-lg shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between">

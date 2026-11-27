@@ -216,10 +216,10 @@ export default function MyMarketplacePage() {
     <div className="container-responsive py-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-fluid-3xl font-serif font-semibold text-gray-900">My Marketplace</h1>
+          <h1 className="text-fluid-3xl font-semibold text-gray-900">My Marketplace</h1>
           <p className="text-gray-600 text-sm mt-1">Manage your listings and track your transactions</p>
         </div>
-        <div className="inline-flex rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm">
           <button
             onClick={() => setTab('items')}
             className={`px-5 py-2.5 text-sm font-semibold transition-all ${
@@ -263,7 +263,7 @@ export default function MyMarketplacePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: index * 0.05 }}
-              className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-ocean-200 transition-all duration-300"
+              className="group bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-ocean-200 transition-all duration-300"
             >
               {/* Image */}
               <div className="w-full aspect-[4/3] bg-gray-100 overflow-hidden relative">
@@ -275,7 +275,7 @@ export default function MyMarketplacePage() {
                     className="w-full h-full object-contain"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                  <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                     <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
@@ -284,7 +284,7 @@ export default function MyMarketplacePage() {
 
                 {/* Status badge */}
                 <div className="absolute top-3 left-3">
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow-sm backdrop-blur-sm ${
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow-sm  ${
                     it.status==='available'
                       ? 'bg-emerald-500 text-white'
                       : 'bg-amber-500 text-white'
@@ -316,7 +316,7 @@ export default function MyMarketplacePage() {
                 {/* Actions */}
                 <div className="flex items-center gap-2 pt-2">
                   <button
-                    className="flex-1 px-4 py-2 text-sm font-semibold text-ocean-600 bg-ocean-50 hover:bg-ocean-100 rounded-xl transition-colors"
+                    className="flex-1 px-4 py-2 text-sm font-semibold text-ocean-600 bg-ocean-50 hover:bg-ocean-100 rounded-lg transition-colors"
                     onClick={() => {
                       setEditItem(it)
                       setEditForm({
@@ -331,7 +331,7 @@ export default function MyMarketplacePage() {
                     Edit
                   </button>
                   <button
-                    className="flex-1 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
                     disabled={deletingId === it.id}
                     onClick={async () => {
                       if (!window.confirm('Delete this item? This cannot be undone.')) return
@@ -383,12 +383,12 @@ export default function MyMarketplacePage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: index * 0.04 }}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-ocean-200 transition-all duration-300 overflow-hidden"
+                className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md hover:border-ocean-200 transition-all duration-300 overflow-hidden"
               >
                 {/* Card header with item info */}
                 <div className="flex gap-4 p-5">
                   {/* Item thumbnail */}
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                     {t.item_image ? (
                       <SafeImage
                         src={mediaUrl(t.item_image)}
@@ -481,7 +481,7 @@ export default function MyMarketplacePage() {
                     {t.as === 'seller' && t.status === 'pending' && (
                       <>
                         <button
-                          className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+                          className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
                           disabled={acceptingId === t.id}
                           onClick={() => {
                             setAcceptingId(t.id)
@@ -496,7 +496,7 @@ export default function MyMarketplacePage() {
                           </span>
                         </button>
                         <button
-                          className="px-5 py-2.5 text-sm font-semibold rounded-xl border-2 border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
+                          className="px-5 py-2.5 text-sm font-semibold rounded-lg border-2 border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
                           onClick={async () => {
                             try {
                               await marketplaceApi.rejectTransaction(t.id)
@@ -518,7 +518,7 @@ export default function MyMarketplacePage() {
                     {t.as === 'buyer' && t.status === 'awaiting_buyer' && (
                       <>
                         <button
-                          className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                          className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
                           onClick={async () => {
                             try {
                               await marketplaceApi.confirmTransaction(t.id)
@@ -536,7 +536,7 @@ export default function MyMarketplacePage() {
                           </span>
                         </button>
                         <button
-                          className="px-5 py-2.5 text-sm font-semibold rounded-xl border-2 border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
+                          className="px-5 py-2.5 text-sm font-semibold rounded-lg border-2 border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
                           onClick={async () => {
                             try {
                               await marketplaceApi.buyerRejectProposal(t.id)
@@ -556,7 +556,7 @@ export default function MyMarketplacePage() {
                     {/* Seller: accepted -> mark handed over */}
                     {t.as === 'seller' && t.status === 'accepted' && (
                       <button
-                        className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-ocean-600 text-white hover:bg-ocean-700 transition-colors shadow-sm"
+                        className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-ocean-600 text-white hover:bg-ocean-700 transition-colors shadow-sm"
                         onClick={async () => {
                           try {
                             await marketplaceApi.handoverSeller(t.id)
@@ -578,7 +578,7 @@ export default function MyMarketplacePage() {
                     {/* Buyer: handed_over -> confirm received */}
                     {t.as === 'buyer' && t.status === 'handed_over' && (
                       <button
-                        className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-ocean-600 text-white hover:bg-ocean-700 transition-colors shadow-sm"
+                        className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-ocean-600 text-white hover:bg-ocean-700 transition-colors shadow-sm"
                         onClick={async () => {
                           try {
                             await marketplaceApi.handoverBuyer(t.id)
@@ -600,7 +600,7 @@ export default function MyMarketplacePage() {
                     {/* Buyer: received + sell/donate -> complete */}
                     {t.as === 'buyer' && t.status === 'received' && t.transaction_type !== 'lend' && (
                       <button
-                        className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                        className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
                         onClick={async () => {
                           try {
                             await marketplaceApi.complete(t.id)
@@ -623,7 +623,7 @@ export default function MyMarketplacePage() {
                     {/* Buyer: received + lend -> mark returned */}
                     {t.as === 'buyer' && t.status === 'received' && t.transaction_type === 'lend' && (
                       <button
-                        className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
+                        className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
                         onClick={async () => {
                           try {
                             await marketplaceApi.returnBuyer(t.id)
@@ -645,7 +645,7 @@ export default function MyMarketplacePage() {
                     {/* Seller: returned + lend -> confirm received back */}
                     {t.as === 'seller' && t.status === 'returned' && t.transaction_type === 'lend' && (
                       <button
-                        className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                        className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
                         onClick={async () => {
                           try {
                             await marketplaceApi.returnSeller(t.id)
@@ -667,7 +667,7 @@ export default function MyMarketplacePage() {
 
                     {/* Shared: History button */}
                     <button
-                      className="px-4 py-2.5 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                      className="px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                       onClick={async () => {
                         try {
                           const res = await marketplaceApi.getAudit(t.id)
@@ -681,7 +681,7 @@ export default function MyMarketplacePage() {
 
                     {/* Shared: Report/Dispute */}
                     <button
-                      className="px-4 py-2.5 text-sm font-medium rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
+                      className="px-4 py-2.5 text-sm font-medium rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors"
                       onClick={async () => {
                         const reason = window.prompt('Describe the issue (required)') || ''
                         if (!reason.trim()) return
@@ -707,7 +707,7 @@ export default function MyMarketplacePage() {
                 {(isTerminal || t.status === 'completed') && (
                   <div className="border-t border-gray-100 px-5 py-3 flex items-center gap-3">
                     <button
-                      className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                      className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                       onClick={async () => {
                         try {
                           const res = await marketplaceApi.getAudit(t.id)
@@ -735,7 +735,7 @@ export default function MyMarketplacePage() {
       )}
       {editItem && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" onKeyDown={(e) => { if (e.key === 'Escape') setEditItem(null) }}>
-          <div className="bg-white rounded-xl w-full max-w-2xl p-6" tabIndex={-1} autoFocus>
+          <div className="bg-white rounded-lg w-full max-w-2xl p-6" tabIndex={-1} autoFocus>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Edit Item</h2>
               <button onClick={() => setEditItem(null)} className="text-neutral-500 hover:text-neutral-700" aria-label="Close">

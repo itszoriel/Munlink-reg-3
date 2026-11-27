@@ -28,7 +28,7 @@ export default function MarketplaceCard({ imageUrl, title, price, municipality, 
           )}
           <div className="absolute top-3 left-3 flex items-center gap-2">
             {municipality && (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-white/90 text-neutral-800 shadow">{municipality}</span>
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-white text-neutral-800 shadow">{municipality}</span>
             )}
           </div>
           {transactionType && (

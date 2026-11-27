@@ -50,7 +50,7 @@ export default function ImageGallery({ images = [], alt, aspect = 'aspect-[4/3]'
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className={`relative w-full ${aspect} bg-neutral-100 rounded-xl overflow-hidden`}>
+      <div className={`relative w-full ${aspect} bg-neutral-100 rounded-lg overflow-hidden`}>
         {current ? (
           <SafeImage
             src={mediaUrl(current)}
@@ -67,7 +67,7 @@ export default function ImageGallery({ images = [], alt, aspect = 'aspect-[4/3]'
             <button
               type="button"
               aria-label="Previous image"
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full p-2 shadow-lg border bg-white/90 hover:bg-white"
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full p-2 shadow-lg border bg-white hover:bg-white"
               onClick={(event) => {
                 event.stopPropagation()
                 setIndex((i) => (i - 1 + count) % count)
@@ -78,7 +78,7 @@ export default function ImageGallery({ images = [], alt, aspect = 'aspect-[4/3]'
             <button
               type="button"
               aria-label="Next image"
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 shadow-lg border bg-white/90 hover:bg-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 shadow-lg border bg-white hover:bg-white"
               onClick={(event) => {
                 event.stopPropagation()
                 setIndex((i) => (i + 1) % count)
@@ -97,7 +97,7 @@ export default function ImageGallery({ images = [], alt, aspect = 'aspect-[4/3]'
           <button
             type="button"
             aria-label="Open full size"
-            className="absolute top-2 right-2 rounded-full p-2 shadow border bg-white/90 hover:bg-white"
+            className="absolute top-2 right-2 rounded-full p-2 shadow border bg-white hover:bg-white"
             onClick={(event) => {
               event.stopPropagation()
               openLightbox()
@@ -131,7 +131,7 @@ export default function ImageGallery({ images = [], alt, aspect = 'aspect-[4/3]'
           onClick={() => setLightboxOpen(false)}
         >
           <div
-            className="relative w-full max-w-6xl h-[calc(100vh-2rem)] max-h-[90vh] bg-black/40 rounded-xl overflow-hidden"
+            className="relative w-full max-w-6xl h-[calc(100vh-2rem)] max-h-[90vh] bg-black/40 rounded-lg overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <img src={mediaUrl(current)} alt={alt} className="w-full h-full object-contain" />
@@ -140,7 +140,7 @@ export default function ImageGallery({ images = [], alt, aspect = 'aspect-[4/3]'
                 <button
                   type="button"
                   aria-label="Previous image"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 bg-white hover:bg-white rounded-full p-2 shadow"
                   onClick={() => setIndex((i) => (i - 1 + count) % count)}
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -148,7 +148,7 @@ export default function ImageGallery({ images = [], alt, aspect = 'aspect-[4/3]'
                 <button
                   type="button"
                   aria-label="Next image"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-white hover:bg-white rounded-full p-2 shadow"
                   onClick={() => setIndex((i) => (i + 1) % count)}
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -161,7 +161,7 @@ export default function ImageGallery({ images = [], alt, aspect = 'aspect-[4/3]'
             <button
               type="button"
               aria-label="Close"
-              className="absolute top-3 right-3 bg-white/90 hover:bg-white rounded-full p-2 shadow"
+              className="absolute top-3 right-3 bg-white hover:bg-white rounded-full p-2 shadow"
               onClick={() => setLightboxOpen(false)}
             >
               <X className="w-4 h-4" />

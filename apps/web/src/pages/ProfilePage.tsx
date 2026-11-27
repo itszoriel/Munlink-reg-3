@@ -456,7 +456,7 @@ export default function ProfilePage() {
           onClick={() => setShowTransferModal(false)}
         >
           <div
-            className="bg-white w-full sm:w-[95%] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl"
+            className="bg-white w-full sm:w-[95%] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-lg sm:rounded-lg shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
