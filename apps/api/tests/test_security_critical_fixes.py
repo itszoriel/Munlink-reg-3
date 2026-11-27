@@ -29,6 +29,9 @@ from apps.api.utils import file_streaming
 from apps.api.utils.auth import generate_verification_token
 from apps.api.utils.file_streaming import is_remote_url_allowed, references_request_upload
 
+# Fixture-only credential for the in-memory test database.
+RESIDENT_PASSWORD = 'StrongPass123'  # gitleaks:allow
+
 
 class SecurityFixesConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
@@ -61,7 +64,7 @@ def _add_user(**overrides) -> User:
     fields = dict(
         username='resident_one',
         email='resident_one@example.com',
-        password_hash=_pw_hash('StrongPass123'),
+        password_hash=_pw_hash(RESIDENT_PASSWORD),
         first_name='Resident',
         last_name='One',
         role='resident',
@@ -392,7 +395,7 @@ def test_resident_login_refresh_still_works():
     with app.app_context():
         _add_user(email_verified=True)
 
-    login = client.post('/api/auth/login', json={'email': 'resident_one@example.com', 'password': 'StrongPass123'})
+    login = client.post('/api/auth/login', json={'email': 'resident_one@example.com', 'password': RESIDENT_PASSWORD})
     assert login.status_code == 200, login.get_json()
     with app.app_context():
         claims = decode_token(login.get_json()['access_token'])
