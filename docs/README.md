@@ -11,6 +11,7 @@ This directory contains the maintained documentation for the current codebase.
 | [Testing](TESTING.md) | Automated and manual verification |
 | [Security](SECURITY.md) | Authentication, privacy, secrets, uploads, and auditing |
 | [Design](DESIGN.md) | Shared visual and responsive UI conventions |
+| [Handover](HANDOVER.md) | Moving the project from the developer's personal accounts to a local government |
 
 Project-wide agent constraints live in [AGENTS.md](../AGENTS.md). Setup and common commands live in the root [README.md](../README.md).
 

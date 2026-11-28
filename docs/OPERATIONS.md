@@ -25,6 +25,8 @@ python scripts/seed_data.py
 
 Seeding retains Region 3 reference data internally. Public APIs and both frontends must still expose only the supported Zambales scope and exclude Olongapo.
 
+Databases seeded before November 2026 have marriage-license requirements that say "resident of Porac". `python scripts/fix_marriage_license_residency.py` lists them (dry run), and `--apply` rewrites them to the current template wording.
+
 ## Superadmin bootstrap
 
 ```powershell
