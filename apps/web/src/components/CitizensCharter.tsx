@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Info, RefreshCw } from 'lucide-react'
+import { Info, RefreshCw, Search, X } from 'lucide-react'
+import { create } from 'zustand'
 import { documentsApi } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { getBarangaysByMunicipalityId } from '@/lib/locations'
@@ -25,6 +26,18 @@ export type DocType = {
 
 const cache = new Map<string, DocType[]>()
 
+/** Search text for the charter, shared so the home hero's shortcuts can set it. */
+export const useCharterSearch = create<{ q: string; setQ: (q: string) => void }>((set) => ({
+  q: '',
+  setQ: (q) => set({ q }),
+}))
+
+function matches(d: DocType, q: string) {
+  if (!q) return true
+  const needle = q.toLowerCase()
+  return `${d.name} ${d.description || ''}`.toLowerCase().includes(needle)
+}
+
 function requirementText(r: string | { name?: string; label?: string }) {
   return typeof r === 'string' ? r : (r?.label || r?.name || '')
 }
@@ -46,6 +59,8 @@ export default function CitizensCharter({ headingLevel = 'h2' }: { headingLevel?
   const [types, setTypes] = useState<DocType[] | null>(null)
   const [error, setError] = useState(false)
   const [reload, setReload] = useState(0)
+  const q = useCharterSearch((s) => s.q)
+  const setQ = useCharterSearch((s) => s.setQ)
 
   const barangays = useMemo(() => (town ? getBarangaysByMunicipalityId(town.id) : []), [town])
   const key = town ? `${town.id}:${barangay?.id || ''}` : ''
@@ -91,8 +106,9 @@ export default function CitizensCharter({ headingLevel = 'h2' }: { headingLevel?
   }
 
   const visual = getMunicipalityVisual({ municipalityName: town.name, municipalitySlug: town.slug })
-  const barangayDocs = (types || []).filter((d) => d.authority_level === 'barangay')
-  const municipalDocs = (types || []).filter((d) => d.authority_level !== 'barangay')
+  const shown = (types || []).filter((d) => matches(d, q.trim()))
+  const barangayDocs = shown.filter((d) => d.authority_level === 'barangay')
+  const municipalDocs = shown.filter((d) => d.authority_level !== 'barangay')
   const anyProvisional = (types || []).some((d) => !d.fee_confirmed)
 
   return (
@@ -142,6 +158,24 @@ export default function CitizensCharter({ headingLevel = 'h2' }: { headingLevel?
         </div>
       )}
 
+      <div className="relative mt-6 max-w-md">
+        <label htmlFor="charter-search" className="sr-only">{t('Search documents', 'Maghanap ng dokumento')}</label>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+        <input
+          id="charter-search"
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={t('Search, e.g. clearance, cedula, permit', 'Hanapin, hal. clearance, cedula, permit')}
+          className="input-field min-h-[44px] w-full pl-9 pr-10"
+        />
+        {q && (
+          <button type="button" onClick={() => setQ('')} className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded text-slate-600 hover:bg-slate-100" aria-label={t('Clear search', 'Burahin ang hinahanap')}>
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+
       {error ? (
         <div className="mt-6 rounded-md border border-slate-200 bg-white p-5 text-sm text-slate-700">
           <p>{t('The list of documents could not be loaded. Check your connection and try again.', 'Hindi ma-load ang listahan ng dokumento. Suriin ang iyong koneksyon at subukang muli.')}</p>
@@ -164,7 +198,7 @@ export default function CitizensCharter({ headingLevel = 'h2' }: { headingLevel?
                 ItemHeading={ItemHeading}
                 verified={!!verified}
                 isAuthenticated={isAuthenticated}
-                empty={t('This barangay has not listed online documents yet.', 'Wala pang nakalistang online na dokumento ang barangay na ito.')}
+                empty={q ? t(`No barangay document matches "${q}".`, `Walang dokumento ng barangay na tugma sa "${q}".`) : t('This barangay has not listed online documents yet.', 'Wala pang nakalistang online na dokumento ang barangay na ito.')}
               />
             ) : (
               <p className="rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-700">
@@ -181,7 +215,7 @@ export default function CitizensCharter({ headingLevel = 'h2' }: { headingLevel?
               ItemHeading={ItemHeading}
               verified={!!verified}
               isAuthenticated={isAuthenticated}
-              empty={t('This municipality has not listed online documents yet.', 'Wala pang nakalistang online na dokumento ang munisipyong ito.')}
+              empty={q ? t(`No municipal document matches "${q}".`, `Walang dokumento ng munisipyo na tugma sa "${q}".`) : t('This municipality has not listed online documents yet.', 'Wala pang nakalistang online na dokumento ang munisipyong ito.')}
             />
           </div>
           <aside className="hidden lg:block">

@@ -3,14 +3,18 @@ import { announcementsApi, marketplaceApi, mediaUrl } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { useCachedFetch } from '@/lib/useCachedFetch'
 import { CACHE_KEYS } from '@/lib/dataStore'
-import { ArrowRight, Bell, HandHeart, MessageSquareWarning, Package, ShieldCheck, ShoppingBag } from 'lucide-react'
+import { ArrowRight, Bell, HandHeart, Megaphone, MessageSquareWarning, Package, ShieldCheck, ShoppingBag } from 'lucide-react'
 import SafeImage from '@/components/SafeImage'
-import CitizensCharter from '@/components/CitizensCharter'
+import CitizensCharter, { useCharterSearch } from '@/components/CitizensCharter'
+import { MUNICIPALITIES } from '@/lib/locations'
+import { getMunicipalitySeal, getMunicipalityVisual } from '@/lib/municipalityVisuals'
 import RequestTimeline from '@/components/RequestTimeline'
 import { useLang } from '@/lib/i18n'
 
 export default function HomePage() {
   const { t } = useLang()
+  const setMunicipality = useAppStore((s) => s.setMunicipality)
+  const setCharterQuery = useCharterSearch((s) => s.setQ)
   const selectedMunicipality = useAppStore((s) => s.selectedMunicipality)
   const selectedBarangay = useAppStore((s) => s.selectedBarangay)
   const user = useAppStore((s) => s.user)
@@ -78,51 +82,124 @@ export default function HomePage() {
       description: t('Sell, lend or give away items to verified neighbours.', 'Magbenta, magpahiram o mamigay sa mga beripikadong kapitbahay.'),
       to: '/marketplace',
     },
+    {
+      icon: Megaphone,
+      title: t('Announcements', 'Mga anunsyo'),
+      description: t('Official notices from the province, your town and your barangay.', 'Opisyal na abiso mula sa lalawigan, bayan at barangay.'),
+      to: '/announcements',
+    },
   ]
+
+  // Common requests at the hall; each one filters the charter below.
+  const POPULAR = [
+    { label: t('Barangay clearance', 'Barangay clearance'), q: 'clearance' },
+    { label: 'Cedula', q: 'cedula' },
+    { label: t('Certificate of indigency', 'Certificate of indigency'), q: 'indigency' },
+    { label: t('Business permit', 'Business permit'), q: 'business' },
+    { label: t('Certificate of residency', 'Certificate of residency'), q: 'residen' },
+  ]
+
+  const goToCharter = () => {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    document.getElementById('documents')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+  }
+
+  const hallVisual = getMunicipalityVisual({ municipalityName: selectedMunicipality?.name || 'Iba', municipalitySlug: selectedMunicipality?.slug || 'iba' })
 
   return (
     <div className="bg-[#f6f7f9]">
-      {/* Hero: text on solid navy, photo left uncovered */}
-      <section className="border-b border-slate-200 bg-navy-900">
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      {/* Hero: the coast as a wide band, the service counter laid over its edge */}
+      <section className="bg-white">
+        <div className="h-[220px] overflow-hidden bg-navy-900 sm:h-[340px] lg:h-[460px]">
           <img
             src="/assets/hero.webp"
             alt={t('Bangka boats on the Zambales coast', 'Mga bangka sa baybayin ng Zambales')}
             width={1600}
             height={900}
-            className="aspect-[16/9] w-full object-cover lg:order-2 lg:aspect-auto lg:h-full"
+            className="h-full w-full object-cover object-[center_62%]"
           />
-          <div className="flex items-center lg:order-1">
-            <div className="w-full px-4 py-12 sm:px-6 lg:ml-auto lg:max-w-[40rem] lg:py-20 lg:pr-12">
-              <div className="flex items-center gap-3">
-                <img src="/logos/provinces/zambales.png" alt="" width={44} height={44} className="h-11 w-11 rounded-full bg-white object-contain p-0.5" />
-                <span className="text-sm font-medium text-navy-100">{t('Province of Zambales', 'Lalawigan ng Zambales')}</span>
-              </div>
-              <h1 className="mt-6 text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-[2.75rem]" style={{ textWrap: 'balance' } as any}>
+        </div>
+        <div className="container-responsive relative -mt-16 pb-12 sm:-mt-24 lg:-mt-28 lg:pb-16">
+          <div className="grid gap-8 rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-12 lg:p-10">
+            <div className="flex flex-col justify-center">
+              <h1 className="text-[2rem] font-semibold leading-[1.12] tracking-[-0.02em] text-slate-900 sm:text-4xl lg:text-[2.75rem]" style={{ textWrap: 'balance' } as any}>
                 {t('Barangay and municipal documents, without the long line', 'Dokumento mula sa barangay at munisipyo, nang hindi pumipila')}
               </h1>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-navy-100 sm:text-lg">
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
                 {t(
-                  'Check the fee and requirements, send your request, and pick it up when it is ready. For residents of the 13 municipalities of Zambales.',
-                  'Alamin ang singil at mga kailangan, ipadala ang kahilingan, at kunin kapag handa na. Para sa mga residente ng 13 bayan ng Zambales.'
+                  'See the fee and requirements first, send your request online, and claim it when it is ready. For residents of the 13 municipalities of Zambales.',
+                  'Alamin muna ang singil at mga kailangan, ipadala ang kahilingan online, at kunin kapag handa na. Para sa mga residente ng 13 bayan ng Zambales.'
                 )}
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <a href="#documents" className="btn bg-white text-navy-900 hover:bg-navy-50">
-                  {t('Find a document', 'Maghanap ng dokumento')}
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </a>
-                <Link to={isAuthenticated ? '/dashboard' : '/register'} className="btn border-white/70 text-white hover:bg-white/10">
-                  {isAuthenticated ? t('Go to your dashboard', 'Pumunta sa dashboard') : t('Create an account', 'Gumawa ng account')}
-                </Link>
+              <p className="mt-6 flex items-start gap-2 text-sm text-slate-600">
+                <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-700" aria-hidden="true" />
+                {t('Run with the municipal and barangay offices of Zambales. Your ID is seen only by your own municipality.', 'Kasama ang mga munisipyo at barangay ng Zambales. Ang iyong munisipyo lamang ang makakakita ng iyong ID.')}
+              </p>
+            </div>
+
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-5 sm:p-6">
+              <label htmlFor="hero-town" className="block text-sm font-semibold text-slate-900">
+                {t('Your town', 'Ang iyong bayan')}
+              </label>
+              <div className="mt-2 flex items-center gap-3">
+                <img
+                  src={getMunicipalitySeal(selectedMunicipality?.slug)}
+                  alt=""
+                  width={44}
+                  height={44}
+                  className="h-11 w-11 flex-shrink-0 object-contain"
+                />
+                <select
+                  id="hero-town"
+                  className="input-field min-h-[44px]"
+                  value={selectedMunicipality?.id || ''}
+                  onChange={(e) => {
+                    const m = MUNICIPALITIES.find((x) => String(x.id) === e.target.value)
+                    setMunicipality(m)
+                  }}
+                >
+                  <option value="">{t('Choose town', 'Pumili ng bayan')}</option>
+                  {MUNICIPALITIES.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
               </div>
+
+              <p className="mt-5 text-sm font-semibold text-slate-900">{t('Most requested', 'Madalas hilingin')}</p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {POPULAR.map((item) => (
+                  <li key={item.q}>
+                    <button
+                      type="button"
+                      onClick={() => { setCharterQuery(item.q); goToCharter() }}
+                      className="min-h-[40px] rounded-full border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-800 transition-colors hover:border-navy-600 hover:text-navy-800"
+                    >
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+
+              <button type="button" onClick={() => { setCharterQuery(''); goToCharter() }} className="btn-primary mt-6 w-full">
+                {t('See all fees and requirements', 'Tingnan lahat ng singil at kailangan')}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <p className="mt-3 text-center text-sm text-slate-600">
+                {isAuthenticated ? (
+                  <Link to="/dashboard" className="font-medium text-navy-700 underline">{t('Go to your dashboard', 'Pumunta sa dashboard')}</Link>
+                ) : (
+                  <>
+                    {t('No account needed to look. ', 'Hindi kailangan ng account para tumingin. ')}
+                    <Link to="/register" className="font-medium text-navy-700 underline">{t('Register', 'Magparehistro')}</Link>
+                    {t(' to send a request.', ' para magpadala ng kahilingan.')}
+                  </>
+                )}
+              </p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Citizen's Charter */}
-      <section id="documents" className="scroll-mt-20 border-b border-slate-200 bg-white">
+      <section id="documents" className="scroll-mt-20 border-y border-slate-200 bg-white">
         <div className="container-responsive py-12 sm:py-16">
           <CitizensCharter />
         </div>
@@ -161,23 +238,44 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Other services: a plain list, not a card grid */}
+      {/* More from the hall: a real town photo beside a list of the other online services */}
       <section className="border-b border-slate-200 bg-white">
-        <div className="container-responsive py-12 sm:py-14">
-          <h2 className="text-xl font-semibold text-slate-900">{t('Other services', 'Iba pang serbisyo')}</h2>
-          <ul className="mt-4 grid divide-y divide-slate-200 border-y border-slate-200 md:grid-cols-3 md:divide-x md:divide-y-0">
-            {OTHER_SERVICES.map(({ icon: Icon, title, description, to }) => (
-              <li key={to}>
-                <Link to={to} className="group flex h-full gap-3 py-5 md:px-5 md:first:pl-0">
-                  <Icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-navy-700" aria-hidden="true" />
-                  <span>
-                    <span className="block font-semibold text-slate-900 group-hover:underline">{title}</span>
-                    <span className="mt-1 block text-sm text-slate-600">{description}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <div className="container-responsive grid gap-10 py-12 sm:py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-stretch lg:gap-14">
+          <figure className="relative overflow-hidden rounded-lg bg-slate-100">
+            <img
+              src={hallVisual.landmark}
+              alt={t(`${hallVisual.name}, Zambales`, `${hallVisual.name}, Zambales`)}
+              loading="lazy"
+              width={1200}
+              height={800}
+              className="aspect-[4/3] h-full w-full object-cover lg:aspect-auto"
+            />
+            <figcaption className="absolute inset-x-0 bottom-0 bg-navy-950/85 px-4 py-3 text-sm text-white">
+              {hallVisual.name}, Zambales
+            </figcaption>
+          </figure>
+          <div className="flex flex-col justify-center">
+            <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+              {t('More from your municipal hall', 'Iba pa mula sa inyong munisipyo')}
+            </h2>
+            <p className="mt-2 max-w-xl text-slate-600">
+              {t('Your municipal and barangay offices also run these online, with the same account.', 'Ito rin ay online mula sa inyong munisipyo at barangay, gamit ang parehong account.')}
+            </p>
+            <ul className="mt-6 divide-y divide-slate-200 border-y border-slate-200">
+              {OTHER_SERVICES.map(({ icon: Icon, title, description, to }) => (
+                <li key={to}>
+                  <Link to={to} className="group -mx-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-md px-3 py-5 transition-colors hover:bg-slate-50">
+                    <Icon className="h-6 w-6 text-navy-700" aria-hidden="true" />
+                    <span>
+                      <span className="block text-lg font-semibold text-slate-900">{title}</span>
+                      <span className="mt-0.5 block text-sm text-slate-600">{description}</span>
+                    </span>
+                    <ArrowRight className="h-5 w-5 text-slate-400 transition-colors group-hover:text-navy-700" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
