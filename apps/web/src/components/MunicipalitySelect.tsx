@@ -90,7 +90,7 @@ export default function MunicipalitySelect() {
   )
 
   if (!selectedProvince) {
-    return <span className="text-sm text-gray-400 cursor-not-allowed" title="Select a province first">Municipality ▾</span>
+    return <span className="text-sm text-slate-600 cursor-not-allowed" title="Select a province first">Municipality ▾</span>
   }
 
   return (

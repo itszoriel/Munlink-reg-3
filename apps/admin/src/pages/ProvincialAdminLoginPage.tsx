@@ -52,7 +52,7 @@ export default function ProvincialAdminLoginPage() {
   return (
     <div className="fixed inset-0 flex">
       <AdminAuthPanel
-        image="/assets/provincial.jpg"
+        image="/landmarks/zambales/botolan/botolan_mt_pinatubo.webp"
         office="Provincial staff"
         title="Provincial admin sign-in"
         description={'Province-wide announcements and reports across the 13 municipalities of Zambales.'}

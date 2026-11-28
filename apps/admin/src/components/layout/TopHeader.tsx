@@ -30,6 +30,7 @@ export default function TopHeader({ sidebarCollapsed, onOpenMobile, onProfileMen
     if (path === '/residents') return 'Residents'
     if (path === '/programs') return 'Programs'
     if (path === '/requests') return 'Requests'
+    if (path === '/fees') return 'Fees'
     if (path === '/problems') return 'Community Concerns'
     if (path === '/reports') return 'Reports'
     if (path === '/announcements') return 'Announcements'

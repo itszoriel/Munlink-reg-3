@@ -33,7 +33,7 @@ export default function RoleSelector() {
     <div className="min-h-screen bg-[#f6f7f9]">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-16 max-w-5xl items-center gap-3 px-4 sm:px-6">
-          <img src="/logos/munlink-logo.png" alt="" className="h-9 w-9 rounded-full object-cover" />
+          <img src="/logos/provinces/zambales.png" alt="" className="h-9 w-9 rounded-full object-cover" />
           <div className="leading-tight">
             <p className="text-base font-semibold text-slate-900">MunLink Zambales</p>
             <p className="text-xs text-slate-600">Staff portal</p>

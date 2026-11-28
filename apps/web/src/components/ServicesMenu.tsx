@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useLang } from '@/lib/i18n'
 
 // Custom event to close other location dropdowns (shared with ProvinceSelect/MunicipalitySelect)
 const CLOSE_LOCATION_DROPDOWNS = 'munlink:closeLocationDropdowns'
@@ -53,6 +54,7 @@ export default function ServicesMenu() {
   }, [isOpen])
 
   const close = () => setIsOpen(false)
+  const { t } = useLang()
 
   return (
     <div className="relative" ref={containerRef}>
@@ -63,14 +65,14 @@ export default function ServicesMenu() {
         aria-haspopup="menu"
         aria-expanded={isOpen}
       >
-        Services
+        {t('Services', 'Serbisyo')}
         <ChevronDown className="h-4 w-4" aria-hidden="true" />
       </button>
       {isOpen && (
         <div className="absolute left-0 mt-2 w-60 rounded-md border border-slate-200 bg-white p-1.5 shadow-lg z-50" role="menu">
-          <Link to="/documents" onClick={close} role="menuitem" className="block rounded px-3 py-2 text-sm text-slate-800 hover:bg-slate-100">Documents and certificates</Link>
-          <Link to="/programs" onClick={close} role="menuitem" className="block rounded px-3 py-2 text-sm text-slate-800 hover:bg-slate-100">Benefit programs</Link>
-          <Link to="/problems" onClick={close} role="menuitem" className="block rounded px-3 py-2 text-sm text-slate-800 hover:bg-slate-100">Report a problem</Link>
+          <Link to="/programs" onClick={close} role="menuitem" className="block rounded px-3 py-2 text-sm text-slate-800 hover:bg-slate-100">{t('Benefit programs', 'Mga programang tulong')}</Link>
+          <Link to="/problems" onClick={close} role="menuitem" className="block rounded px-3 py-2 text-sm text-slate-800 hover:bg-slate-100">{t('Report a problem', 'Mag-ulat ng problema')}</Link>
+          <Link to="/marketplace" onClick={close} role="menuitem" className="block rounded px-3 py-2 text-sm text-slate-800 hover:bg-slate-100">{t('Community marketplace', 'Palengke ng komunidad')}</Link>
         </div>
       )}
     </div>

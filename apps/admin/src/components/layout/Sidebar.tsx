@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useAdminStore } from '../../lib/store'
-import { LayoutDashboard, Users, Gift, FileText, AlertTriangle, ShoppingBag, Megaphone, BarChart3, Shield, X, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { LayoutDashboard, Users, Gift, FileText, Receipt, AlertTriangle, ShoppingBag, Megaphone, BarChart3, Shield, X, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { getBestRegion3Seal } from '@munlink/ui'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -50,6 +50,7 @@ const defaultNavSections: NavSection[] = [
       { icon: 'residents', label: 'Residents', path: '/residents', badge: null, superAdminOnly: false },
       { icon: 'programs', label: 'Programs', path: '/programs', badge: null, superAdminOnly: false },
       { icon: 'requests', label: 'Requests', path: '/requests', badge: null, superAdminOnly: false },
+      { icon: 'fees', label: 'Fees', path: '/fees', badge: null, superAdminOnly: false },
       { icon: 'problems', label: 'Community Concerns', path: '/problems', badge: null, superAdminOnly: false },
       { icon: 'announcements', label: 'Announcements', path: '/announcements', badge: null, superAdminOnly: false },
     ]
@@ -69,6 +70,7 @@ function IconFor(code: string, className = 'w-5 h-5') {
     case 'residents': return <Users className={className} aria-hidden="true" />
     case 'programs': return <Gift className={className} aria-hidden="true" />
     case 'requests': return <FileText className={className} aria-hidden="true" />
+    case 'fees': return <Receipt className={className} aria-hidden="true" />
     case 'problems': return <AlertTriangle className={className} aria-hidden="true" />
     case 'transactions': return <ShoppingBag className={className} aria-hidden="true" />
     case 'marketplace': return <ShoppingBag className={className} aria-hidden="true" />

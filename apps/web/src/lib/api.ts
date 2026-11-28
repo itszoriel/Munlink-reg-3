@@ -299,8 +299,10 @@ export const authApi = {
   confirmPasswordReset: (token: string, new_password: string, confirm_password?: string) =>
     api.post('/api/auth/password-reset/confirm', { token, new_password, confirm_password }),
   // The API files uploads under the account's own municipality.
-  uploadVerificationDocs: (files: { valid_id_front?: File, valid_id_back?: File, selfie_with_id?: File }) => {
+  getValidIdTypes: () => api.get('/api/auth/valid-id-types'),
+  uploadVerificationDocs: (files: { valid_id_front?: File, valid_id_back?: File, selfie_with_id?: File, valid_id_type?: string }) => {
     const form = new FormData()
+    if (files.valid_id_type) form.append('valid_id_type', files.valid_id_type)
     if (files.valid_id_front) form.append('valid_id_front', files.valid_id_front)
     if (files.valid_id_back) form.append('valid_id_back', files.valid_id_back)
     if (files.selfie_with_id) form.append('selfie_with_id', files.selfie_with_id)

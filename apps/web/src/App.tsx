@@ -15,6 +15,7 @@ import MarketplacePage from './pages/MarketplacePage'
 import Layout from './components/Layout'
 import AnnouncementsPage from './pages/AnnouncementsPage'
 import About from '@/pages/About'
+import ServicesPage from '@/pages/ServicesPage'
 import DocumentsPage from './pages/DocumentsPage'
 import DocumentRequestPage from './pages/DocumentRequestPage'
 import MyDocumentRequestsPage from './pages/MyDocumentRequestsPage'
@@ -102,6 +103,7 @@ function App() {
           <Route path="marketplace" element={<MarketplacePage />} />
           <Route path="marketplace/:id" element={<MarketplaceItemPage />} />
           <Route path="about" element={<About />} />
+          <Route path="services" element={<ServicesPage />} />
           <Route path="terms-of-service" element={<TermsOfService />} />
           <Route path="privacy-policy" element={<PrivacyPolicy />} />
           <Route path="documents" element={<ProtectedRoute allow={["resident","admin"]}><DocumentsPage /></ProtectedRoute>} />

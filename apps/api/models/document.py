@@ -29,6 +29,9 @@ class DocumentType(db.Model):
     
     # Pricing
     fee = db.Column(db.Numeric(10, 2), default=0.00)
+    # False until the issuing office confirms the amount. Unconfirmed fees are
+    # shown to residents as indicative ("to be confirmed by the office").
+    fee_confirmed = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
     # Fee tiers for business types (JSON): {"big_business": 300, "small_business": 150, "banca_tricycle": 100}
     fee_tiers = db.Column(db.JSON, nullable=True)
@@ -74,6 +77,7 @@ class DocumentType(db.Model):
             'barangay_id': self.barangay_id,
             'requirements': self.requirements,
             'fee': float(self.fee) if self.fee else 0.00,
+            'fee_confirmed': bool(self.fee_confirmed),
             'fee_tiers': self.fee_tiers,
             'exemption_rules': self.exemption_rules,
             'processing_days': self.processing_days,
